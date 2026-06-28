@@ -13,6 +13,15 @@ document.addEventListener("DOMContentLoaded", () => {
     let activeSubtab = "cdt";    // "cdt", "cung_ung", "trien_khai", "khoi_cong", "ngan_sach", "thi_cong", "all"
     const expandedParents = new Set(); // Set of expanded parent IDs (Mã BSC / goi_thau_pl)
 
+    // Helper to get system date formatted in GMT+7 (browser local time)
+    function getSystemDateGMT7() {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
     function loadDatabase() {
         const stored = localStorage.getItem("erp_db");
         if (stored) {
@@ -1997,7 +2006,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 "Loại hồ sơ": document.getElementById("form-loai").value,
                 "Tên sản phẩm / Số hiệu": document.getElementById("form-name").value,
                 "LINK lưu trữ": document.getElementById("form-link").value,
-                "Ngày HT": new Date().toISOString().substring(0, 10),
+                "Ngày HT": getSystemDateGMT7(),
                 "Người lập": document.getElementById("form-maker").value,
                 "Người duyệt": "CĐT",
                 "TT duyệt": "Chờ duyệt"
@@ -2011,7 +2020,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 "Mã PS": `PS.CT01.${String(db.s03.length + 1).padStart(2, '0')}`,
                 "Mã BSC": bsc,
                 "Hạng mục": document.getElementById("form-hang-muc").value,
-                "Ngày PS": new Date().toISOString().substring(0, 10),
+                "Ngày PS": getSystemDateGMT7(),
                 "Loại": document.getElementById("form-loai").value,
                 "Mô tả": document.getElementById("form-desc").value,
                 "Nguyên nhân": document.getElementById("form-cause").value,
@@ -2031,7 +2040,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 "Mã YC": `YC.CT01.${String(db.s04.length + 1).padStart(2, '0')}`,
                 "Mã BSC": document.getElementById("form-bsc").value,
                 "Hạng mục": document.getElementById("form-hang-muc").value,
-                "Ngày YC": new Date().toISOString().substring(0, 10),
+                "Ngày YC": getSystemDateGMT7(),
                 "Loại YC": document.getElementById("form-loai").value,
                 "Vật tư/Thiết bị": document.getElementById("form-vattu").value,
                 "Đặc tả KT / Lý do": document.getElementById("form-spec").value,
@@ -2054,7 +2063,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 "STT": db.s05.length + 1,
                 "Mã BSC": bsc,
                 "Hạng mục": document.getElementById("form-hang-muc").value,
-                "Ngày phát hiện": new Date().toISOString().substring(0, 10),
+                "Ngày phát hiện": getSystemDateGMT7(),
                 "Mức chậm (ngày)": delayDays,
                 "Nguyên nhân": document.getElementById("form-cause").value,
                 "Giải pháp bù": document.getElementById("form-solution").value,
@@ -2559,10 +2568,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // 12. INITIALIZE APPLICATION SETUP
+    function updateSystemTime() {
+        const d = new Date();
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const seconds = String(d.getSeconds()).padStart(2, '0');
+        
+        const timeStr = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+        const el = document.getElementById("system-time");
+        if (el) {
+            el.textContent = timeStr;
+        }
+    }
+
     function initApp() {
         loadDatabase();
         calculateRollups();
         renderDashboard();
+        
+        // Start system clock
+        updateSystemTime();
+        setInterval(updateSystemTime, 1000);
     }
 
     initApp();
