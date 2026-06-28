@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Kiểm Soát Vòng Đời Gói Thầu ERP - TDG Group</title>
+    <!-- CSS & Fonts -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS Excel Parser Library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+    <!-- SIDEBAR NAVIGATION -->
+    <nav id="sidebar">
+        <div class="brand">
+            <h1>TDG Group</h1>
+            <span>BQLDA ERP SYSTEM</span>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item active" data-tab="dashboard">
+                <i class="fa-solid fa-chart-line"></i> Dashboard C-Level
+            </li>
+            <li class="nav-item" data-tab="master">
+                <i class="fa-solid fa-table-list"></i> Bảng Tổng Hợp Master
+            </li>
+            <li class="nav-item" data-tab="s01">
+                <i class="fa-solid fa-folder-open"></i> Sổ 01: Tiền Khởi Công
+            </li>
+            <li class="nav-item" data-tab="s02">
+                <i class="fa-solid fa-calendar-check"></i> Sổ 02: KH Tháng/Tuần
+            </li>
+            <li class="nav-item" data-tab="s03">
+                <i class="fa-solid fa-file-invoice-dollar"></i> Sổ 03: Phát Sinh HĐ
+            </li>
+            <li class="nav-item" data-tab="s04">
+                <i class="fa-solid fa-truck-ramp-box"></i> Sổ 04: Cung Ứng Đặc Thù
+            </li>
+            <li class="nav-item" data-tab="s05">
+                <i class="fa-solid fa-clock-rotate-left"></i> Sổ 05: Bù Tiến Độ
+            </li>
+            <li class="nav-item" data-tab="ai-center">
+                <i class="fa-solid fa-brain"></i> AI Command Center
+            </li>
+        </ul>
+        <div class="nav-footer">
+            <button class="nav-footer-btn" id="open-settings-btn">
+                <i class="fa-solid fa-gears"></i> Cấu Hình Hệ Thống
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT AREA -->
+    <main id="main-content">
+        <!-- GLOBAL HEADER -->
+        <header class="content-header">
+            <div class="header-title">
+                <h2 id="active-tab-title">Dashboard C-Level</h2>
+                <p id="active-tab-desc">Tổng hợp chỉ số sức khoẻ tài chính & tiến độ đường găng toàn dự án</p>
+            </div>
+            <div class="header-controls">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); text-align: right;">
+                    <div style="font-weight: 600; color: #fff;"><i class="fa-regular fa-clock"></i> Thời gian hệ thống</div>
+                    <div id="system-time">28/06/2026 18:40</div>
+                </div>
+                <button class="btn-action approve" id="ai-quick-query-btn" style="padding: 10px 18px; border-radius: 20px; font-weight: 600; border-width: 1px;">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Hỏi Trợ Lý Gemini AI
+                </button>
+            </div>
+        </header>
+
+        <!-- KPI SUMMARY PANEL -->
+        <section class="kpi-grid" id="kpi-panel">
+            <div class="kpi-card blue">
+                <div class="kpi-label">Tổng Ngân Sách Chủ Đầu Tư</div>
+                <div class="kpi-value" id="kpi-total-budget">0.00 tỷ</div>
+                <div class="kpi-change neutral">
+                    <i class="fa-solid fa-circle-info"></i> Toàn bộ gói thầu hiện hữu
+                </div>
+            </div>
+            <div class="kpi-card green">
+                <div class="kpi-label">Lũy Kế Hợp Đồng A - B</div>
+                <div class="kpi-value" id="kpi-total-contract">0.00 tỷ</div>
+                <div class="kpi-change neutral">
+                    <i class="fa-solid fa-handshake"></i> Đã ký chính thức
+                </div>
+            </div>
+            <div class="kpi-card yellow">
+                <div class="kpi-label">Lũy Kế Phát Sinh B - B' (Đã Duyệt)</div>
+                <div class="kpi-value" id="kpi-total-variations">0.00 tỷ</div>
+                <div class="kpi-change neutral" id="kpi-variation-percentage">
+                    0.0% ngân sách gốc
+                </div>
+            </div>
+            <div class="kpi-card red">
+                <div class="kpi-label">Chỉ Số Trễ Hạn Gói Thầu</div>
+                <div class="kpi-value" id="kpi-total-delays">0 ngày</div>
+                <div class="kpi-change down" id="kpi-delay-alert-count">
+                    0 gói thầu cần bù tiến độ
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB: DASHBOARD ==================== -->
+        <div class="tab-pane active" id="tab-dashboard">
+            <div class="dashboard-row-split">
+                <!-- Gantt Timeline Chart Widget -->
+                <div class="widget" style="min-height: 420px;">
+                    <div class="widget-header">
+                        <div class="widget-title">
+                            <i class="fa-solid fa-chart-gantt" style="color: var(--color-green);"></i>
+                            Biểu Đồ Tiến Độ Đường Găng (Gantt Chart) - Kế Hoạch vs Thực Tế
+                        </div>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">
+                            <span class="badge success" style="padding: 2px 6px;">Kế hoạch (Xanh)</span>
+                            <span class="badge warning" style="padding: 2px 6px; margin-left: 4px;">Thực tế (Vàng)</span>
+                            <span class="badge danger" style="padding: 2px 6px; margin-left: 4px;">Chậm trễ (Đỏ)</span>
+                        </span>
+                    </div>
+                    <div class="widget-body" id="gantt-chart-container">
+                        <!-- SVG Gantt will be injected here -->
+                    </div>
+                </div>
+
+                <!-- Budget Tower Widget -->
+                <div class="widget" style="min-height: 420px;">
+                    <div class="widget-header">
+                        <div class="widget-title">
+                            <i class="fa-solid fa-tower-observation" style="color: var(--color-yellow);"></i>
+                            Tháp Giám Sát Ngân Sách Thi Công
+                        </div>
+                        <span class="badge danger" id="budget-alarm-badge" style="display:none;">Cảnh Báo Vượt Trần</span>
+                    </div>
+                    <div class="widget-body">
+                        <div class="budget-tower-list" id="budget-tower-list-container">
+                            <!-- Budget items will be dynamically loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: MASTER DATA ==================== -->
+        <div class="tab-pane" id="tab-master">
+            <!-- Search & Filters -->
+            <div style="background-color: var(--bg-surface); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <div style="display: flex; gap: 12px; flex-grow: 1; max-width: 500px;">
+                    <div style="position: relative; flex-grow: 1;">
+                        <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 12px; color: var(--text-muted);"></i>
+                        <input type="text" id="master-search-input" class="form-control" placeholder="Tìm kiếm mã gói thầu, tên công việc..." style="padding-left: 36px; border-radius: 20px;">
+                    </div>
+                    <select id="master-filter-group" class="form-control" style="width: 180px; border-radius: 20px;">
+                        <option value="">Tất cả Nhóm CT</option>
+                        <option value="Hạ tầng kỹ thuật">Hạ tầng kỹ thuật</option>
+                        <option value="Xây dựng dân dụng">Xây dựng dân dụng</option>
+                        <option value="Công trình phục vụ KD">Công trình phục vụ KD</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-action" id="btn-add-package" style="background-color: var(--color-ai-primary); color: #fff; border: none; padding: 10px 18px; border-radius: 20px; font-weight: 600;">
+                        <i class="fa-solid fa-circle-plus"></i> Thêm Gói Thầu Mới
+                    </button>
+                    <button class="btn-action" id="btn-reset-master" style="padding: 10px 18px; border-radius: 20px;">
+                        <i class="fa-solid fa-rotate-left"></i> Khôi phục dữ liệu
+                    </button>
+                </div>
+            </div>
+
+            <!-- CẤP ĐỘ HIỂN THỊ & PHÂN MỤC BẢNG -->
+            <div style="display: flex; flex-direction: column; gap: 14px; background-color: var(--bg-surface); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-color); margin-top: -15px;">
+                <!-- Cấp độ hiển thị -->
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-family: var(--font-heading); font-size: 0.75rem; font-weight: 700; color: #ff5252; text-transform: uppercase; letter-spacing: 0.5px;">Cấp độ hiển thị:</span>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn-action active-level" id="btn-level-project" style="border-radius: 6px; padding: 6px 12px; background-color: rgba(255, 82, 82, 0.1); border-color: #ff5252; color: #ff5252; font-weight:600;">
+                                Cấp công trình
+                            </button>
+                            <button class="btn-action" id="btn-level-detail" style="border-radius: 6px; padding: 6px 12px; font-weight:600;">
+                                Cấp chi tiết
+                            </button>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-action" id="btn-expand-all" style="border-radius: 6px; padding: 6px 12px; font-weight: 600; color: var(--color-green); border-color: rgba(16, 185, 129, 0.3);" title="Mở rộng toàn bộ chi tiết">
+                            <i class="fa-solid fa-plus" style="margin-right: 4px;"></i> Bung toàn bộ (+)
+                        </button>
+                        <button class="btn-action" id="btn-collapse-all" style="border-radius: 6px; padding: 6px 12px; font-weight: 600; color: #ff5252; border-color: rgba(255, 82, 82, 0.3);" title="Thu gọn toàn bộ chi tiết">
+                            <i class="fa-solid fa-minus" style="margin-right: 4px;"></i> Thu toàn bộ (-)
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Phân mục bảng (A, B, C, D, E, G...) -->
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--border-color); padding-top: 12px;" id="master-sub-tabs">
+                    <button class="btn-action active-subtab" data-subtab="cdt" style="border-radius: 8px; padding: 8px 14px; font-weight: 600; color:#fff; background-color: var(--color-ai-primary); border-color: var(--color-ai-primary);">
+                        <i class="fa-solid fa-circle" style="color:#ef4444; font-size: 8px; margin-right: 4px;"></i> A. Đầu vào CĐT
+                    </button>
+                    <button class="btn-action" data-subtab="cung_ung" style="border-radius: 8px; padding: 8px 14px; font-weight: 600;">
+                        <i class="fa-solid fa-truck" style="margin-right: 4px;"></i> B. Cung ứng & Hợp đồng
+                    </button>
+                    <button class="btn-action" data-subtab="trien_khai" style="border-radius: 8px; padding: 8px 14px; font-weight: 600;">
+                        <i class="fa-solid fa-calendar-days" style="margin-right: 4px;"></i> C. Kế hoạch Triển khai
+                    </button>
+                    <button class="btn-action" data-subtab="khoi_cong" style="border-radius: 8px; padding: 8px 14px; font-weight: 600;">
+                        <i class="fa-solid fa-bolt" style="margin-right: 4px;"></i> D. Chốt chặn Khởi công
+                    </button>
+                    <button class="btn-action" data-subtab="ngan_sach" style="border-radius: 8px; padding: 8px 14px; font-weight: 600;">
+                        <i class="fa-solid fa-sack-dollar" style="margin-right: 4px;"></i> E. Ngân sách & Chi phí
+                    </button>
+                    <button class="btn-action" data-subtab="thi_cong" style="border-radius: 8px; padding: 8px 14px; font-weight: 600;">
+                        <i class="fa-solid fa-chart-simple" style="margin-right: 4px;"></i> G. Quản lý Thi công
+                    </button>
+                    <button class="btn-action" data-subtab="all" style="border-radius: 8px; padding: 8px 14px; font-weight: 600;">
+                        <i class="fa-solid fa-database" style="margin-right: 4px;"></i> Tất cả dữ liệu
+                    </button>
+                </div>
+            </div>
+
+            <!-- Master Grid Table Container -->
+            <div class="table-container">
+                <table class="erp-table" id="master-grid-table">
+                    <thead id="master-grid-thead"></thead>
+                    <tbody id="master-grid-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: SỔ 01 (TIỀN KHỞI CÔNG) ==================== -->
+        <div class="tab-pane" id="tab-s01">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                <div style="position: relative; max-width: 400px; width: 100%;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 12px; color: var(--text-muted);"></i>
+                    <input type="text" id="s01-search-input" class="form-control" placeholder="Tìm hồ sơ bằng Mã BSC..." style="padding-left: 36px; border-radius: 20px;">
+                </div>
+                <button class="btn-action approve" id="btn-add-s01" style="background-color: var(--color-green); border: none; padding: 10px 18px; border-radius: 20px; font-weight: 600; color: #fff;">
+                    <i class="fa-solid fa-file-circle-plus"></i> Đăng Ký Hồ Sơ Mới
+                </button>
+            </div>
+            <div class="table-container">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Mã BSC</th>
+                            <th>Hạng mục</th>
+                            <th>Loại hồ sơ</th>
+                            <th>Tên sản phẩm / Số hiệu</th>
+                            <th>LINK lưu trữ</th>
+                            <th>Ngày HT</th>
+                            <th>Người lập</th>
+                            <th>Người duyệt</th>
+                            <th>Trạng thái duyệt</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="s01-tbody">
+                        <!-- Dynamic Sổ 01 rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: SỔ 02 (KH THÁNG/TUẦN) ==================== -->
+        <div class="tab-pane" id="tab-s02">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                <div style="position: relative; max-width: 400px; width: 100%;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 12px; color: var(--text-muted);"></i>
+                    <input type="text" id="s02-search-input" class="form-control" placeholder="Tìm bằng Mã BSC..." style="padding-left: 36px; border-radius: 20px;">
+                </div>
+                <button class="btn-action approve" id="btn-add-s02" style="background-color: var(--color-green); border: none; padding: 10px 18px; border-radius: 20px; font-weight: 600; color: #fff;">
+                    <i class="fa-solid fa-calendar-plus"></i> Lập Kế Hoạch Tuần/Tháng
+                </button>
+            </div>
+            <div class="table-container">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Mã BSC</th>
+                            <th>Hạng mục</th>
+                            <th>Tháng</th>
+                            <th>Loại tài liệu</th>
+                            <th>Nội dung chính</th>
+                            <th>Đạt YCKT CĐT</th>
+                            <th>LINK tài liệu</th>
+                            <th>TT Lập</th>
+                            <th>TT Duyệt</th>
+                            <th>Người lập/duyệt</th>
+                            <th>Ngày duyệt</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="s02-tbody">
+                        <!-- Dynamic Sổ 02 rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: SỔ 03 (PHÁT SINH HỢP ĐỒNG B - B') ==================== -->
+        <div class="tab-pane" id="tab-s03">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                <div style="position: relative; max-width: 400px; width: 100%;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 12px; color: var(--text-muted);"></i>
+                    <input type="text" id="s03-search-input" class="form-control" placeholder="Tìm bằng Mã BSC..." style="padding-left: 36px; border-radius: 20px;">
+                </div>
+                <button class="btn-action approve" id="btn-add-s03" style="background-color: var(--color-green); border: none; padding: 10px 18px; border-radius: 20px; font-weight: 600; color: #fff;">
+                    <i class="fa-solid fa-file-circle-exclamation"></i> Ghi Nhận Phát Sinh Mới
+                </button>
+            </div>
+            <div class="table-container">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th>Mã PS</th>
+                            <th>Mã BSC</th>
+                            <th>Hạng mục</th>
+                            <th>Ngày PS</th>
+                            <th>Loại phát sinh</th>
+                            <th>Mô tả</th>
+                            <th>Nguyên nhân</th>
+                            <th>Đề xuất xử lý</th>
+                            <th>Giá trị (tỷ)</th>
+                            <th>Ảnh hưởng TĐ (ngày)</th>
+                            <th>LINK hồ sơ</th>
+                            <th>TT duyệt</th>
+                            <th>Người / Ngày duyệt</th>
+                            <th style="width: 180px;">Thao Tác Duyệt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="s03-tbody">
+                        <!-- Dynamic Sổ 03 rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: SỔ 04 (CUNG ỨNG ĐẶC THÙ) ==================== -->
+        <div class="tab-pane" id="tab-s04">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                <div style="position: relative; max-width: 400px; width: 100%;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 12px; color: var(--text-muted);"></i>
+                    <input type="text" id="s04-search-input" class="form-control" placeholder="Tìm bằng Mã BSC..." style="padding-left: 36px; border-radius: 20px;">
+                </div>
+                <button class="btn-action approve" id="btn-add-s04" style="background-color: var(--color-green); border: none; padding: 10px 18px; border-radius: 20px; font-weight: 600; color: #fff;">
+                    <i class="fa-solid fa-cart-plus"></i> Đăng Ký Yêu Cầu Cung Ứng
+                </button>
+            </div>
+            <div class="table-container">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th>Mã YC</th>
+                            <th>Mã BSC</th>
+                            <th>Hạng mục</th>
+                            <th>Ngày YC</th>
+                            <th>Loại YC</th>
+                            <th>Vật tư/Thiết bị</th>
+                            <th>Đặc tả KT / Lý do</th>
+                            <th>Khối lượng</th>
+                            <th>ĐVT</th>
+                            <th>Giá trị (tỷ)</th>
+                            <th>Trong/Ngoài HĐCU</th>
+                            <th>LINK hồ sơ</th>
+                            <th>TT duyệt</th>
+                            <th>TT Cung ứng</th>
+                            <th style="width: 180px;">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="s04-tbody">
+                        <!-- Dynamic Sổ 04 rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: SỔ 05 (BÙ TIẾN ĐỘ THI CÔNG) ==================== -->
+        <div class="tab-pane" id="tab-s05">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                <div style="position: relative; max-width: 400px; width: 100%;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 12px; color: var(--text-muted);"></i>
+                    <input type="text" id="s05-search-input" class="form-control" placeholder="Tìm bằng Mã BSC..." style="padding-left: 36px; border-radius: 20px;">
+                </div>
+                <button class="btn-action approve" id="btn-add-s05" style="background-color: var(--color-green); border: none; padding: 10px 18px; border-radius: 20px; font-weight: 600; color: #fff;">
+                    <i class="fa-solid fa-person-running"></i> Đăng Ký Phương Án Bù Tiến Độ
+                </button>
+            </div>
+            <div class="table-container">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Mã BSC</th>
+                            <th>Hạng mục</th>
+                            <th>Ngày phát hiện</th>
+                            <th>Mức chậm (ngày)</th>
+                            <th>Nguyên nhân</th>
+                            <th>Giải pháp bù</th>
+                            <th>Chi tiết phương án</th>
+                            <th>Mốc cam kết hoàn thành</th>
+                            <th>LINK phương án</th>
+                            <th>TT duyệt</th>
+                            <th>KQ thực hiện bù</th>
+                            <th>TT thực hiện</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="s05-tbody">
+                        <!-- Dynamic Sổ 05 rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: AI COMMAND CENTER ==================== -->
+        <div class="tab-pane" id="tab-ai-center">
+            <div class="ai-layout">
+                <!-- Chat & Speech Interface -->
+                <div class="ai-main-area">
+                    <div class="ai-chat-history" id="ai-chat-history">
+                        <div class="ai-chat-bubble bot">
+                            <h4>Xin chào Giám đốc Dự án!</h4>
+                            Tôi là Trợ lý AI Gemini (Harness Agent). Tôi đã quét toàn bộ dữ liệu dự án từ BQLDA. Bạn có thể:
+                            <ul style="margin-top: 8px; margin-left: 18px; font-size: 0.8rem; display: flex; flex-direction: column; gap: 4px;">
+                                <li>Ra lệnh bằng giọng nói hoặc gõ câu hỏi để phân tích rủi ro ngân sách & tiến độ.</li>
+                                <li>Click vào các file văn bản demo ở thanh bên phải để giả lập trích xuất tự động vào các biểu mẫu ERP.</li>
+                                <li>Yêu cầu tôi tổng hợp <strong>Báo cáo Sức khoẻ Dự án (Synthesis Report)</strong> dựa trên phát sinh & bù tiến độ.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="ai-chat-input-bar">
+                        <button class="ai-btn-mic" id="ai-mic-btn" title="Nói với AI">
+                            <i class="fa-solid fa-microphone"></i>
+                        </button>
+                        <input type="text" id="ai-chat-input" class="ai-input" placeholder="Hỏi AI về rủi ro dự án, tóm tắt bù tiến độ gói thầu...">
+                        <button class="ai-btn-send" id="ai-send-btn" title="Gửi câu hỏi">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- AI Document Ingestion & Shortcuts Sidebar -->
+                <div class="ai-side-panel">
+                    <div class="ai-panel-section">
+                        <div class="ai-panel-title"><i class="fa-solid fa-file-import"></i> Đọc & Trích Xuất File (AI Ingestion)</div>
+                        <div class="upload-dropzone" id="ai-upload-dropzone">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <div style="font-weight:600; font-size:0.8rem;">Tải hồ sơ hoặc tờ trình lên</div>
+                            <p>PDF, PNG, JPG, XLSX (Quét OCR & Tự điền biểu mẫu)</p>
+                            <input type="file" id="ai-file-input" style="display:none;">
+                        </div>
+                    </div>
+
+                    <div class="ai-panel-section">
+                        <div class="ai-panel-title"><i class="fa-solid fa-file-invoice"></i> File Demo Có Sẵn (Chạy Thử Tức Thì)</div>
+                        <div class="demo-doc-card" id="demo-doc-s03">
+                            <div>
+                                <div class="demo-doc-name">Tờ trình Phát Sinh Xử Lý Nền Đất Yếu Móng</div>
+                                <div class="demo-doc-type">Tự điền Sổ 03 (Phát sinh)</div>
+                            </div>
+                            <i class="fa-solid fa-bolt" style="color: var(--color-yellow);"></i>
+                        </div>
+                        <div class="demo-doc-card" id="demo-doc-s04">
+                            <div>
+                                <div class="demo-doc-name">Yêu Cầu Cung Cấp Đá Marble Ốp Sảnh</div>
+                                <div class="demo-doc-type">Tự điền Sổ 04 (Cung ứng)</div>
+                            </div>
+                            <i class="fa-solid fa-bolt" style="color: var(--color-yellow);"></i>
+                        </div>
+                        <div class="demo-doc-card" id="demo-doc-s05">
+                            <div>
+                                <div class="demo-doc-name">Phương Án Bù Tiến Độ Móng Trễ 9 Ngày</div>
+                                <div class="demo-doc-type">Tự điền Sổ 05 (Bù tiến độ)</div>
+                            </div>
+                            <i class="fa-solid fa-bolt" style="color: var(--color-yellow);"></i>
+                        </div>
+                    </div>
+
+                    <div class="ai-panel-section">
+                        <div class="ai-panel-title"><i class="fa-solid fa-star"></i> Câu Hỏi Nhanh (C-Level Shortcuts)</div>
+                        <div class="demo-doc-card" id="shortcut-risk">
+                            <div class="demo-doc-name">Gói thầu nào đang gặp rủi ro tài chính cao nhất?</div>
+                        </div>
+                        <div class="demo-doc-card" id="shortcut-synthesis">
+                            <div class="demo-doc-name">Xuất Báo cáo Phân tích Sức khỏe Dự án hàng tháng</div>
+                        </div>
+                        <div class="demo-doc-card" id="shortcut-ct01">
+                            <div class="demo-doc-name">Tóm tắt phương án bù tiến độ gói thầu VSV_QLTC_TT.01</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: SETTINGS ==================== -->
+        <div class="tab-pane" id="tab-settings">
+            <div class="settings-panel">
+                <div class="brand">
+                    <h1 style="font-size:1.5rem;"><i class="fa-solid fa-gears" style="color: var(--color-ai-primary);"></i> Cấu Hình Hệ Thống</h1>
+                    <p style="color: var(--text-secondary); font-size:0.8rem;">Cài đặt các thông số kỹ thuật và tích hợp trí tuệ nhân tạo Gemini AI</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="gemini-api-key-input">Gemini API Key</label>
+                    <input type="password" id="gemini-api-key-input" class="form-control" placeholder="Nhập API Key của bạn (AIzaSy...)">
+                    <p style="font-size:0.7rem; color: var(--text-muted); margin-top:4px;">Lưu ý: API Key được lưu bảo mật dưới dạng LocalStorage trên máy của bạn và gửi trực tiếp tới máy chủ Google Gemini, chúng tôi không lưu trữ trên bất kỳ server trung gian nào.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Trạng Thái Tích Hợp AI</label>
+                    <div id="ai-status-indicator" style="display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:600; color: var(--color-yellow);">
+                        <i class="fa-solid fa-circle-exclamation"></i> Đang ở chế độ Giả lập (Simulation Mode - Không cần API Key)
+                    </div>
+                </div>
+
+                <hr style="border:none; border-top: 1px solid var(--border-color); margin: 10px 0;">
+
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h4 style="font-size:0.9rem; font-weight:600; margin-bottom:4px;">Đặt Lại Cơ Sở Dữ Liệu</h4>
+                        <p style="font-size:0.75rem; color:var(--text-secondary);">Khôi phục toàn bộ dữ liệu ban đầu từ file Excel gốc và xóa lịch sử thay đổi.</p>
+                    </div>
+                    <button class="btn-action reject" id="btn-reset-db-factory" style="padding:10px 20px;">
+                        <i class="fa-solid fa-trash-can"></i> Đặt Lại CSDL
+                    </button>
+                </div>
+
+                <div style="margin-top: 20px; display:flex; justify-content:flex-end;">
+                    <button class="settings-btn-save" id="btn-save-settings">
+                        <i class="fa-solid fa-floppy-disk"></i> Lưu Cấu Hình
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==================== SYSTEM MODAL FORMS ==================== -->
+    <div class="modal-overlay" id="form-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-form-title">Đăng ký Hồ sơ Tiền khởi công</h3>
+                <button class="modal-close" id="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-form-body">
+                <!-- Forms are dynamically generated based on target sub-table -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-action reject" id="modal-cancel-btn">Hủy bỏ</button>
+                <button class="btn-action approve" id="modal-save-btn" style="background-color: var(--color-green); color:#fff; border:none; padding:10px 20px;">
+                    <i class="fa-solid fa-circle-check"></i> Lưu Bản Ghi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="notification-panel"></div>
+
+    <!-- SCRIPTS -->
+    <script src="database.js"></script>
+    <script src="ai-service.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
