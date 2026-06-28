@@ -6699,5 +6699,43 @@ const INITIAL_DATABASE = {
       "Có",
       "Không"
     ]
-  }
+  },
+  "nhan_su": [
+    {
+      "stt": 1,
+      "ho_ten": "Phan Văn Khánh",
+      "email": "khanh.pv@tdggroup.vn",
+      "phong_ban": "Ban Quản lý Dự án (BQLDA)",
+      "vai_tro": "Giám đốc Dự án",
+      "quyen": "Admin",
+      "goi_thau": "Tất cả các gói"
+    },
+    {
+      "stt": 2,
+      "ho_ten": "Nguyễn Hoàng Long",
+      "email": "long.nh@tvgs.vn",
+      "phong_ban": "Đoàn Tư vấn Giám sát",
+      "vai_tro": "Trưởng đoàn TVGS",
+      "quyen": "Supervisor",
+      "goi_thau": "Tất cả các gói"
+    },
+    {
+      "stt": 3,
+      "ho_ten": "Trần Quốc Huy",
+      "email": "huy.tq@anphong.vn",
+      "phong_ban": "Tổng thầu An Phong",
+      "vai_tro": "Chỉ huy trưởng Tổng thầu",
+      "quyen": "Contractor",
+      "goi_thau": "HT-PL02-01, VSV_QLTC_TT.01"
+    },
+    {
+      "stt": 4,
+      "ho_ten": "Lê Minh Tú",
+      "email": "tu.lm@supply.tdg.vn",
+      "phong_ban": "Phòng Kế hoạch Cung ứng",
+      "vai_tro": "Trưởng nhóm Cung ứng",
+      "quyen": "Supply",
+      "goi_thau": "Cung cấp thiết bị"
+    }
+  ]
 };

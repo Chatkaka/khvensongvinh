@@ -43,6 +43,9 @@
             <li class="nav-item" data-tab="ai-center">
                 <i class="fa-solid fa-brain"></i> AI Command Center
             </li>
+            <li class="nav-item" data-tab="personnel">
+                <i class="fa-solid fa-users-gear"></i> Quản Lý Nhân Sự
+            </li>
         </ul>
         <div class="nav-footer">
             <button class="nav-footer-btn" id="open-settings-btn">
@@ -59,10 +62,19 @@
                 <h2 id="active-tab-title">Dashboard C-Level</h2>
                 <p id="active-tab-desc">Tổng hợp chỉ số sức khoẻ tài chính & tiến độ đường găng toàn dự án</p>
             </div>
-            <div class="header-controls">
+            <div class="header-controls" style="display: flex; gap: 16px; align-items: center;">
+                <div style="text-align: left;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 2px;"><i class="fa-solid fa-user-shield"></i> Vai trò hiện tại</label>
+                    <select id="user-role-switcher" class="form-control" style="background: var(--bg-surface); border: 1px solid var(--border-color); color: #fff; font-size: 0.8rem; padding: 4px 8px; border-radius: 8px; font-weight: 600; cursor: pointer; outline: none;">
+                        <option value="Admin">C-Level / Giám Đốc Dự Án</option>
+                        <option value="Supervisor">TVGS / Ban QLDA</option>
+                        <option value="Contractor">Tổng Thầu Thi Công</option>
+                        <option value="Supply">Bộ Phận Cung Ứng</option>
+                    </select>
+                </div>
                 <div style="font-size: 0.85rem; color: var(--text-secondary); text-align: right;">
                     <div style="font-weight: 600; color: #fff;"><i class="fa-regular fa-clock"></i> Thời gian hệ thống</div>
-                    <div id="system-time">28/06/2026 18:40</div>
+                    <div id="system-time">--/--/---- --:--:--</div>
                 </div>
                 <button class="btn-action approve" id="ai-quick-query-btn" style="padding: 10px 18px; border-radius: 20px; font-weight: 600; border-width: 1px;">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> Hỏi Trợ Lý Gemini AI
@@ -492,6 +504,39 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: PERSONNEL ==================== -->
+        <div class="tab-pane" id="tab-personnel">
+            <div style="background-color: var(--bg-surface); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <div>
+                    <h3 style="font-size: 1.15rem; font-weight: 700;"><i class="fa-solid fa-users-gear" style="color: var(--color-ai-primary); margin-right: 8px;"></i> Danh Sách Nhân Sự Dự Án</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 4px;">Đăng ký nhân sự, vai trò nhiệm vụ và phân quyền truy cập hệ thống</p>
+                </div>
+                <button class="btn-action approve" id="btn-add-personnel" style="padding: 8px 16px;">
+                    <i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới
+                </button>
+            </div>
+
+            <div class="table-container" style="max-height: 500px; overflow: auto;">
+                <table class="grid-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">STT</th>
+                            <th style="width: 150px;">Họ và Tên</th>
+                            <th style="width: 180px;">Email</th>
+                            <th style="width: 150px;">Phòng Ban</th>
+                            <th style="width: 180px;">Vai Trò Hệ Thống</th>
+                            <th style="width: 130px;">Quyền Truy Cập</th>
+                            <th style="width: 180px;">Gói Thầu Phụ Trách</th>
+                            <th style="width: 120px; text-align: center;">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="personnel-tbody">
+                        <!-- Personnel lists dynamically loaded -->
+                    </tbody>
+                </table>
             </div>
         </div>
 

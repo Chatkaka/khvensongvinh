@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let activeLevel = "project"; // "project" (Cấp công trình) or "detail" (Cấp chi tiết)
     let activeSubtab = "cdt";    // "cdt", "cung_ung", "trien_khai", "khoi_cong", "ngan_sach", "thi_cong", "all"
     const expandedParents = new Set(); // Set of expanded parent IDs (Mã BSC / goi_thau_pl)
+    let currentRole = "Admin";   // Active role: "Admin", "Supervisor", "Contractor", "Supply"
 
     // Helper to get system date formatted in GMT+7 (browser local time)
     function getSystemDateGMT7() {
@@ -57,6 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!db.s03) db.s03 = [];
         if (!db.s04) db.s04 = [];
         if (!db.s05) db.s05 = [];
+        if (!db.nhan_su) db.nhan_su = defaultDb.nhan_su || [];
         
         // Add unique ID counters if not present
         db.s03.forEach((item, index) => {
@@ -249,6 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (tabId === 'dashboard') desc = "Tổng hợp chỉ số sức khoẻ tài chính & tiến độ đường găng toàn dự án";
             if (tabId === 'master') desc = "Bảng điều hành xương sống, chốt chặn điều kiện khởi công";
             if (tabId === 'ai-center') desc = "Trí tuệ nhân tạo Gemini phân tích sức khoẻ dự án và đọc tờ trình tự động";
+            if (tabId === 'personnel') desc = "Quản lý danh sách nhân sự, vai trò nhiệm vụ và phân quyền truy cập hệ thống";
             document.getElementById("active-tab-desc").textContent = desc;
 
             // Render matching tabs
@@ -259,7 +262,29 @@ document.addEventListener("DOMContentLoaded", () => {
             if (tabId === 's03') renderS03();
             if (tabId === 's04') renderS04();
             if (tabId === 's05') renderS05();
+            if (tabId === 'personnel') renderPersonnel();
         });
+    });
+
+    // 4.1 ROLE SWITCHER ACCESS CONTROL LISTENER
+    const roleSwitcher = document.getElementById("user-role-switcher");
+    roleSwitcher.addEventListener("change", (e) => {
+        currentRole = e.target.value;
+        showToast("Phân Quyền", `Đã chuyển sang vai trò: ${roleSwitcher.options[roleSwitcher.selectedIndex].text}`, "info");
+        
+        // Re-render active view to apply permissions instantly
+        const activeNav = document.querySelector(".nav-menu .nav-item.active");
+        if (activeNav) {
+            const tabId = activeNav.getAttribute("data-tab");
+            if (tabId === 'dashboard') renderDashboard();
+            if (tabId === 'master') renderMasterGrid();
+            if (tabId === 's01') renderS01();
+            if (tabId === 's02') renderS02();
+            if (tabId === 's03') renderS03();
+            if (tabId === 's04') renderS04();
+            if (tabId === 's05') renderS05();
+            if (tabId === 'personnel') renderPersonnel();
+        }
     });
 
     document.getElementById("open-settings-btn").addEventListener("click", () => {
@@ -833,12 +858,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (item.type === 'grand_parent') {
                     tdOps.textContent = "";
                 } else {
-                    tdOps.innerHTML = `
-                        <div style="display: flex; gap: 4px; justify-content: center;">
-                            <button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>
-                            <button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>
-                        </div>
-                    `;
+                    const hasWriteAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+                    if (hasWriteAccess) {
+                        tdOps.innerHTML = `
+                            <div style="display: flex; gap: 4px; justify-content: center;">
+                                <button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>
+                                <button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>
+                            </div>
+                        `;
+                    } else {
+                        tdOps.innerHTML = `<span style="font-size:0.75rem; color: var(--text-muted);">Chỉ đọc</span>`;
+                    }
                 }
                 tr.appendChild(tdOps);
 
@@ -915,12 +945,17 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     // Add Operation cell in all mode
                     const tdOps = document.createElement("td");
-                    tdOps.innerHTML = `
-                        <div style="display: flex; gap: 4px; justify-content: center;">
-                            <button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>
-                            <button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>
-                        </div>
-                    `;
+                    const hasWriteAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+                    if (hasWriteAccess) {
+                        tdOps.innerHTML = `
+                            <div style="display: flex; gap: 4px; justify-content: center;">
+                                <button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>
+                                <button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>
+                            </div>
+                        `;
+                    } else {
+                        tdOps.innerHTML = `<span style="font-size:0.75rem; color: var(--text-muted); text-align: center; display: block;">Chỉ đọc</span>`;
+                    }
                     tr.appendChild(tdOps);
                 }
             }
@@ -935,7 +970,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderCellDropdown(rowIdx, field, currentVal, category) {
         const options = db.danh_muc[category] || [];
-        let html = `<select class="grid-select" data-row="${rowIdx}" data-field="${field}">`;
+        const isEditable = currentRole === 'Admin' || currentRole === 'Supervisor';
+        let html = `<select class="grid-select" data-row="${rowIdx}" data-field="${field}" ${!isEditable ? 'disabled title="Chỉ Admin/TVGS mới được chỉnh sửa!"' : ''}>`;
         html += `<option value=""></option>`;
         options.forEach(opt => {
             html += `<option value="${opt}" ${opt === currentVal ? 'selected' : ''}>${opt}</option>`;
@@ -974,7 +1010,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 td.style.fontWeight = "600";
                 td.style.textAlign = "right";
             } else {
-                td.innerHTML = `<input type="number" step="0.01" class="grid-input" value="${row.gia_tri_hdcu || ''}" data-row="${rowIdx}" data-field="gia_tri_hdcu" style="width:70px; text-align:right;">`;
+                const isEditable = currentRole === 'Admin' || currentRole === 'Contractor';
+                td.innerHTML = `<input type="number" step="0.01" class="grid-input" value="${row.gia_tri_hdcu || ''}" data-row="${rowIdx}" data-field="gia_tri_hdcu" style="width:70px; text-align:right;" ${!isEditable ? 'disabled title="Chỉ Admin/Tổng thầu mới được sửa!"' : ''}>`;
             }
         }
         else if (field === 'percent_hdcu_ns') {
@@ -1025,10 +1062,11 @@ document.addEventListener("DOMContentLoaded", () => {
             td.style.textAlign = "center";
         }
         else if (field === 'ngay_bd_khoi_cong') {
+            const isEditable = currentRole === 'Admin' || currentRole === 'Supervisor';
             td.innerHTML = isParent ? `
                 <input type="date" class="grid-input" value="${row.ngay_bd_khoi_cong || ''}" 
                     data-row="${rowIdx}" data-field="ngay_bd_khoi_cong" 
-                    ${row.dieu_kien_du !== 'ĐỦ ĐK KHỞI CÔNG' ? 'disabled title="Khóa chốt chặn: Chưa đủ điều kiện khởi công!"' : ''}>
+                    ${!isEditable || row.dieu_kien_du !== 'ĐỦ ĐK KHỞI CÔNG' ? 'disabled title="Khóa: Chưa đủ điều kiện hoặc Bạn không có quyền!"' : ''}>
             ` : "";
         }
         else if (field === 'luy_ke_ab') {
@@ -1370,6 +1408,13 @@ document.addEventListener("DOMContentLoaded", () => {
         tbody.innerHTML = "";
         const search = document.getElementById("s01-search-input").value.toLowerCase();
 
+        // Lock Add Button if not Admin or Contractor
+        const btnAdd = document.getElementById("btn-add-s01");
+        if (btnAdd) {
+            const hasAddAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+            btnAdd.style.display = hasAddAccess ? 'inline-block' : 'none';
+        }
+
         db.s01.forEach((row, index) => {
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
@@ -1391,7 +1436,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     </span>
                 </td>
                 <td>
-                    ${row['TT duyệt'] !== 'Đã duyệt' ? `
+                    ${row['TT duyệt'] !== 'Đã duyệt' && (currentRole === 'Admin' || currentRole === 'Supervisor') ? `
                         <button class="btn-action approve btn-approve-s01" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>
                     ` : ""}
                 </td>
@@ -1420,6 +1465,13 @@ document.addEventListener("DOMContentLoaded", () => {
         tbody.innerHTML = "";
         const search = document.getElementById("s02-search-input").value.toLowerCase();
 
+        // Lock Add Button if not Admin or Contractor
+        const btnAdd = document.getElementById("btn-add-s02");
+        if (btnAdd) {
+            const hasAddAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+            btnAdd.style.display = hasAddAccess ? 'inline-block' : 'none';
+        }
+
         db.s02.forEach((row, index) => {
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
@@ -1443,7 +1495,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${row['Người lập'] || ""}/${row['Người duyệt'] || ""}</td>
                 <td>${row['Ngày duyệt'] || ""}</td>
                 <td>
-                    ${row['TT duyệt'] !== 'Đã duyệt' ? `
+                    ${row['TT duyệt'] !== 'Đã duyệt' && (currentRole === 'Admin' || currentRole === 'Supervisor') ? `
                         <button class="btn-action approve btn-approve-s02" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>
                     ` : ""}
                 </td>
@@ -1471,6 +1523,13 @@ document.addEventListener("DOMContentLoaded", () => {
         tbody.innerHTML = "";
         const search = document.getElementById("s03-search-input").value.toLowerCase();
 
+        // Lock Add Button if not Admin or Contractor
+        const btnAdd = document.getElementById("btn-add-s03");
+        if (btnAdd) {
+            const hasAddAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+            btnAdd.style.display = hasAddAccess ? 'inline-block' : 'none';
+        }
+
         db.s03.forEach((row, index) => {
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
@@ -1497,7 +1556,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </td>
                 <td>${row['Người duyệt'] || ""}<br><small>${row['Ngày duyệt'] || ""}</small></td>
                 <td>
-                    ${row['TT duyệt'] === 'Chờ duyệt' ? `
+                    ${row['TT duyệt'] === 'Chờ duyệt' && currentRole === 'Admin' ? `
                         <button class="btn-action approve btn-approve-s03" data-idx="${index}" data-bsc="${bsc}"><i class="fa-solid fa-check"></i> Duyệt</button>
                         <button class="btn-action reject btn-reject-s03" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
                     ` : ""}
@@ -1554,6 +1613,13 @@ document.addEventListener("DOMContentLoaded", () => {
         tbody.innerHTML = "";
         const search = document.getElementById("s04-search-input").value.toLowerCase();
 
+        // Lock Add Button if not Admin or Contractor
+        const btnAdd = document.getElementById("btn-add-s04");
+        if (btnAdd) {
+            const hasAddAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+            btnAdd.style.display = hasAddAccess ? 'inline-block' : 'none';
+        }
+
         db.s04.forEach((row, index) => {
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
@@ -1585,11 +1651,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     </span>
                 </td>
                 <td>
-                    ${row['TT duyệt'] === 'Chờ duyệt' ? `
+                    ${row['TT duyệt'] === 'Chờ duyệt' && currentRole === 'Admin' ? `
                         <button class="btn-action approve btn-approve-s04" data-idx="${index}" data-bsc="${bsc}"><i class="fa-solid fa-check"></i> Duyệt</button>
                     ` : ""}
-                    ${row['TT duyệt'] === 'Đã duyệt' && row['TT cung ứng'] !== 'Đã cung ứng' ? `
-                        <button class="btn-action approve btn-supply-s04" data-idx="${index}" style="color:var(--color-yellow); border-color:var(--color-yellow);"><i class="fa-solid fa-truck"></i> Cấp vật tư</button>
+                    ${row['TT duyệt'] === 'Đã duyệt' && row['TT cung ứng'] !== 'Đã cung ứng' && (currentRole === 'Admin' || currentRole === 'Supply') ? `
+                        <button class="btn-action approve btn-supply-s04" data-idx="${index}" style="color:var(--color-yellow); border-color:var(--color-yellow);"><i class="fa-solid fa-truck"></i> Cập nhật Cấp vật tư</button>
                     ` : ""}
                 </td>
             `;
@@ -1639,6 +1705,13 @@ document.addEventListener("DOMContentLoaded", () => {
         tbody.innerHTML = "";
         const search = document.getElementById("s05-search-input").value.toLowerCase();
 
+        // Lock Add Button if not Admin or Contractor
+        const btnAdd = document.getElementById("btn-add-s05");
+        if (btnAdd) {
+            const hasAddAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+            btnAdd.style.display = hasAddAccess ? 'inline-block' : 'none';
+        }
+
         db.s05.forEach((row, index) => {
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
@@ -1673,10 +1746,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     </span>
                 </td>
                 <td>
-                    ${row['TT duyệt'] === 'Chờ duyệt' ? `
+                    ${row['TT duyệt'] === 'Chờ duyệt' && (currentRole === 'Admin' || currentRole === 'Supervisor') ? `
                         <button class="btn-action approve btn-approve-s05" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>
                     ` : ""}
-                    ${row['TT thực hiện'] !== 'Đã hoàn thành' ? `
+                    ${row['TT thực hiện'] !== 'Đã hoàn thành' && (currentRole === 'Admin' || currentRole === 'Supervisor') ? `
                         <button class="btn-action approve btn-complete-s05" data-idx="${index}" style="color:var(--color-green); border-color:var(--color-green);"><i class="fa-solid fa-circle-check"></i> Hoàn thành bù</button>
                     ` : ""}
                 </td>
@@ -2173,6 +2246,35 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             renderS05();
+        } else if (currentFormTarget === 'personnel') {
+            const name = document.getElementById("p-name").value.trim();
+            const email = document.getElementById("p-email").value.trim();
+            if (name === "" || email === "") { alert("Vui lòng điền đủ Họ tên và Email"); return; }
+            
+            const newP = {
+                stt: db.nhan_su.length + 1,
+                ho_ten: name,
+                email: email,
+                phong_ban: document.getElementById("p-dept").value,
+                vai_tro: document.getElementById("p-role").value,
+                quyen: document.getElementById("p-auth").value,
+                goi_thau: document.getElementById("p-package").value || "Tất cả các gói"
+            };
+            db.nhan_su.push(newP);
+            showToast("Thêm Nhân Sự", `Đã đăng ký nhân sự ${name} vào dự án.`, "success");
+            renderPersonnel();
+        } else if (currentFormTarget === 'personnel_edit') {
+            if (editPersonnelIndex < 0) return;
+            const row = db.nhan_su[editPersonnelIndex];
+            row.ho_ten = document.getElementById("p-name").value.trim();
+            row.email = document.getElementById("p-email").value.trim();
+            row.phong_ban = document.getElementById("p-dept").value;
+            row.vai_tro = document.getElementById("p-role").value;
+            row.quyen = document.getElementById("p-auth").value;
+            row.goi_thau = document.getElementById("p-package").value || "Tất cả các gói";
+            
+            showToast("Sửa Nhân Sự", `Đã cập nhật thông tin cho nhân sự ${row.ho_ten}.`, "success");
+            renderPersonnel();
         }
 
         // Recalculate Master values instantly
@@ -2571,6 +2673,188 @@ document.addEventListener("DOMContentLoaded", () => {
         handleAiSubmit();
     });
 
+    // 9.1 PERSONNEL MANAGEMENT (Danh sách nhân sự & Phân quyền)
+    let editPersonnelIndex = -1;
+
+    function renderPersonnel() {
+        const tbody = document.getElementById("personnel-tbody");
+        const btnAdd = document.getElementById("btn-add-personnel");
+        if (!tbody || !btnAdd) return;
+        tbody.innerHTML = "";
+
+        // Lock Add Button if not Admin
+        if (currentRole === 'Admin') {
+            btnAdd.removeAttribute("disabled");
+            btnAdd.style.opacity = "1";
+            btnAdd.style.cursor = "pointer";
+        } else {
+            btnAdd.setAttribute("disabled", "true");
+            btnAdd.style.opacity = "0.5";
+            btnAdd.style.cursor = "not-allowed";
+        }
+
+        const list = db.nhan_su || [];
+        list.forEach((row, index) => {
+            const tr = document.createElement("tr");
+            
+            // Format Access Level badges
+            let accessBadge = "";
+            if (row.quyen === 'Admin') accessBadge = `<span class="badge danger" style="box-shadow: 0 0 6px var(--color-red); font-weight:700;">Giám đốc / C-Level</span>`;
+            else if (row.quyen === 'Supervisor') accessBadge = `<span class="badge success" style="font-weight:700;">Supervisor / TVGS</span>`;
+            else if (row.quyen === 'Contractor') accessBadge = `<span class="badge info" style="font-weight:700;">Contractor / Thầu</span>`;
+            else if (row.quyen === 'Supply') accessBadge = `<span class="badge warning" style="font-weight:700;">Supply / Cung ứng</span>`;
+
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td style="font-weight:600; color: #fff;">${row.ho_ten}</td>
+                <td>${row.email}</td>
+                <td>${row.phong_ban}</td>
+                <td>${row.vai_tro}</td>
+                <td>${accessBadge}</td>
+                <td><span style="font-size:0.8rem; font-weight:600; color:var(--color-ai-primary);">${row.goi_thau || "(Chưa phân công)"}</span></td>
+                <td style="text-align:center;">
+                    ${currentRole === 'Admin' ? `
+                        <div style="display:flex; gap:4px; justify-content:center;">
+                            <button class="btn-action btn-edit-personnel" data-idx="${index}" style="padding:4px 8px; border-color: rgba(59,130,246,0.3); color: var(--color-ai-primary);"><i class="fa-solid fa-user-pen"></i></button>
+                            <button class="btn-action reject btn-delete-personnel" data-idx="${index}" style="padding:4px 8px; border-color: rgba(255,82,82,0.3); color: #ff5252;"><i class="fa-solid fa-user-xmark"></i></button>
+                        </div>
+                    ` : `<span style="font-size:0.75rem; color:var(--text-muted);">Khóa chỉnh sửa</span>`}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Bind events for edit & delete buttons
+        document.querySelectorAll(".btn-edit-personnel").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                openEditPersonnelModal(idx);
+            });
+        });
+
+        document.querySelectorAll(".btn-delete-personnel").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                deletePersonnel(idx);
+            });
+        });
+    }
+
+    // Add Personnel Button Trigger
+    document.getElementById("btn-add-personnel").addEventListener("click", () => {
+        if (currentRole !== 'Admin') {
+            showToast("Bảo Mật", "Chỉ có Admin / Giám đốc dự án mới có quyền thêm nhân sự!", "danger");
+            return;
+        }
+        openPersonnelModal();
+    });
+
+    function openPersonnelModal() {
+        editPersonnelIndex = -1;
+        currentFormTarget = "personnel";
+        
+        const titleEl = document.getElementById("modal-form-title");
+        const bodyEl = document.getElementById("modal-form-body");
+        
+        titleEl.textContent = "Thêm Nhân Sự Mới Vào Hệ Thống";
+        bodyEl.innerHTML = `
+            <div style="display:grid; grid-template-columns:1fr; gap:12px;">
+                <div class="form-group">
+                    <label>Họ và Tên</label>
+                    <input type="text" id="p-name" class="form-control" placeholder="Nhập họ và tên..." required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="p-email" class="form-control" placeholder="example@tdggroup.vn" required>
+                </div>
+                <div class="form-group">
+                    <label>Phòng Ban</label>
+                    <input type="text" id="p-dept" class="form-control" placeholder="Ban QLDA / Tổng thầu / TVGS..." required>
+                </div>
+                <div class="form-group">
+                    <label>Vai Trò / Chức Danh</label>
+                    <input type="text" id="p-role" class="form-control" placeholder="Giám sát trưởng / Kế sư trưởng..." required>
+                </div>
+                <div class="form-group">
+                    <label>Quyền Truy Cập Hệ Thống (Mức Phân Quyền)</label>
+                    <select id="p-auth" class="form-control">
+                        <option value="Admin">Admin / C-Level (Toàn quyền quản trị)</option>
+                        <option value="Supervisor">Supervisor / TVGS (Phê duyệt kỹ thuật)</option>
+                        <option value="Contractor">Contractor / Tổng Thầu (Nộp hồ sơ)</option>
+                        <option value="Supply">Supply / Cung Ứng (Cấp vật tư)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Gói Thầu Phụ Trách</label>
+                    <input type="text" id="p-package" class="form-control" placeholder="Mã gói thầu, ví dụ: VSV_QLTC_TT.01, hoặc Tất cả các gói">
+                </div>
+            </div>
+        `;
+        
+        formModal.style.display = "flex";
+    }
+
+    function openEditPersonnelModal(idx) {
+        editPersonnelIndex = idx;
+        currentFormTarget = "personnel_edit";
+        const row = db.nhan_su[idx];
+        
+        const titleEl = document.getElementById("modal-form-title");
+        const bodyEl = document.getElementById("modal-form-body");
+        
+        titleEl.textContent = `Chỉnh Sửa Thông Tin Nhân Sự: ${row.ho_ten}`;
+        bodyEl.innerHTML = `
+            <div style="display:grid; grid-template-columns:1fr; gap:12px;">
+                <div class="form-group">
+                    <label>Họ và Tên</label>
+                    <input type="text" id="p-name" class="form-control" value="${row.ho_ten || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="p-email" class="form-control" value="${row.email || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>Phòng Ban</label>
+                    <input type="text" id="p-dept" class="form-control" value="${row.phong_ban || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>Vai Trò / Chức Danh</label>
+                    <input type="text" id="p-role" class="form-control" value="${row.vai_tro || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>Quyền Truy Cập Hệ Thống (Mức Phân Quyền)</label>
+                    <select id="p-auth" class="form-control">
+                        <option value="Admin" ${row.quyen === 'Admin' ? 'selected' : ''}>Admin / C-Level (Toàn quyền quản trị)</option>
+                        <option value="Supervisor" ${row.quyen === 'Supervisor' ? 'selected' : ''}>Supervisor / TVGS (Phê duyệt kỹ thuật)</option>
+                        <option value="Contractor" ${row.quyen === 'Contractor' ? 'selected' : ''}>Contractor / Tổng Thầu (Nộp hồ sơ)</option>
+                        <option value="Supply" ${row.quyen === 'Supply' ? 'selected' : ''}>Supply / Cung Ứng (Cấp vật tư)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Gói Thầu Phụ Trách</label>
+                    <input type="text" id="p-package" class="form-control" value="${row.goi_thau || ''}" placeholder="Mã gói thầu, ví dụ: VSV_QLTC_TT.01, hoặc Tất cả các gói">
+                </div>
+            </div>
+        `;
+        
+        formModal.style.display = "flex";
+    }
+
+    function deletePersonnel(idx) {
+        if (currentRole !== 'Admin') {
+            showToast("Bảo Mật", "Chỉ có Admin / Giám đốc dự án mới có quyền xóa nhân sự!", "danger");
+            return;
+        }
+        const row = db.nhan_su[idx];
+        const conf = confirm(`Bạn có chắc chắn muốn xóa nhân sự ${row.ho_ten} khỏi dự án?`);
+        if (!conf) return;
+        
+        db.nhan_su.splice(idx, 1);
+        saveDatabase();
+        renderPersonnel();
+        showToast("Xóa Nhân Sự", `Đã xóa nhân viên ${row.ho_ten} khỏi hệ thống thành công.`, "warning");
+    }
+
     // Helper functions for chat bubble rendering
     function appendChatMessage(sender, text) {
         const bubble = document.createElement("div");
@@ -2672,6 +2956,12 @@ document.addEventListener("DOMContentLoaded", () => {
         calculateRollups();
         renderDashboard();
         
+        // Sync active switcher role
+        const roleSwitcher = document.getElementById("user-role-switcher");
+        if (roleSwitcher) {
+            currentRole = roleSwitcher.value;
+        }
+
         // Start system clock
         updateSystemTime();
         setInterval(updateSystemTime, 1000);
