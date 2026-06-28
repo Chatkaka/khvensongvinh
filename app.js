@@ -1994,6 +1994,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 };
                 reader.readAsDataURL(file);
             });
+        }
     }
 
     function renderOptions(array) {
