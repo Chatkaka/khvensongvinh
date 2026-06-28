@@ -1990,9 +1990,9 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (target === 's01') {
             titleEl.textContent = "Đăng Ký Hồ Sơ Tiền Khởi Công";
             bodyEl.innerHTML = `
-                <div class="form-group">
+                <div class="form-group" style="position: relative;">
                     <label>Công trình / Gói thầu liên kết</label>
-                    <select id="form-bsc" class="form-control">${renderBscOptions(bscOptions)}</select>
+                    ${renderSearchableBscSelect('form-bsc')}
                 </div>
                 <div class="form-group">
                     <label>Hạng mục</label>
@@ -2028,9 +2028,9 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (target === 's03') {
             titleEl.textContent = "Ghi Nhận Phát Sinh & Sai Khác Hợp Đồng";
             bodyEl.innerHTML = `
-                <div class="form-group">
+                <div class="form-group" style="position: relative;">
                     <label>Công trình / Gói thầu liên kết</label>
-                    <select id="form-bsc" class="form-control">${renderBscOptions(bscOptions)}</select>
+                    ${renderSearchableBscSelect('form-bsc')}
                 </div>
                 <div class="form-group">
                     <label>Hạng mục</label>
@@ -2078,9 +2078,9 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (target === 's04') {
             titleEl.textContent = "Đăng Ký Cung Ứng Vật Tư Đặc Thù";
             bodyEl.innerHTML = `
-                <div class="form-group">
+                <div class="form-group" style="position: relative;">
                     <label>Công trình / Gói thầu liên kết</label>
-                    <select id="form-bsc" class="form-control">${renderBscOptions(bscOptions)}</select>
+                    ${renderSearchableBscSelect('form-bsc')}
                 </div>
                 <div class="form-group">
                     <label>Hạng mục</label>
@@ -2135,9 +2135,9 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (target === 's05') {
             titleEl.textContent = "Đăng Ký Phương Án Bù Tiến Độ Thi Công";
             bodyEl.innerHTML = `
-                <div class="form-group">
+                <div class="form-group" style="position: relative;">
                     <label>Công trình / Gói thầu liên kết</label>
-                    <select id="form-bsc" class="form-control">${renderBscOptions(bscOptions)}</select>
+                    ${renderSearchableBscSelect('form-bsc')}
                 </div>
                 <div class="form-group">
                     <label>Hạng mục</label>
@@ -2199,6 +2199,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 reader.readAsDataURL(file);
             });
         }
+
+        // Initialize searchable select for BSC if wrapper exists
+        if (document.getElementById("form-bsc-wrapper")) {
+            initSearchableSelect('form-bsc', bscOptions.map(opt => ({ value: opt.code, label: opt.name })));
+        }
     }
 
     function renderOptions(array) {
@@ -2209,6 +2214,108 @@ document.addEventListener("DOMContentLoaded", () => {
     function renderBscOptions(options) {
         if (!options) return "";
         return options.map(opt => `<option value="${opt.code}">${opt.name}</option>`).join("");
+    }
+
+    function renderSearchableBscSelect(id, placeholder = "Nhập để tìm kiếm công trình / gói thầu...") {
+        return `
+            <div class="searchable-select-wrapper" id="${id}-wrapper">
+                <input type="hidden" id="${id}" value="">
+                <input type="text" id="${id}-search" class="form-control searchable-select-input" placeholder="${placeholder}" autocomplete="off">
+                <div class="searchable-select-dropdown" id="${id}-dropdown" style="display: none;"></div>
+            </div>
+        `;
+    }
+
+    function initSearchableSelect(inputId, optionsList, defaultVal = "") {
+        const wrapper = document.getElementById(inputId + "-wrapper");
+        const searchInput = document.getElementById(inputId + "-search");
+        const dropdown = document.getElementById(inputId + "-dropdown");
+        const hiddenInput = document.getElementById(inputId);
+        
+        if (!wrapper || !searchInput || !dropdown || !hiddenInput) return;
+        
+        let selectedValue = defaultVal;
+        
+        // Find default label
+        const defaultOpt = optionsList.find(opt => opt.value === defaultVal);
+        if (defaultOpt) {
+            searchInput.value = defaultOpt.label;
+        } else {
+            searchInput.value = "";
+        }
+        hiddenInput.value = selectedValue;
+        
+        function renderOptionsList(filterText = "") {
+            const query = filterText.toLowerCase().trim();
+            const filtered = optionsList.filter(opt => opt.label.toLowerCase().includes(query) || opt.value.toLowerCase().includes(query));
+            
+            if (filtered.length === 0) {
+                dropdown.innerHTML = `<div class="searchable-select-no-results">Không tìm thấy kết quả...</div>`;
+                return;
+            }
+            
+            dropdown.innerHTML = filtered.map(opt => {
+                const isSelected = opt.value === selectedValue;
+                return `
+                    <div class="searchable-select-option ${isSelected ? 'selected' : ''}" data-value="${opt.value}">
+                        <span>${opt.label}</span>
+                    </div>
+                `;
+            }).join("");
+            
+            // Bind mousedown to options (mousedown fires before blur closes dropdown!)
+            dropdown.querySelectorAll(".searchable-select-option").forEach(optEl => {
+                optEl.addEventListener("mousedown", (e) => {
+                    e.preventDefault();
+                    selectedValue = optEl.getAttribute("data-value");
+                    hiddenInput.value = selectedValue;
+                    searchInput.value = optEl.querySelector("span").textContent;
+                    
+                    // Trigger change event
+                    hiddenInput.dispatchEvent(new Event("change"));
+                    
+                    // Auto fill Hạng mục for Sổ 01-05
+                    const matchedPackage = db.master.find(r => String(r.ma_bsc).trim() === selectedValue);
+                    const hangMucInput = document.getElementById("form-hang-muc");
+                    if (matchedPackage && hangMucInput) {
+                        hangMucInput.value = matchedPackage.hang_muc_work;
+                    }
+
+                    closeDropdown();
+                });
+            });
+        }
+        
+        function openDropdown() {
+            dropdown.style.display = "block";
+            wrapper.classList.add("open");
+            renderOptionsList(searchInput.value);
+        }
+        
+        function closeDropdown() {
+            dropdown.style.display = "none";
+            wrapper.classList.remove("open");
+            
+            // Revert search text to current selected label if invalid
+            const matched = optionsList.find(opt => opt.label === searchInput.value);
+            if (!matched) {
+                const currentOpt = optionsList.find(opt => opt.value === selectedValue);
+                searchInput.value = currentOpt ? currentOpt.label : "";
+            }
+        }
+        
+        searchInput.addEventListener("focus", openDropdown);
+        searchInput.addEventListener("click", openDropdown);
+        
+        searchInput.addEventListener("input", (e) => {
+            openDropdown();
+            renderOptionsList(e.target.value);
+        });
+        
+        searchInput.addEventListener("blur", () => {
+            // Close dropdown shortly after blur to allow mousedown on options to register
+            setTimeout(closeDropdown, 220);
+        });
     }
 
     function closeModal() {
