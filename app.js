@@ -34,9 +34,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } else {
             db = JSON.parse(JSON.stringify(defaultDb));
-            saveDatabase();
         }
         sanitizeInitialData();
+        saveDatabase(); // Persist the sanitized/healed database configuration
     }
 
     function saveDatabase() {
@@ -60,6 +60,22 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!db.s05) db.s05 = [];
         if (!db.nhan_su) db.nhan_su = defaultDb.nhan_su || [];
         
+        // Ensure every personnel member has a password and Proper CRUD flags
+        db.nhan_su.forEach(ns => {
+            if (!ns.mat_khau) ns.mat_khau = "123456";
+            if (ns.quyen_them === undefined) {
+                if (ns.quyen === 'Admin') ns.quyen_them = true;
+                else if (ns.quyen === 'Supervisor') ns.quyen_them = false;
+                else if (ns.quyen === 'Contractor') ns.quyen_them = true;
+                else ns.quyen_them = false;
+            }
+            if (ns.quyen_sua === undefined) ns.quyen_sua = true;
+            if (ns.quyen_xoa === undefined) {
+                if (ns.quyen === 'Admin' || ns.quyen === 'Contractor') ns.quyen_xoa = true;
+                else ns.quyen_xoa = false;
+            }
+        });
+
         // Add unique ID counters if not present
         db.s03.forEach((item, index) => {
             if (!item['Mã PS']) item['Mã PS'] = `PS.CT01.${String(index + 1).padStart(2, '0')}`;
@@ -301,7 +317,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const email = document.getElementById("login-email-select").value;
         const pass = document.getElementById("login-password-input").value.trim();
         
-        const user = db.nhan_su.find(ns => ns.email === email);
+        const user = db.nhan_su.find(ns => String(ns.email).trim().toLowerCase() === String(email).trim().toLowerCase());
         if (!user) {
             showToast("Đăng nhập", "Tài khoản không tồn tại trên hệ thống!", "danger");
             return;
