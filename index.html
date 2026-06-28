@@ -62,16 +62,19 @@
                 <h2 id="active-tab-title">Dashboard C-Level</h2>
                 <p id="active-tab-desc">Tổng hợp chỉ số sức khoẻ tài chính & tiến độ đường găng toàn dự án</p>
             </div>
-            <div class="header-controls" style="display: flex; gap: 16px; align-items: center;">
-                <div style="text-align: left;">
-                    <label style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 2px;"><i class="fa-solid fa-user-shield"></i> Vai trò hiện tại</label>
-                    <select id="user-role-switcher" class="form-control" style="background: var(--bg-surface); border: 1px solid var(--border-color); color: #fff; font-size: 0.8rem; padding: 4px 8px; border-radius: 8px; font-weight: 600; cursor: pointer; outline: none;">
-                        <option value="Admin">C-Level / Giám Đốc Dự Án</option>
-                        <option value="Supervisor">TVGS / Ban QLDA</option>
-                        <option value="Contractor">Tổng Thầu Thi Công</option>
-                        <option value="Supply">Bộ Phận Cung Ứng</option>
-                    </select>
+            <div class="header-controls" style="display: flex; gap: 20px; align-items: center;">
+                <!-- Profile Area -->
+                <div id="user-profile-badge" style="display: flex; align-items: center; gap: 10px; background: rgba(30, 41, 59, 0.4); border: 1px solid var(--border-color); padding: 6px 14px; border-radius: 20px;">
+                    <div style="width: 32px; height: 32px; background: var(--color-ai-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 0.85rem;" id="user-avatar-initial">?</div>
+                    <div style="text-align: left;">
+                        <div id="user-display-name" style="font-weight: 600; font-size: 0.85rem; color: #fff; line-height: 1.2;">Đang tải...</div>
+                        <div id="user-display-role" style="font-size: 0.7rem; color: var(--text-secondary);">Đang xác thực</div>
+                    </div>
+                    <button class="btn-action reject" id="btn-logout" style="padding: 2px 8px; font-size: 0.7rem; border-color: rgba(255,82,82,0.3); color: #ff5252; margin-left: 6px; border-radius: 6px;" title="Đăng xuất khỏi hệ thống">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
                 </div>
+                
                 <div style="font-size: 0.85rem; color: var(--text-secondary); text-align: right;">
                     <div style="font-weight: 600; color: #fff;"><i class="fa-regular fa-clock"></i> Thời gian hệ thống</div>
                     <div id="system-time">--/--/---- --:--:--</div>
@@ -529,6 +532,7 @@
                             <th style="width: 150px;">Phòng Ban</th>
                             <th style="width: 180px;">Vai Trò Hệ Thống</th>
                             <th style="width: 130px;">Quyền Truy Cập</th>
+                            <th style="width: 140px; text-align: center;">Phân Quyền CRUD</th>
                             <th style="width: 180px;">Gói Thầu Phụ Trách</th>
                             <th style="width: 120px; text-align: center;">Thao Tác</th>
                         </tr>
@@ -603,6 +607,35 @@
 
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="notification-panel"></div>
+
+    <!-- ==================== LOGIN SCREEN OVERLAY ==================== -->
+    <div class="login-overlay" id="login-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: radial-gradient(circle at center, rgba(17, 24, 39, 0.95), rgba(10, 15, 30, 0.99)); backdrop-filter: blur(10px); z-index: 9999; justify-content: center; align-items: center;">
+        <div class="login-card" style="width: 420px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); padding: 40px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); backdrop-filter: blur(20px); text-align: center; position: relative;">
+            <div style="width: 70px; height: 70px; background: linear-gradient(135deg, var(--color-ai-primary), #0284c7); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 2rem; color: #fff; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h2 style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 8px;">ĐĂNG NHẬP DỰ ÁN</h2>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 30px;">Hệ thống Vận hành ERP & Chốt chặn Gói thầu VSV</p>
+            
+            <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+                <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Chọn tài khoản nhân viên</label>
+                <select id="login-email-select" class="form-control" style="background: rgba(22, 28, 40, 0.6); border: 1px solid var(--border-color); color: #fff; height: 42px; font-size: 0.9rem; border-radius: 10px; cursor: pointer; outline: none; margin-top: 6px; padding: 4px 8px; width: 100%;">
+                    <!-- Populated from db.nhan_su -->
+                </select>
+            </div>
+            
+            <div class="form-group" style="text-align: left; margin-bottom: 30px;">
+                <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Mật khẩu đăng nhập</label>
+                <input type="password" id="login-password-input" class="form-control" placeholder="Nhập mật khẩu (Mặc định: 123456)" style="background: rgba(22, 28, 40, 0.6); border: 1px solid var(--border-color); color: #fff; height: 42px; font-size: 0.9rem; border-radius: 10px; outline: none; margin-top: 6px; padding: 4px 8px; width: 100%;">
+            </div>
+            
+            <button class="btn-action approve" id="btn-submit-login" style="width: 100%; height: 46px; border-radius: 10px; font-size: 0.95rem; font-weight: 600; background: linear-gradient(135deg, var(--color-ai-primary), #1d4ed8); border: none; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); cursor: pointer; color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fa-solid fa-right-to-bracket"></i> Đăng Nhập Hệ Thống
+            </button>
+            
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 24px;">Gợi ý: Chọn bất kỳ nhân viên nào ở trên để đăng nhập nhanh với mật khẩu mặc định: <b>123456</b></p>
+        </div>
+    </div>
 
     <!-- SCRIPTS -->
     <script src="database.js"></script>

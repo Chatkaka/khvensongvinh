@@ -6708,6 +6708,10 @@ const INITIAL_DATABASE = {
       "phong_ban": "Ban Quản lý Dự án (BQLDA)",
       "vai_tro": "Giám đốc Dự án",
       "quyen": "Admin",
+      "mat_khau": "123456",
+      "quyen_them": true,
+      "quyen_sua": true,
+      "quyen_xoa": true,
       "goi_thau": "Tất cả các gói"
     },
     {
@@ -6717,6 +6721,10 @@ const INITIAL_DATABASE = {
       "phong_ban": "Đoàn Tư vấn Giám sát",
       "vai_tro": "Trưởng đoàn TVGS",
       "quyen": "Supervisor",
+      "mat_khau": "123456",
+      "quyen_them": false,
+      "quyen_sua": true,
+      "quyen_xoa": false,
       "goi_thau": "Tất cả các gói"
     },
     {
@@ -6726,6 +6734,10 @@ const INITIAL_DATABASE = {
       "phong_ban": "Tổng thầu An Phong",
       "vai_tro": "Chỉ huy trưởng Tổng thầu",
       "quyen": "Contractor",
+      "mat_khau": "123456",
+      "quyen_them": true,
+      "quyen_sua": true,
+      "quyen_xoa": true,
       "goi_thau": "HT-PL02-01, VSV_QLTC_TT.01"
     },
     {
@@ -6735,6 +6747,10 @@ const INITIAL_DATABASE = {
       "phong_ban": "Phòng Kế hoạch Cung ứng",
       "vai_tro": "Trưởng nhóm Cung ứng",
       "quyen": "Supply",
+      "mat_khau": "123456",
+      "quyen_them": false,
+      "quyen_sua": true,
+      "quyen_xoa": false,
       "goi_thau": "Cung cấp thiết bị"
     }
   ]

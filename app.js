@@ -266,13 +266,94 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // 4.1 ROLE SWITCHER ACCESS CONTROL LISTENER
-    const roleSwitcher = document.getElementById("user-role-switcher");
-    roleSwitcher.addEventListener("change", (e) => {
-        currentRole = e.target.value;
-        showToast("Phân Quyền", `Đã chuyển sang vai trò: ${roleSwitcher.options[roleSwitcher.selectedIndex].text}`, "info");
+    // 4.1 LOGIN & SESSION MANAGEMENT
+    let currentUser = null;
+
+    function checkUserSession() {
+        const storedUser = sessionStorage.getItem("current_user");
+        if (storedUser) {
+            try {
+                currentUser = JSON.parse(storedUser);
+                currentRole = currentUser.quyen;
+                applyUserSession();
+            } catch (e) {
+                showLoginOverlay();
+            }
+        } else {
+            showLoginOverlay();
+        }
+    }
+
+    function showLoginOverlay() {
+        // Populate select list with registered emails
+        const selectEl = document.getElementById("login-email-select");
+        if (selectEl) {
+            selectEl.innerHTML = db.nhan_su.map(ns => `<option value="${ns.email}">${ns.ho_ten} (${ns.vai_tro})</option>`).join("");
+        }
+        document.getElementById("login-screen").style.display = "flex";
+    }
+
+    function hideLoginOverlay() {
+        document.getElementById("login-screen").style.display = "none";
+    }
+
+    function handleLoginSubmit() {
+        const email = document.getElementById("login-email-select").value;
+        const pass = document.getElementById("login-password-input").value.trim();
         
-        // Re-render active view to apply permissions instantly
+        const user = db.nhan_su.find(ns => ns.email === email);
+        if (!user) {
+            showToast("Đăng nhập", "Tài khoản không tồn tại trên hệ thống!", "danger");
+            return;
+        }
+        
+        if (user.mat_khau !== pass) {
+            showToast("Đăng nhập", "Mật khẩu không đúng. Vui lòng thử lại! (Mặc định: 123456)", "danger");
+            return;
+        }
+        
+        // Successful login
+        currentUser = user;
+        currentRole = user.quyen;
+        sessionStorage.setItem("current_user", JSON.stringify(user));
+        
+        hideLoginOverlay();
+        applyUserSession();
+        
+        // Reset password input
+        document.getElementById("login-password-input").value = "";
+        
+        showToast("Đăng nhập", `Chào mừng ${user.ho_ten} quay trở lại làm việc!`, "success");
+        
+        // Trigger dashboard re-render
+        renderDashboard();
+    }
+
+    function handleLogout() {
+        currentUser = null;
+        currentRole = null;
+        sessionStorage.removeItem("current_user");
+        showToast("Hệ thống", "Bạn đã đăng xuất khỏi phiên làm việc.", "info");
+        showLoginOverlay();
+    }
+
+    function applyUserSession() {
+        if (!currentUser) return;
+        
+        // Update header user profiles
+        const nameEl = document.getElementById("user-display-name");
+        const roleEl = document.getElementById("user-display-role");
+        const avatarEl = document.getElementById("user-avatar-initial");
+        
+        if (nameEl) nameEl.textContent = currentUser.ho_ten;
+        if (roleEl) roleEl.textContent = `${currentUser.vai_tro} (${currentUser.phong_ban})`;
+        
+        if (avatarEl) {
+            const initials = currentUser.ho_ten.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+            avatarEl.textContent = initials;
+        }
+        
+        // Auto refresh permissions on current active view
         const activeNav = document.querySelector(".nav-menu .nav-item.active");
         if (activeNav) {
             const tabId = activeNav.getAttribute("data-tab");
@@ -285,7 +366,23 @@ document.addEventListener("DOMContentLoaded", () => {
             if (tabId === 's05') renderS05();
             if (tabId === 'personnel') renderPersonnel();
         }
-    });
+    }
+
+    // Bind login elements
+    const submitLoginBtn = document.getElementById("btn-submit-login");
+    if (submitLoginBtn) {
+        submitLoginBtn.addEventListener("click", handleLoginSubmit);
+    }
+    const passInput = document.getElementById("login-password-input");
+    if (passInput) {
+        passInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") handleLoginSubmit();
+        });
+    }
+    const logoutBtn = document.getElementById("btn-logout");
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", handleLogout);
+    }
 
     document.getElementById("open-settings-btn").addEventListener("click", () => {
         // Go to settings tab
@@ -1100,6 +1197,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function openEditModalForm(rowIdx) {
+        // Enforce Update permission
+        const canEdit = currentUser ? (currentUser.quyen === 'Admin' || currentUser.quyen_sua) : false;
+        if (!canEdit) {
+            showToast("Bảo Mật", "Quyền hạn hạn chế: Tài khoản của bạn không có quyền SỬA dữ liệu!", "danger");
+            return;
+        }
         editRowIndex = rowIdx;
         currentFormTarget = "master_edit";
         const row = db.master[rowIdx];
@@ -1213,6 +1316,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function deleteMasterRow(rowIdx) {
+        // Enforce Delete permission
+        const canDelete = currentUser ? (currentUser.quyen === 'Admin' || currentUser.quyen_xoa) : false;
+        if (!canDelete) {
+            showToast("Bảo Mật", "Quyền hạn hạn chế: Tài khoản của bạn không có quyền XÓA dữ liệu!", "danger");
+            return;
+        }
         const row = db.master[rowIdx];
         const confirmation = confirm(`Bạn có chắc chắn muốn xóa hạng mục này?\n- TT: ${row.tt}\n- Hạng mục: ${row.hang_muc_work}\n\nLưu ý: Hành động này sẽ xóa vĩnh viễn dòng này và cập nhật lại rollup ngân sách của gói thầu.`);
         if (!confirmation) return;
@@ -1798,6 +1907,12 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentFormTarget = "";
 
     function openModalForm(target) {
+        // Enforce Create permission
+        const canAdd = currentUser ? (currentUser.quyen === 'Admin' || currentUser.quyen_them) : false;
+        if (!canAdd) {
+            showToast("Bảo Mật", "Quyền hạn hạn chế: Tài khoản của bạn không có quyền THÊM dữ liệu mới!", "danger");
+            return;
+        }
         currentFormTarget = target;
         const titleEl = document.getElementById("modal-form-title");
         const bodyEl = document.getElementById("modal-form-body");
@@ -2258,6 +2373,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 phong_ban: document.getElementById("p-dept").value,
                 vai_tro: document.getElementById("p-role").value,
                 quyen: document.getElementById("p-auth").value,
+                mat_khau: document.getElementById("p-password").value.trim() || "123456",
+                quyen_them: document.getElementById("p-can-add").checked,
+                quyen_sua: document.getElementById("p-can-edit").checked,
+                quyen_xoa: document.getElementById("p-can-delete").checked,
                 goi_thau: document.getElementById("p-package").value || "Tất cả các gói"
             };
             db.nhan_su.push(newP);
@@ -2271,7 +2390,19 @@ document.addEventListener("DOMContentLoaded", () => {
             row.phong_ban = document.getElementById("p-dept").value;
             row.vai_tro = document.getElementById("p-role").value;
             row.quyen = document.getElementById("p-auth").value;
+            row.mat_khau = document.getElementById("p-password").value.trim() || "123456";
+            row.quyen_them = document.getElementById("p-can-add").checked;
+            row.quyen_sua = document.getElementById("p-can-edit").checked;
+            row.quyen_xoa = document.getElementById("p-can-delete").checked;
             row.goi_thau = document.getElementById("p-package").value || "Tất cả các gói";
+            
+            // If edited user is the current active session user, update session details
+            if (currentUser && currentUser.email === row.email) {
+                currentUser = row;
+                currentRole = row.quyen;
+                sessionStorage.setItem("current_user", JSON.stringify(row));
+                applyUserSession();
+            }
             
             showToast("Sửa Nhân Sự", `Đã cập nhật thông tin cho nhân sự ${row.ho_ten}.`, "success");
             renderPersonnel();
@@ -2704,6 +2835,12 @@ document.addEventListener("DOMContentLoaded", () => {
             else if (row.quyen === 'Contractor') accessBadge = `<span class="badge info" style="font-weight:700;">Contractor / Thầu</span>`;
             else if (row.quyen === 'Supply') accessBadge = `<span class="badge warning" style="font-weight:700;">Supply / Cung ứng</span>`;
 
+            // Format CRUD checkmarks
+            const canAdd = row.quyen_them ? '<span style="color:var(--color-green); font-weight:bold; margin:0 4px;" title="Thêm: Đạt">➕</span>' : '<span style="color:var(--text-muted); margin:0 4px;" title="Thêm: Khóa">➖</span>';
+            const canEdit = row.quyen_sua ? '<span style="color:var(--color-yellow); font-weight:bold; margin:0 4px;" title="Sửa: Đạt">📝</span>' : '<span style="color:var(--text-muted); margin:0 4px;" title="Sửa: Khóa">➖</span>';
+            const canDelete = row.quyen_xoa ? '<span style="color:#ff5252; font-weight:bold; margin:0 4px;" title="Xóa: Đạt">❌</span>' : '<span style="color:var(--text-muted); margin:0 4px;" title="Xóa: Khóa">➖</span>';
+            const crudBadges = `${canAdd} ${canEdit} ${canDelete}`;
+
             tr.innerHTML = `
                 <td>${index + 1}</td>
                 <td style="font-weight:600; color: #fff;">${row.ho_ten}</td>
@@ -2711,6 +2848,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${row.phong_ban}</td>
                 <td>${row.vai_tro}</td>
                 <td>${accessBadge}</td>
+                <td style="text-align:center;">
+                    <div style="display:flex; justify-content:center; gap:8px; font-size:1.05rem;">
+                        ${crudBadges}
+                    </div>
+                </td>
                 <td><span style="font-size:0.8rem; font-weight:600; color:var(--color-ai-primary);">${row.goi_thau || "(Chưa phân công)"}</span></td>
                 <td style="text-align:center;">
                     ${currentRole === 'Admin' ? `
@@ -2718,7 +2860,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <button class="btn-action btn-edit-personnel" data-idx="${index}" style="padding:4px 8px; border-color: rgba(59,130,246,0.3); color: var(--color-ai-primary);"><i class="fa-solid fa-user-pen"></i></button>
                             <button class="btn-action reject btn-delete-personnel" data-idx="${index}" style="padding:4px 8px; border-color: rgba(255,82,82,0.3); color: #ff5252;"><i class="fa-solid fa-user-xmark"></i></button>
                         </div>
-                    ` : `<span style="font-size:0.75rem; color:var(--text-muted);">Khóa chỉnh sửa</span>`}
+                    ` : `<span style="font-size:0.75rem; color:var(--text-muted);">Khóa</span>`}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -2777,12 +2919,30 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div class="form-group">
                     <label>Quyền Truy Cập Hệ Thống (Mức Phân Quyền)</label>
-                    <select id="p-auth" class="form-control">
+                    <select id="p-auth" class="form-control" onchange="window.syncDefaultCrudCheckboxes()">
                         <option value="Admin">Admin / C-Level (Toàn quyền quản trị)</option>
                         <option value="Supervisor">Supervisor / TVGS (Phê duyệt kỹ thuật)</option>
                         <option value="Contractor">Contractor / Tổng Thầu (Nộp hồ sơ)</option>
                         <option value="Supply">Supply / Cung Ứng (Cấp vật tư)</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label>Mật Khẩu Đăng Nhập</label>
+                    <input type="text" id="p-password" class="form-control" value="123456" required>
+                </div>
+                <div class="form-group">
+                    <label>Phân quyền thao tác (CRUD)</label>
+                    <div style="display:flex; gap:16px; margin-top:6px;">
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="p-can-add" checked> THÊM (Create)
+                        </label>
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="p-can-edit" checked> SỬA (Update)
+                        </label>
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="p-can-delete" checked> XÓA (Delete)
+                        </label>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Gói Thầu Phụ Trách</label>
@@ -2791,6 +2951,24 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
         
+        window.syncDefaultCrudCheckboxes = () => {
+            const auth = document.getElementById("p-auth").value;
+            const addCb = document.getElementById("p-can-add");
+            const editCb = document.getElementById("p-can-edit");
+            const deleteCb = document.getElementById("p-can-delete");
+            if (!addCb || !editCb || !deleteCb) return;
+            
+            if (auth === 'Admin') {
+                addCb.checked = true; editCb.checked = true; deleteCb.checked = true;
+            } else if (auth === 'Supervisor') {
+                addCb.checked = false; editCb.checked = true; deleteCb.checked = false;
+            } else if (auth === 'Contractor') {
+                addCb.checked = true; editCb.checked = true; deleteCb.checked = true;
+            } else if (auth === 'Supply') {
+                addCb.checked = false; editCb.checked = true; deleteCb.checked = false;
+            }
+        };
+
         formModal.style.display = "flex";
     }
 
@@ -2823,12 +3001,30 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div class="form-group">
                     <label>Quyền Truy Cập Hệ Thống (Mức Phân Quyền)</label>
-                    <select id="p-auth" class="form-control">
+                    <select id="p-auth" class="form-control" onchange="window.syncDefaultCrudCheckboxes()">
                         <option value="Admin" ${row.quyen === 'Admin' ? 'selected' : ''}>Admin / C-Level (Toàn quyền quản trị)</option>
                         <option value="Supervisor" ${row.quyen === 'Supervisor' ? 'selected' : ''}>Supervisor / TVGS (Phê duyệt kỹ thuật)</option>
                         <option value="Contractor" ${row.quyen === 'Contractor' ? 'selected' : ''}>Contractor / Tổng Thầu (Nộp hồ sơ)</option>
                         <option value="Supply" ${row.quyen === 'Supply' ? 'selected' : ''}>Supply / Cung Ứng (Cấp vật tư)</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label>Mật Khẩu Đăng Nhập</label>
+                    <input type="text" id="p-password" class="form-control" value="${row.mat_khau || '123456'}" required>
+                </div>
+                <div class="form-group">
+                    <label>Phân quyền thao tác (CRUD)</label>
+                    <div style="display:flex; gap:16px; margin-top:6px;">
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="p-can-add" ${row.quyen_them ? 'checked' : ''}> THÊM (Create)
+                        </label>
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="p-can-edit" ${row.quyen_sua ? 'checked' : ''}> SỬA (Update)
+                        </label>
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="p-can-delete" ${row.quyen_xoa ? 'checked' : ''}> XÓA (Delete)
+                        </label>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Gói Thầu Phụ Trách</label>
@@ -2837,6 +3033,24 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
         
+        window.syncDefaultCrudCheckboxes = () => {
+            const auth = document.getElementById("p-auth").value;
+            const addCb = document.getElementById("p-can-add");
+            const editCb = document.getElementById("p-can-edit");
+            const deleteCb = document.getElementById("p-can-delete");
+            if (!addCb || !editCb || !deleteCb) return;
+            
+            if (auth === 'Admin') {
+                addCb.checked = true; editCb.checked = true; deleteCb.checked = true;
+            } else if (auth === 'Supervisor') {
+                addCb.checked = false; editCb.checked = true; deleteCb.checked = false;
+            } else if (auth === 'Contractor') {
+                addCb.checked = true; editCb.checked = true; deleteCb.checked = true;
+            } else if (auth === 'Supply') {
+                addCb.checked = false; editCb.checked = true; deleteCb.checked = false;
+            }
+        };
+
         formModal.style.display = "flex";
     }
 
@@ -2956,11 +3170,7 @@ document.addEventListener("DOMContentLoaded", () => {
         calculateRollups();
         renderDashboard();
         
-        // Sync active switcher role
-        const roleSwitcher = document.getElementById("user-role-switcher");
-        if (roleSwitcher) {
-            currentRole = roleSwitcher.value;
-        }
+        checkUserSession();
 
         // Start system clock
         updateSystemTime();
