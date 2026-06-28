@@ -742,25 +742,19 @@ document.addEventListener("DOMContentLoaded", () => {
             return textMatch && groupMatch;
         });
 
-        // Set visibility values based on activeLevel & expandedParents
+        // Set visibility values based on expandedParents state
         filteredHierarchy.forEach(item => {
-            if (activeLevel === 'detail') {
+            if (item.type === "grand_parent") {
                 item.visible = true;
-                item.isExpanded = true;
-            } else {
-                // Project level hierarchy (collapsed/expanded)
-                if (item.type === "grand_parent") {
-                    item.visible = true;
-                    item.isExpanded = expandedParents.has(item.id);
-                } else if (item.type === "parent") {
-                    const gpExpanded = expandedParents.has(item.parentId);
-                    item.visible = gpExpanded;
-                    item.isExpanded = expandedParents.has(item.id);
-                } else if (item.type === "child") {
-                    const gpExpanded = expandedParents.has(item.grandParentId);
-                    const pExpanded = expandedParents.has(item.parentId);
-                    item.visible = gpExpanded && pExpanded;
-                }
+                item.isExpanded = expandedParents.has(item.id);
+            } else if (item.type === "parent") {
+                const gpExpanded = expandedParents.has(item.parentId);
+                item.visible = gpExpanded;
+                item.isExpanded = expandedParents.has(item.id);
+            } else if (item.type === "child") {
+                const gpExpanded = expandedParents.has(item.grandParentId);
+                const pExpanded = expandedParents.has(item.parentId);
+                item.visible = gpExpanded && pExpanded;
             }
         });
 
@@ -875,7 +869,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td>${row.goi_thau_pl || ""}</td>
                         <td>${row.nhom_ct || ""}</td>
                         <td>
-                            ${isParent && activeLevel === 'project' ? `<button class="toggle-children-btn" data-id="${row.ma_bsc}"><i class="fa-solid ${item.isExpanded ? 'fa-circle-minus' : 'fa-circle-plus'}"></i></button>` : ""}
+                            ${isParent ? `<button class="toggle-children-btn" data-id="${row.ma_bsc}"><i class="fa-solid ${item.isExpanded ? 'fa-circle-minus' : 'fa-circle-plus'}"></i></button>` : ""}
                             ${row.hang_muc_work || ""}
                         </td>
                         <td>${row.phu_trach || ""}</td>
@@ -955,7 +949,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (field === 'hang_muc_work') {
             let html = "";
-            if (isParent && activeLevel === 'project') {
+            if (isParent) {
                 const hasChildren = db.master.some(r => r !== row && String(r.tt).startsWith(row.tt + "."));
                 if (hasChildren) {
                     const isExpanded = expandedParents.has(row.ma_bsc);
@@ -1347,6 +1341,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 7. RELATIONAL SUB-TABLES RENDERING (Sổ 01 - 05)
     
+    // Helper to render URL link or base64 file attachment dynamically
+    function renderLinkHtml(val) {
+        if (!val) return `<span style="color:var(--text-muted); font-size:0.8rem;">(Không có)</span>`;
+        const valStr = String(val).trim();
+        const isBase64 = valStr.startsWith("data:");
+        const isUrl = valStr.startsWith("http://") || valStr.startsWith("https://");
+        
+        if (isBase64) {
+            const mimeType = (valStr.split(';')[0].split(':')[1] || "").toLowerCase();
+            if (mimeType.includes("pdf")) {
+                return `<a href="${valStr}" target="_blank" class="btn-action" style="color:var(--color-green); font-weight:600;"><i class="fa-solid fa-file-pdf" style="color: #ff5252; margin-right:4px;"></i> Xem PDF đính kèm</a>`;
+            } else {
+                return `<a href="${valStr}" target="_blank" class="btn-action" style="color:var(--color-green); font-weight:600;"><i class="fa-solid fa-image" style="color: #3b82f6; margin-right:4px;"></i> Xem ảnh đính kèm</a>`;
+            }
+        }
+        
+        if (isUrl) {
+            return `<a href="${valStr}" target="_blank" class="btn-action" style="color:var(--color-ai-primary); font-weight:600;"><i class="fa-solid fa-arrow-up-right-from-square" style="margin-right:4px;"></i> Mở liên kết</a>`;
+        } else {
+            return `<a href="#" class="btn-action" onclick="alert('Đang mở tài liệu mẫu: ${valStr}'); return false;"><i class="fa-solid fa-link" style="margin-right:4px;"></i> ${valStr}</a>`;
+        }
+    }
+
     // SO 01: Hồ sơ tiền khởi công
     function renderS01() {
         const tbody = document.getElementById("s01-tbody");
@@ -1364,7 +1381,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${row['Hạng mục'] || ""}</td>
                 <td><span class="badge info">${row['Loại hồ sơ'] || ""}</span></td>
                 <td>${row['Tên sản phẩm / Số hiệu'] || ""}</td>
-                <td><a href="#" class="btn-action" onclick="alert('Mở tài liệu: ${row['LINK lưu trữ']}')"><i class="fa-solid fa-link"></i> ${row['LINK lưu trữ']}</a></td>
+                <td>${renderLinkHtml(row['LINK lưu trữ'])}</td>
                 <td>${row['Ngày HT'] || ""}</td>
                 <td>${row['Người lập'] || ""}</td>
                 <td>${row['Người duyệt'] || ""}</td>
@@ -1416,7 +1433,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${row['Loại tài liệu'] || ""}</td>
                 <td>${row['Nội dung chính'] || ""}</td>
                 <td>${row['Đạt YCKT CĐT'] === 'Có' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>'}</td>
-                <td><a href="#" class="btn-action"><i class="fa-solid fa-link"></i> ${row['LINK tài liệu'] || ""}</a></td>
+                <td>${renderLinkHtml(row['LINK tài liệu'])}</td>
                 <td>${row['TT lập'] || ""}</td>
                 <td>
                     <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : 'warning'}">
@@ -1472,7 +1489,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${row['Đề xuất xử lý'] || ""}</td>
                 <td style="text-align:right; font-weight:700; color:var(--color-yellow);">${valPs.toFixed(2)} tỷ</td>
                 <td>${row['Ảnh hưởng TĐ (ngày)'] || 0} ngày</td>
-                <td><a href="#" class="btn-action"><i class="fa-solid fa-file-pdf"></i> ${row['LINK hồ sơ'] || ""}</a></td>
+                <td>${renderLinkHtml(row['LINK hồ sơ'])}</td>
                 <td>
                     <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : (row['TT duyệt'] === 'Từ chối' ? 'danger' : 'warning')}">
                         ${row['TT duyệt'] || "Chờ duyệt"}
@@ -1556,7 +1573,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${row['ĐVT'] || ""}</td>
                 <td style="text-align:right; font-weight:600; color:var(--color-yellow);">${valCu.toFixed(2)} tỷ</td>
                 <td>${row['Trong/Target Ngoài HĐCU'] || row['Trong/Ngoài HĐCU'] || ""}</td>
-                <td><a href="#" class="btn-action"><i class="fa-solid fa-file-pdf"></i> ${row['LINK hồ sơ'] || ""}</a></td>
+                <td>${renderLinkHtml(row['LINK hồ sơ'])}</td>
                 <td>
                     <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : (row['TT duyệt'] === 'Từ chối' ? 'danger' : 'warning')}">
                         ${row['TT duyệt'] || "Chờ duyệt"}
@@ -1643,7 +1660,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td><span class="badge info">${row['Giải pháp bù'] || ""}</span></td>
                 <td>${row['Chi tiết giải pháp'] || row['Chi tiết phương án'] || ""}</td>
                 <td>${row['Mốc cam kết HT'] || ""}</td>
-                <td><a href="#" class="btn-action"><i class="fa-solid fa-file-pdf"></i> ${row['LINK phương án'] || ""}</a></td>
+                <td>${renderLinkHtml(row['LINK phương án'] || row['LINK phương án chi tiết'])}</td>
                 <td>
                     <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : 'warning'}">
                         ${row['TT duyệt'] || "Chờ duyệt"}
@@ -1713,10 +1730,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const bodyEl = document.getElementById("modal-form-body");
         bodyEl.innerHTML = ""; // Clear
 
-        // Fetch valid Mã BSC list for dropdowns
-        const bscCodes = db.master
+        // Fetch valid Mã BSC list with names for user-friendly dropdowns
+        const bscOptions = db.master
             .filter(r => String(r.ma_bsc || "").trim() !== "")
-            .map(r => String(r.ma_bsc).trim());
+            .map(r => ({
+                code: String(r.ma_bsc).trim(),
+                name: `${String(r.ma_bsc).trim()} - ${r.hang_muc_work} (${r.nhom_ct})`
+            }));
 
         if (target === 'master') {
             titleEl.textContent = "Thêm Gói Thầu Mới (Master Package)";
@@ -1767,8 +1787,8 @@ document.addEventListener("DOMContentLoaded", () => {
             titleEl.textContent = "Đăng Ký Hồ Sơ Tiền Khởi Công";
             bodyEl.innerHTML = `
                 <div class="form-group">
-                    <label>Mã BSC liên kết</label>
-                    <select id="form-bsc" class="form-control">${renderOptions(bscCodes)}</select>
+                    <label>Công trình / Gói thầu liên kết</label>
+                    <select id="form-bsc" class="form-control">${renderBscOptions(bscOptions)}</select>
                 </div>
                 <div class="form-group">
                     <label>Hạng mục</label>
@@ -1783,8 +1803,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     <input type="text" id="form-name" class="form-control" placeholder="ví dụ: SPECS_CT09.pdf" required>
                 </div>
                 <div class="form-group">
-                    <label>LINK lưu trữ (URL)</label>
-                    <input type="text" id="form-link" class="form-control" value="SPECS_CT09.pdf">
+                    <label>Link, hồ sơ đính kèm</label>
+                    <div style="display: flex; gap: 8px; flex-direction: column;">
+                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="SPECS_CT09.pdf">
+                        <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Hoặc tải tệp (PDF/ảnh):</span>
+                            <input type="file" id="form-file-upload" accept="image/*,application/pdf" style="display: none;">
+                            <button type="button" class="btn-action" onclick="document.getElementById('form-file-upload').click()" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(59,130,246,0.3);">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Chọn Tệp
+                            </button>
+                            <span id="form-file-status" style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;"></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Người lập</label>
@@ -1795,8 +1825,8 @@ document.addEventListener("DOMContentLoaded", () => {
             titleEl.textContent = "Ghi Nhận Phát Sinh & Sai Khác Hợp Đồng";
             bodyEl.innerHTML = `
                 <div class="form-group">
-                    <label>Mã BSC liên kết</label>
-                    <select id="form-bsc" class="form-control">${renderOptions(bscCodes)}</select>
+                    <label>Công trình / Gói thầu liên kết</label>
+                    <select id="form-bsc" class="form-control">${renderBscOptions(bscOptions)}</select>
                 </div>
                 <div class="form-group">
                     <label>Hạng mục</label>
@@ -1827,16 +1857,26 @@ document.addEventListener("DOMContentLoaded", () => {
                     <input type="number" id="form-delay" class="form-control" value="0">
                 </div>
                 <div class="form-group">
-                    <label>LINK hồ sơ đính kèm</label>
-                    <input type="text" id="form-link" class="form-control" value="PS_TaiLieu.pdf">
+                    <label>Link, hồ sơ đính kèm</label>
+                    <div style="display: flex; gap: 8px; flex-direction: column;">
+                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="PS_TaiLieu.pdf">
+                        <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Hoặc tải tệp (PDF/ảnh):</span>
+                            <input type="file" id="form-file-upload" accept="image/*,application/pdf" style="display: none;">
+                            <button type="button" class="btn-action" onclick="document.getElementById('form-file-upload').click()" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(59,130,246,0.3);">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Chọn Tệp
+                            </button>
+                            <span id="form-file-status" style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;"></span>
+                        </div>
+                    </div>
                 </div>
             `;
         } else if (target === 's04') {
             titleEl.textContent = "Đăng Ký Cung Ứng Vật Tư Đặc Thù";
             bodyEl.innerHTML = `
                 <div class="form-group">
-                    <label>Mã BSC liên kết</label>
-                    <select id="form-bsc" class="form-control">${renderOptions(bscCodes)}</select>
+                    <label>Công trình / Gói thầu liên kết</label>
+                    <select id="form-bsc" class="form-control">${renderBscOptions(bscOptions)}</select>
                 </div>
                 <div class="form-group">
                     <label>Hạng mục</label>
@@ -1874,16 +1914,26 @@ document.addEventListener("DOMContentLoaded", () => {
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>LINK hồ sơ</label>
-                    <input type="text" id="form-link" class="form-control" value="YC_TaiLieu.pdf">
+                    <label>Link, hồ sơ đính kèm</label>
+                    <div style="display: flex; gap: 8px; flex-direction: column;">
+                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="YC_TaiLieu.pdf">
+                        <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Hoặc tải tệp (PDF/ảnh):</span>
+                            <input type="file" id="form-file-upload" accept="image/*,application/pdf" style="display: none;">
+                            <button type="button" class="btn-action" onclick="document.getElementById('form-file-upload').click()" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(59,130,246,0.3);">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Chọn Tệp
+                            </button>
+                            <span id="form-file-status" style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;"></span>
+                        </div>
+                    </div>
                 </div>
             `;
         } else if (target === 's05') {
             titleEl.textContent = "Đăng Ký Phương Án Bù Tiến Độ Thi Công";
             bodyEl.innerHTML = `
                 <div class="form-group">
-                    <label>Mã BSC liên kết</label>
-                    <select id="form-bsc" class="form-control">${renderOptions(bscCodes)}</select>
+                    <label>Công trình / Gói thầu liên kết</label>
+                    <select id="form-bsc" class="form-control">${renderBscOptions(bscOptions)}</select>
                 </div>
                 <div class="form-group">
                     <label>Hạng mục</label>
@@ -1910,18 +1960,50 @@ document.addEventListener("DOMContentLoaded", () => {
                     <input type="date" id="form-moc" class="form-control" value="2026-07-20">
                 </div>
                 <div class="form-group">
-                    <label>LINK phương án chi tiết</label>
-                    <input type="text" id="form-link" class="form-control" value="PA_BuTienDo.pdf">
+                    <label>Link, hồ sơ đính kèm</label>
+                    <div style="display: flex; gap: 8px; flex-direction: column;">
+                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="PA_BuTienDo.pdf">
+                        <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Hoặc tải tệp (PDF/ảnh):</span>
+                            <input type="file" id="form-file-upload" accept="image/*,application/pdf" style="display: none;">
+                            <button type="button" class="btn-action" onclick="document.getElementById('form-file-upload').click()" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(59,130,246,0.3);">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Chọn Tệp
+                            </button>
+                            <span id="form-file-status" style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;"></span>
+                        </div>
+                    </div>
                 </div>
             `;
         }
 
         formModal.style.display = "flex";
+
+        // Bind Base64 File Ingestion reader to form-file-upload
+        const fileUploadEl = document.getElementById("form-file-upload");
+        if (fileUploadEl) {
+            fileUploadEl.addEventListener("change", (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    // Update target input value to the Base64 Data URL
+                    document.getElementById("form-link").value = event.target.result;
+                    document.getElementById("form-file-status").textContent = `✔ Đã chọn: ${file.name}`;
+                    showToast("Tải file", `Đã trích xuất và đính kèm tệp ${file.name} thành công.`, "success");
+                };
+                reader.readAsDataURL(file);
+            });
     }
 
     function renderOptions(array) {
         if (!array) return "";
         return array.map(v => `<option value="${v}">${v}</option>`).join("");
+    }
+
+    function renderBscOptions(options) {
+        if (!options) return "";
+        return options.map(opt => `<option value="${opt.code}">${opt.name}</option>`).join("");
     }
 
     function closeModal() {
