@@ -4145,17 +4145,17 @@ dropzone.addEventListener("click", () => fileInput.click());
     // Click demo files handler
     document.getElementById("demo-doc-s03").addEventListener("click", () => {
         const text = `Tờ trình phát sinh ngày 2026-06-12 gửi BQLDA VSV. Tổng thầu An Phong báo cáo túi bùn địa chất yếu cục bộ tại khu vực hố móng nhà mẫu CT-01 (Mã gói thầu: VSV_QLTC_TT.01). Đề xuất gia cố bổ sung 450 cọc tre d100 l=4m và thay đệm cát dày 1.2m. Giá trị phát sinh dự tính là 0.8 tỷ đồng. Thời gian ảnh hưởng tiến độ dự báo chậm 5 ngày. Đính kèm hồ sơ kỹ thuật PS01_NenYeu.pdf. Người trình: CHT Trần Quốc Huy.`;
-        prepareFilePrompt(text, 's03', 'ToTrinhNenYeu_CT01.txt');
+        prepareFilePrompt(text, 's03', 'TrinhPhatSinh_NenYeu.pdf');
     });
     
     document.getElementById("demo-doc-s04").addEventListener("click", () => {
         const text = `Yêu cầu cung ứng đặc thù ngày 2026-06-14. Để phục vụ bán sảnh chính nhà mẫu CT-01 (Mã gói thầu: VSV_QLTC_TT.01), chúng tôi yêu cầu cung ứng 120 m2 đá Marble Crema Marfil Tây Ban Nha cao cấp ốp lát mặt tiền sảnh chính ngoài HĐCU đã ký. Dự toán chi phí là 1.2 tỷ đồng. Đính kèm YC01_Marble.pdf. Kính trình phê duyệt.`;
-        prepareFilePrompt(text, 's04', 'YcCungUngDaMarble_CT01.txt');
+        prepareFilePrompt(text, 's04', 'YcCungUngDacThu_Marble.pdf');
     });
     
     document.getElementById("demo-doc-s05").addEventListener("click", () => {
         const text = `Báo cáo bù tiến độ ngày 2026-06-20 cho gói thầu VSV_QLTC_TT.01 (CT-01). Mức độ chậm trễ phát hiện là 9 ngày. Nguyên nhân do mưa lớn ngập úng hố móng. Giải pháp khắc phục đề xuất tăng ca đêm và lắp thêm 2 máy bơm công suất lớn hút nước liên tục 24/24. Chi tiết hành động: Tăng ca thêm 3 giờ/ngày cho đội cốt thép cốp pha. Cam kết mốc hoàn thành mới là 2026-07-05. Đính kèm PA_BuTienDo_T6_CT01.pdf.`;
-        prepareFilePrompt(text, 's05', 'PaBuTienDo_T6_CT01.txt');
+        prepareFilePrompt(text, 's05', 'PhuongAnBuTienDo_Mong.pdf');
     });
 
     // Helper functions for proposal formatting
