@@ -50,9 +50,95 @@ document.addEventListener("DOMContentLoaded", () => {
         initApp();
     }
 
+    function restructureMasterData(masterArray) {
+        if (!masterArray || masterArray.length === 0) return [];
+        
+        const packages = [];
+        let currentPackage = null;
+        
+        masterArray.forEach(row => {
+            const bsc = String(row.ma_bsc || "").trim();
+            const isParent = bsc !== "";
+            
+            if (isParent) {
+                currentPackage = {
+                    parent: row,
+                    children: []
+                };
+                packages.push(currentPackage);
+            } else {
+                if (currentPackage) {
+                    currentPackage.children.push(row);
+                } else {
+                    packages.push({
+                        parent: row,
+                        children: []
+                    });
+                }
+            }
+        });
+
+        packages.forEach(pkg => {
+            let parentGroup = String(pkg.parent.nhom_ct || "").trim();
+            
+            // Standardize business serving group
+            if (["9", "10", "11", "12"].includes(String(pkg.parent.ma_bsc)) || String(pkg.parent.hang_muc_work).includes("KD-")) {
+                parentGroup = "Công trình phục vụ KD";
+                pkg.parent.nhom_ct = parentGroup;
+            }
+            
+            pkg.children.forEach(child => {
+                child.nhom_ct = parentGroup;
+            });
+        });
+
+        const groupOrder = {
+            "Hạ tầng kỹ thuật": 1,
+            "Công trình phục vụ KD": 2,
+            "Công trình phục vụ kinh doanh": 2,
+            "Xây dựng dân dụng": 3,
+            "Công trình dân dụng": 3
+        };
+
+        function getGroupOrderValue(groupName) {
+            return groupOrder[groupName] || 99;
+        }
+
+        packages.forEach((pkg, index) => {
+            pkg.originalIndex = index;
+        });
+
+        packages.sort((a, b) => {
+            const orderA = getGroupOrderValue(a.parent.nhom_ct);
+            const orderB = getGroupOrderValue(b.parent.nhom_ct);
+            if (orderA !== orderB) {
+                return orderA - orderB;
+            }
+            return a.originalIndex - b.originalIndex;
+        });
+
+        const newMasterList = [];
+        let parentCount = 0;
+        
+        packages.forEach(pkg => {
+            parentCount++;
+            pkg.parent.tt = parentCount;
+            newMasterList.push(pkg.parent);
+            
+            pkg.children.forEach((child, childIdx) => {
+                child.tt = `${parentCount}.${childIdx + 1}`;
+                newMasterList.push(child);
+            });
+        });
+
+        return newMasterList;
+    }
+
     // Ensure all numeric values are clean and sub-tables have proper structure
     function sanitizeInitialData() {
         if (!db.master) db.master = [];
+        else db.master = restructureMasterData(db.master);
+
         if (!db.s01) db.s01 = [];
         if (!db.s02) db.s02 = [];
         if (!db.s03) db.s03 = [];
@@ -843,9 +929,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 flatHierarchy.push({
                     type: "grand_parent",
                     id: goiThauPl,
-                    tt: goiThauPl,
+                    tt: row.nhom_ct,
                     nhom_ct: row.nhom_ct,
-                    hang_muc_work: `Gói thầu ${goiThauPl} (${row.nhom_ct})`,
+                    hang_muc_work: `Gói thầu ${row.nhom_ct} (${goiThauPl})`,
                     phu_trach: "",
                     row_ref: null
                 });
