@@ -565,6 +565,18 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="gemini-model-select">Model Gemini AI</label>
+                    <select id="gemini-model-select" class="form-control" style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; width: 100%;">
+                        <option value="gemini-3.5-flash">Gemini 3.5 Flash (Mặc định)</option>
+                        <option value="gemini-3.1-pro">Gemini 3.1 Pro (Advanced)</option>
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>Trạng Thái Tích Hợp AI</label>
                     <div id="ai-status-indicator" style="display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:600; color: var(--color-yellow);">
                         <i class="fa-solid fa-circle-exclamation"></i> Đang ở chế độ Giả lập (Simulation Mode - Không cần API Key)
