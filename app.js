@@ -736,6 +736,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderMasterGrid() {
         calculateRollups();
+        
+        // Show/hide Add Package button based on quyen_them
+        const btnAddPkg = document.getElementById("btn-add-package");
+        if (btnAddPkg) {
+            const hasAddAccess = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_them);
+            btnAddPkg.style.display = hasAddAccess ? 'inline-block' : 'none';
+        }
+
         const thead = document.getElementById("master-grid-thead");
         const tbody = document.getElementById("master-grid-tbody");
         thead.innerHTML = "";
@@ -971,16 +979,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (item.type === 'grand_parent') {
                     tdOps.textContent = "";
                 } else {
-                    const hasWriteAccess = currentRole === 'Admin' || currentRole === 'Contractor';
-                    if (hasWriteAccess) {
+                    const canEdit = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua);
+                    const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
+                    
+                    if (canEdit || canDelete) {
                         tdOps.innerHTML = `
                             <div style="display: flex; gap: 4px; justify-content: center;">
-                                <button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>
-                                <button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>
+                                ${canEdit ? `<button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
+                                ${canDelete ? `<button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                             </div>
                         `;
                     } else {
-                        tdOps.innerHTML = `<span style="font-size:0.75rem; color: var(--text-muted);">Chỉ đọc</span>`;
+                        tdOps.innerHTML = `<span style="font-size:0.75rem; color: var(--text-muted); text-align: center; display: block;">Chỉ đọc</span>`;
                     }
                 }
                 tr.appendChild(tdOps);
@@ -1058,12 +1068,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     // Add Operation cell in all mode
                     const tdOps = document.createElement("td");
-                    const hasWriteAccess = currentRole === 'Admin' || currentRole === 'Contractor';
-                    if (hasWriteAccess) {
+                    const canEdit = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua);
+                    const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
+                    
+                    if (canEdit || canDelete) {
                         tdOps.innerHTML = `
                             <div style="display: flex; gap: 4px; justify-content: center;">
-                                <button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>
-                                <button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>
+                                ${canEdit ? `<button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
+                                ${canDelete ? `<button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                             </div>
                         `;
                     } else {
@@ -1083,8 +1095,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderCellDropdown(rowIdx, field, currentVal, category) {
         const options = db.danh_muc[category] || [];
-        const isEditable = currentRole === 'Admin' || currentRole === 'Supervisor';
-        let html = `<select class="grid-select" data-row="${rowIdx}" data-field="${field}" ${!isEditable ? 'disabled title="Chỉ Admin/TVGS mới được chỉnh sửa!"' : ''}>`;
+        const isEditable = currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor'));
+        let html = `<select class="grid-select" data-row="${rowIdx}" data-field="${field}" ${!isEditable ? 'disabled title="Khóa: Chỉ Admin/TVGS có quyền sửa mới được chỉnh sửa!"' : ''}>`;
         html += `<option value=""></option>`;
         options.forEach(opt => {
             html += `<option value="${opt}" ${opt === currentVal ? 'selected' : ''}>${opt}</option>`;
@@ -1123,8 +1135,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 td.style.fontWeight = "600";
                 td.style.textAlign = "right";
             } else {
-                const isEditable = currentRole === 'Admin' || currentRole === 'Contractor';
-                td.innerHTML = `<input type="number" step="0.01" class="grid-input" value="${row.gia_tri_hdcu || ''}" data-row="${rowIdx}" data-field="gia_tri_hdcu" style="width:70px; text-align:right;" ${!isEditable ? 'disabled title="Chỉ Admin/Tổng thầu mới được sửa!"' : ''}>`;
+                const isEditable = currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Contractor'));
+                td.innerHTML = `<input type="number" step="0.01" class="grid-input" value="${row.gia_tri_hdcu || ''}" data-row="${rowIdx}" data-field="gia_tri_hdcu" style="width:70px; text-align:right;" ${!isEditable ? 'disabled title="Khóa: Chỉ Admin/Tổng thầu có quyền sửa mới được chỉnh sửa!"' : ''}>`;
             }
         }
         else if (field === 'percent_hdcu_ns') {
@@ -1175,11 +1187,11 @@ document.addEventListener("DOMContentLoaded", () => {
             td.style.textAlign = "center";
         }
         else if (field === 'ngay_bd_khoi_cong') {
-            const isEditable = currentRole === 'Admin' || currentRole === 'Supervisor';
+            const isEditable = currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor'));
             td.innerHTML = isParent ? `
                 <input type="date" class="grid-input" value="${row.ngay_bd_khoi_cong || ''}" 
                     data-row="${rowIdx}" data-field="ngay_bd_khoi_cong" 
-                    ${!isEditable || row.dieu_kien_du !== 'ĐỦ ĐK KHỞI CÔNG' ? 'disabled title="Khóa: Chưa đủ điều kiện hoặc Bạn không có quyền!"' : ''}>
+                    ${!isEditable || row.dieu_kien_du !== 'ĐỦ ĐK KHỞI CÔNG' ? 'disabled title="Khóa: Chưa đủ điều kiện hoặc tài khoản không có quyền sửa!"' : ''}>
             ` : "";
         }
         else if (field === 'luy_ke_ab') {
@@ -1533,10 +1545,10 @@ document.addEventListener("DOMContentLoaded", () => {
         tbody.innerHTML = "";
         const search = document.getElementById("s01-search-input").value.toLowerCase();
 
-        // Lock Add Button if not Admin or Contractor
+        // Lock Add Button if not Admin or Contractor with quyen_them
         const btnAdd = document.getElementById("btn-add-s01");
         if (btnAdd) {
-            const hasAddAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+            const hasAddAccess = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_them);
             btnAdd.style.display = hasAddAccess ? 'inline-block' : 'none';
         }
 
@@ -1545,6 +1557,10 @@ document.addEventListener("DOMContentLoaded", () => {
             if (search && !bsc.toLowerCase().includes(search)) return;
 
             const tr = document.createElement("tr");
+            
+            const canApprove = row['TT duyệt'] !== 'Đã duyệt' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
+            const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
+
             tr.innerHTML = `
                 <td>${index + 1}</td>
                 <td style="font-weight:700;">${bsc}</td>
@@ -1561,9 +1577,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     </span>
                 </td>
                 <td>
-                    ${row['TT duyệt'] !== 'Đã duyệt' && (currentRole === 'Admin' || currentRole === 'Supervisor') ? `
-                        <button class="btn-action approve btn-approve-s01" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>
-                    ` : ""}
+                    <div style="display:flex; gap:4px; justify-content:center;">
+                        ${canApprove ? `<button class="btn-action approve btn-approve-s01" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>` : ""}
+                        ${canDelete ? `<button class="btn-action reject btn-delete-s01" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1582,6 +1599,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 showToast("Duyệt Hồ Sơ", "Đã duyệt hồ sơ khởi công thành công. Đã cộng dồn điều kiện khởi công.", "success");
             });
         });
+
+        document.querySelectorAll(".btn-delete-s01").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                if (confirm("Bạn có chắc chắn muốn xóa bản ghi này?")) {
+                    db.s01.splice(idx, 1);
+                    calculateRollups();
+                    saveDatabase();
+                    renderS01();
+                    showToast("Xóa hồ sơ", "Đã xóa hồ sơ khởi công thành công.", "warning");
+                }
+            });
+        });
     }
 
     // SO 02: Kế hoạch Tháng/Tuần
@@ -1590,10 +1620,10 @@ document.addEventListener("DOMContentLoaded", () => {
         tbody.innerHTML = "";
         const search = document.getElementById("s02-search-input").value.toLowerCase();
 
-        // Lock Add Button if not Admin or Contractor
+        // Lock Add Button if not Admin or Contractor with quyen_them
         const btnAdd = document.getElementById("btn-add-s02");
         if (btnAdd) {
-            const hasAddAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+            const hasAddAccess = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_them);
             btnAdd.style.display = hasAddAccess ? 'inline-block' : 'none';
         }
 
@@ -1602,6 +1632,10 @@ document.addEventListener("DOMContentLoaded", () => {
             if (search && !bsc.toLowerCase().includes(search)) return;
 
             const tr = document.createElement("tr");
+            
+            const canApprove = row['TT duyệt'] !== 'Đã duyệt' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
+            const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
+
             tr.innerHTML = `
                 <td>${index + 1}</td>
                 <td style="font-weight:700;">${bsc}</td>
@@ -1620,14 +1654,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${row['Người lập'] || ""}/${row['Người duyệt'] || ""}</td>
                 <td>${row['Ngày duyệt'] || ""}</td>
                 <td>
-                    ${row['TT duyệt'] !== 'Đã duyệt' && (currentRole === 'Admin' || currentRole === 'Supervisor') ? `
-                        <button class="btn-action approve btn-approve-s02" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>
-                    ` : ""}
+                    <div style="display:flex; gap:4px; justify-content:center;">
+                        ${canApprove ? `<button class="btn-action approve btn-approve-s02" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>` : ""}
+                        ${canDelete ? `<button class="btn-action reject btn-delete-s02" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
         });
 
+        // Attach events
         document.querySelectorAll(".btn-approve-s02").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
@@ -1640,6 +1676,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 showToast("Duyệt Kế Hoạch", "Kế hoạch tuần/tháng đã được TVGS phê duyệt.", "success");
             });
         });
+
+        document.querySelectorAll(".btn-delete-s02").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                if (confirm("Bạn có chắc chắn muốn xóa bản ghi này?")) {
+                    db.s02.splice(idx, 1);
+                    calculateRollups();
+                    saveDatabase();
+                    renderS02();
+                    showToast("Xóa hồ sơ", "Đã xóa kế hoạch thành công.", "warning");
+                }
+            });
+        });
     }
 
     // SO 03: Phát sinh hợp đồng B - B' (Chốt chặn Ngân sách)
@@ -1648,10 +1697,10 @@ document.addEventListener("DOMContentLoaded", () => {
         tbody.innerHTML = "";
         const search = document.getElementById("s03-search-input").value.toLowerCase();
 
-        // Lock Add Button if not Admin or Contractor
+        // Lock Add Button if not Admin or Contractor with quyen_them
         const btnAdd = document.getElementById("btn-add-s03");
         if (btnAdd) {
-            const hasAddAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+            const hasAddAccess = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_them);
             btnAdd.style.display = hasAddAccess ? 'inline-block' : 'none';
         }
 
@@ -1661,6 +1710,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const tr = document.createElement("tr");
             const valPs = parseFloat(row['Giá trị (tỷ)'] || 0);
+
+            const canApprove = row['TT duyệt'] === 'Chờ duyệt' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
+            const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
                 <td style="font-weight:600;">${row['Mã PS']}</td>
@@ -1681,10 +1733,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 </td>
                 <td>${row['Người duyệt'] || ""}<br><small>${row['Ngày duyệt'] || ""}</small></td>
                 <td>
-                    ${row['TT duyệt'] === 'Chờ duyệt' && currentRole === 'Admin' ? `
-                        <button class="btn-action approve btn-approve-s03" data-idx="${index}" data-bsc="${bsc}"><i class="fa-solid fa-check"></i> Duyệt</button>
-                        <button class="btn-action reject btn-reject-s03" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
-                    ` : ""}
+                    <div style="display:flex; gap:4px; justify-content:center;">
+                        ${canApprove ? `
+                            <button class="btn-action approve btn-approve-s03" data-idx="${index}" data-bsc="${bsc}"><i class="fa-solid fa-check"></i> Duyệt</button>
+                            <button class="btn-action reject btn-reject-s03" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                        ` : ""}
+                        ${canDelete ? `<button class="btn-action reject btn-delete-s03" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1730,6 +1785,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 showToast("Phát Sinh", "Đã từ chối phát sinh hợp đồng.", "info");
             });
         });
+
+        document.querySelectorAll(".btn-delete-s03").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                if (confirm("Bạn có chắc chắn muốn xóa bản ghi này?")) {
+                    db.s03.splice(idx, 1);
+                    calculateRollups();
+                    saveDatabase();
+                    renderS03();
+                    showToast("Xóa hồ sơ", "Đã xóa phát sinh hợp đồng thành công.", "warning");
+                }
+            });
+        });
     }
 
     // SO 04: Cung ứng đặc thù
@@ -1738,10 +1806,10 @@ document.addEventListener("DOMContentLoaded", () => {
         tbody.innerHTML = "";
         const search = document.getElementById("s04-search-input").value.toLowerCase();
 
-        // Lock Add Button if not Admin or Contractor
+        // Lock Add Button if not Admin or Contractor with quyen_them
         const btnAdd = document.getElementById("btn-add-s04");
         if (btnAdd) {
-            const hasAddAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+            const hasAddAccess = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_them);
             btnAdd.style.display = hasAddAccess ? 'inline-block' : 'none';
         }
 
@@ -1751,6 +1819,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const tr = document.createElement("tr");
             const valCu = parseFloat(row['Giá trị (tỷ)'] || 0);
+
+            const canApprove = row['TT duyệt'] === 'Chờ duyệt' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
+            const canSupply = row['TT duyệt'] === 'Đã duyệt' && row['TT cung ứng'] !== 'Đã cung ứng' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supply')));
+            const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
                 <td style="font-weight:600;">${row['Mã YC']}</td>
@@ -1776,12 +1848,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     </span>
                 </td>
                 <td>
-                    ${row['TT duyệt'] === 'Chờ duyệt' && currentRole === 'Admin' ? `
-                        <button class="btn-action approve btn-approve-s04" data-idx="${index}" data-bsc="${bsc}"><i class="fa-solid fa-check"></i> Duyệt</button>
-                    ` : ""}
-                    ${row['TT duyệt'] === 'Đã duyệt' && row['TT cung ứng'] !== 'Đã cung ứng' && (currentRole === 'Admin' || currentRole === 'Supply') ? `
-                        <button class="btn-action approve btn-supply-s04" data-idx="${index}" style="color:var(--color-yellow); border-color:var(--color-yellow);"><i class="fa-solid fa-truck"></i> Cập nhật Cấp vật tư</button>
-                    ` : ""}
+                    <div style="display:flex; gap:4px; justify-content:center; align-items:center;">
+                        ${canApprove ? `<button class="btn-action approve btn-approve-s04" data-idx="${index}" data-bsc="${bsc}"><i class="fa-solid fa-check"></i> Duyệt</button>` : ""}
+                        ${canSupply ? `<button class="btn-action approve btn-supply-s04" data-idx="${index}" style="color:var(--color-yellow); border-color:var(--color-yellow);"><i class="fa-solid fa-truck"></i> Cấp vật tư</button>` : ""}
+                        ${canDelete ? `<button class="btn-action reject btn-delete-s04" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1822,6 +1893,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 showToast("Cung Ứng", "Đã bàn giao vật tư ra hiện trường thi công.", "success");
             });
         });
+
+        document.querySelectorAll(".btn-delete-s04").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                if (confirm("Bạn có chắc chắn muốn xóa bản ghi này?")) {
+                    db.s04.splice(idx, 1);
+                    calculateRollups();
+                    saveDatabase();
+                    renderS04();
+                    showToast("Xóa hồ sơ", "Đã xóa yêu cầu cung ứng thành công.", "warning");
+                }
+            });
+        });
     }
 
     // SO 05: Bù tiến độ
@@ -1830,10 +1914,10 @@ document.addEventListener("DOMContentLoaded", () => {
         tbody.innerHTML = "";
         const search = document.getElementById("s05-search-input").value.toLowerCase();
 
-        // Lock Add Button if not Admin or Contractor
+        // Lock Add Button if not Admin or Contractor with quyen_them
         const btnAdd = document.getElementById("btn-add-s05");
         if (btnAdd) {
-            const hasAddAccess = currentRole === 'Admin' || currentRole === 'Contractor';
+            const hasAddAccess = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_them);
             btnAdd.style.display = hasAddAccess ? 'inline-block' : 'none';
         }
 
@@ -1843,6 +1927,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const tr = document.createElement("tr");
             const delayDays = parseInt(row['Mức chậm (ngày)'] || 0);
+
+            const canApprove = row['TT duyệt'] === 'Chờ duyệt' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
+            const canComplete = row['TT thực hiện'] !== 'Đã hoàn thành' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
+            const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
                 <td>${index + 1}</td>
@@ -1871,12 +1959,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     </span>
                 </td>
                 <td>
-                    ${row['TT duyệt'] === 'Chờ duyệt' && (currentRole === 'Admin' || currentRole === 'Supervisor') ? `
-                        <button class="btn-action approve btn-approve-s05" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>
-                    ` : ""}
-                    ${row['TT thực hiện'] !== 'Đã hoàn thành' && (currentRole === 'Admin' || currentRole === 'Supervisor') ? `
-                        <button class="btn-action approve btn-complete-s05" data-idx="${index}" style="color:var(--color-green); border-color:var(--color-green);"><i class="fa-solid fa-circle-check"></i> Hoàn thành bù</button>
-                    ` : ""}
+                    <div style="display:flex; gap:4px; justify-content:center; align-items:center;">
+                        ${canApprove ? `<button class="btn-action approve btn-approve-s05" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>` : ""}
+                        ${canComplete ? `<button class="btn-action approve btn-complete-s05" data-idx="${index}" style="color:var(--color-green); border-color:var(--color-green);"><i class="fa-solid fa-circle-check"></i> Hoàn thành bù</button>` : ""}
+                        ${canDelete ? `<button class="btn-action reject btn-delete-s05" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1904,6 +1991,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 saveDatabase();
                 renderS05();
                 showToast("Bù Tiến Độ", "Đã đóng hồ sơ bù tiến độ. Gói thầu trở về trạng thái bình thường.", "success");
+            });
+        });
+
+        document.querySelectorAll(".btn-delete-s05").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                if (confirm("Bạn có chắc chắn muốn xóa bản ghi này?")) {
+                    db.s05.splice(idx, 1);
+                    calculateRollups();
+                    saveDatabase();
+                    renderS05();
+                    showToast("Xóa hồ sơ", "Đã xóa phương án bù tiến độ thành công.", "warning");
+                }
             });
         });
     }
@@ -2964,6 +3064,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const canDelete = row.quyen_xoa ? '<span style="color:#ff5252; font-weight:bold; margin:0 4px;" title="Xóa: Đạt">❌</span>' : '<span style="color:var(--text-muted); margin:0 4px;" title="Xóa: Khóa">➖</span>';
             const crudBadges = `${canAdd} ${canEdit} ${canDelete}`;
 
+            // Check if current user is Admin or if they are editing their own profile row
+            const canUserEditThisRow = currentRole === 'Admin' || (currentUser && currentUser.email === row.email);
+
             tr.innerHTML = `
                 <td>${index + 1}</td>
                 <td style="font-weight:600; color: #fff;">${row.ho_ten}</td>
@@ -2976,12 +3079,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         ${crudBadges}
                     </div>
                 </td>
+                <td style="text-align:center; font-family:monospace; font-weight:600; color:var(--color-yellow);">${row.mat_khau || "123456"}</td>
                 <td><span style="font-size:0.8rem; font-weight:600; color:var(--color-ai-primary);">${row.goi_thau || "(Chưa phân công)"}</span></td>
                 <td style="text-align:center;">
-                    ${currentRole === 'Admin' ? `
+                    ${canUserEditThisRow ? `
                         <div style="display:flex; gap:4px; justify-content:center;">
-                            <button class="btn-action btn-edit-personnel" data-idx="${index}" style="padding:4px 8px; border-color: rgba(59,130,246,0.3); color: var(--color-ai-primary);"><i class="fa-solid fa-user-pen"></i></button>
-                            <button class="btn-action reject btn-delete-personnel" data-idx="${index}" style="padding:4px 8px; border-color: rgba(255,82,82,0.3); color: #ff5252;"><i class="fa-solid fa-user-xmark"></i></button>
+                            <button class="btn-action btn-edit-personnel" data-idx="${index}" style="padding:4px 8px; border-color: rgba(59,130,246,0.3); color: var(--color-ai-primary);" title="Sửa thông tin / Đổi mật khẩu"><i class="fa-solid fa-user-pen"></i></button>
+                            ${currentRole === 'Admin' ? `
+                                <button class="btn-action reject btn-delete-personnel" data-idx="${index}" style="padding:4px 8px; border-color: rgba(255,82,82,0.3); color: #ff5252;" title="Xóa nhân viên"><i class="fa-solid fa-user-xmark"></i></button>
+                            ` : ""}
                         </div>
                     ` : `<span style="font-size:0.75rem; color:var(--text-muted);">Khóa</span>`}
                 </td>
@@ -3103,28 +3209,31 @@ document.addEventListener("DOMContentLoaded", () => {
         const titleEl = document.getElementById("modal-form-title");
         const bodyEl = document.getElementById("modal-form-body");
         
+        const isSelfEditOnly = currentUser && currentUser.email === row.email && currentUser.quyen !== 'Admin';
+        const disabledAttr = isSelfEditOnly ? 'disabled style="background:rgba(255,255,255,0.03); cursor:not-allowed;"' : '';
+
         titleEl.textContent = `Chỉnh Sửa Thông Tin Nhân Sự: ${row.ho_ten}`;
         bodyEl.innerHTML = `
             <div style="display:grid; grid-template-columns:1fr; gap:12px;">
                 <div class="form-group">
                     <label>Họ và Tên</label>
-                    <input type="text" id="p-name" class="form-control" value="${row.ho_ten || ''}" required>
+                    <input type="text" id="p-name" class="form-control" value="${row.ho_ten || ''}" ${disabledAttr} required>
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="p-email" class="form-control" value="${row.email || ''}" required>
+                    <input type="email" id="p-email" class="form-control" value="${row.email || ''}" ${disabledAttr} required>
                 </div>
                 <div class="form-group">
                     <label>Phòng Ban</label>
-                    <input type="text" id="p-dept" class="form-control" value="${row.phong_ban || ''}" required>
+                    <input type="text" id="p-dept" class="form-control" value="${row.phong_ban || ''}" ${disabledAttr} required>
                 </div>
                 <div class="form-group">
                     <label>Vai Trò / Chức Danh</label>
-                    <input type="text" id="p-role" class="form-control" value="${row.vai_tro || ''}" required>
+                    <input type="text" id="p-role" class="form-control" value="${row.vai_tro || ''}" ${disabledAttr} required>
                 </div>
                 <div class="form-group">
                     <label>Quyền Truy Cập Hệ Thống (Mức Phân Quyền)</label>
-                    <select id="p-auth" class="form-control" onchange="window.syncDefaultCrudCheckboxes()">
+                    <select id="p-auth" class="form-control" onchange="window.syncDefaultCrudCheckboxes()" ${disabledAttr}>
                         <option value="Admin" ${row.quyen === 'Admin' ? 'selected' : ''}>Admin / C-Level (Toàn quyền quản trị)</option>
                         <option value="Supervisor" ${row.quyen === 'Supervisor' ? 'selected' : ''}>Supervisor / TVGS (Phê duyệt kỹ thuật)</option>
                         <option value="Contractor" ${row.quyen === 'Contractor' ? 'selected' : ''}>Contractor / Tổng Thầu (Nộp hồ sơ)</option>
@@ -3139,19 +3248,19 @@ document.addEventListener("DOMContentLoaded", () => {
                     <label>Phân quyền thao tác (CRUD)</label>
                     <div style="display:flex; gap:16px; margin-top:6px;">
                         <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                            <input type="checkbox" id="p-can-add" ${row.quyen_them ? 'checked' : ''}> THÊM (Create)
+                            <input type="checkbox" id="p-can-add" ${row.quyen_them ? 'checked' : ''} ${disabledAttr}> THÊM (Create)
                         </label>
                         <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                            <input type="checkbox" id="p-can-edit" ${row.quyen_sua ? 'checked' : ''}> SỬA (Update)
+                            <input type="checkbox" id="p-can-edit" ${row.quyen_sua ? 'checked' : ''} ${disabledAttr}> SỬA (Update)
                         </label>
                         <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                            <input type="checkbox" id="p-can-delete" ${row.quyen_xoa ? 'checked' : ''}> XÓA (Delete)
+                            <input type="checkbox" id="p-can-delete" ${row.quyen_xoa ? 'checked' : ''} ${disabledAttr}> XÓA (Delete)
                         </label>
                     </div>
                 </div>
                 <div class="form-group">
                     <label>Gói Thầu Phụ Trách</label>
-                    <input type="text" id="p-package" class="form-control" value="${row.goi_thau || ''}" placeholder="Mã gói thầu, ví dụ: VSV_QLTC_TT.01, hoặc Tất cả các gói">
+                    <input type="text" id="p-package" class="form-control" value="${row.goi_thau || ''}" placeholder="Mã gói thầu, ví dụ: VSV_QLTC_TT.01, hoặc Tất cả các gói" ${disabledAttr}>
                 </div>
             </div>
         `;
