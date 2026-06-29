@@ -154,7 +154,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
         }
-        if (!db.danh_muc || Object.keys(db.danh_muc).length === 0) db.danh_muc = defaultDb.danh_muc || {};
+        if (!db.danh_muc) db.danh_muc = {};
+        if (defaultDb.danh_muc) {
+            for (const key in defaultDb.danh_muc) {
+                if (!db.danh_muc[key] || db.danh_muc[key].length === 0) {
+                    db.danh_muc[key] = defaultDb.danh_muc[key];
+                }
+            }
+        }
         
         // Ensure every personnel member has a password and Proper CRUD flags
         db.nhan_su.forEach(ns => {
@@ -225,6 +232,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Parent row contract value is sum of sub contract values
                 const sumContract = subItemsGrouped[tt].reduce((sum, sub) => sum + parseFloat(sub.gia_tri_hdcu || 0), 0);
                 row.gia_tri_hdcu = sumContract > 0 ? sumContract : "";
+
+                // Rollup monthly & weekly plan/actual monetary values to parent row
+                const fieldsToRollup = [
+                    "qa_kh_klcv_thang", "qa_kq_klcv_thang",
+                    "t1_kh", "t1_kq",
+                    "t2_kh", "t2_kq",
+                    "t3_kh", "t3_kq",
+                    "t4_kh", "t4_kq"
+                ];
+                fieldsToRollup.forEach(field => {
+                    const sum = subItemsGrouped[tt].reduce((s, sub) => s + parseFloat(sub[field] || 0), 0);
+                    row[field] = sum > 0 ? sum : "";
+                });
             }
         });
 
@@ -1346,8 +1366,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const val = row[field];
             if (field.endsWith('kh') || field.endsWith('kq') || field.includes('klcv')) {
                 const num = parseFloat(val);
-                td.textContent = isNaN(num) ? (val || "") : (num * 100).toFixed(0) + "%";
-                td.style.textAlign = "center";
+                td.textContent = isNaN(num) ? (val || "") : num.toFixed(2);
+                td.style.textAlign = "right";
             } else {
                 td.textContent = val || "";
             }
@@ -1415,10 +1435,10 @@ document.addEventListener("DOMContentLoaded", () => {
             ? row.pending_progress
             : row;
             
-        const getPct = (val) => {
+        const getBillion = (val) => {
             if (val === undefined || val === null || val === "") return "";
             const num = parseFloat(val);
-            return isNaN(num) ? "" : (num * 100).toFixed(0);
+            return isNaN(num) ? "" : num.toFixed(2);
         };
         
         const getVal = (val) => val || "";
@@ -1430,12 +1450,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 12px;">
                     <div class="form-group">
-                        <label style="font-size:0.75rem;">KH KLCV Tháng (%)</label>
-                        <input type="number" step="0.1" min="0" max="100" id="form-p-kh-thang" class="form-control" value="${getPct(source.qa_kh_klcv_thang)}" ${isLocked ? 'disabled' : ''}>
+                        <label style="font-size:0.75rem;">KH KLCV Tháng (tỷ)</label>
+                        <input type="number" step="0.01" min="0" id="form-p-kh-thang" class="form-control" value="${getBillion(source.qa_kh_klcv_thang)}" ${isLocked ? 'disabled' : ''}>
                     </div>
                     <div class="form-group">
-                        <label style="font-size:0.75rem;">KQ KLCV Tháng (%)</label>
-                        <input type="number" step="0.1" min="0" max="100" id="form-p-kq-thang" class="form-control" value="${getPct(source.qa_kq_klcv_thang)}" ${isLocked ? 'disabled' : ''}>
+                        <label style="font-size:0.75rem;">KQ KLCV Tháng (tỷ)</label>
+                        <input type="number" step="0.01" min="0" id="form-p-kq-thang" class="form-control" value="${getBillion(source.qa_kq_klcv_thang)}" ${isLocked ? 'disabled' : ''}>
                     </div>
                     <div class="form-group">
                         <label style="font-size:0.75rem;">Đánh giá & giải pháp tháng</label>
@@ -1455,12 +1475,12 @@ document.addEventListener("DOMContentLoaded", () => {
                             <div style="border: 1px solid var(--border-color); padding: 8px; border-radius: 6px; background-color: rgba(255,255,255,0.02);">
                                 <h4 style="font-size:0.75rem; margin-bottom:6px; color: var(--color-ai-primary); font-weight:700;">Tuần ${w}</h4>
                                 <div class="form-group" style="margin-bottom:6px;">
-                                    <label style="font-size:0.7rem; color: var(--text-secondary);">KH (%)</label>
-                                    <input type="number" step="0.1" min="0" max="100" id="form-p-t${w}-kh" class="form-control" style="font-size:0.75rem; padding:4px 6px;" value="${getPct(khVal)}" ${isLocked ? 'disabled' : ''}>
+                                    <label style="font-size:0.7rem; color: var(--text-secondary);">KH (tỷ)</label>
+                                    <input type="number" step="0.01" min="0" id="form-p-t${w}-kh" class="form-control" style="font-size:0.75rem; padding:4px 6px;" value="${getBillion(khVal)}" ${isLocked ? 'disabled' : ''}>
                                 </div>
                                 <div class="form-group" style="margin-bottom:6px;">
-                                    <label style="font-size:0.7rem; color: var(--text-secondary);">KQ (%)</label>
-                                    <input type="number" step="0.1" min="0" max="100" id="form-p-t${w}-kq" class="form-control" style="font-size:0.75rem; padding:4px 6px;" value="${getPct(kqVal)}" ${isLocked ? 'disabled' : ''}>
+                                    <label style="font-size:0.7rem; color: var(--text-secondary);">KQ (tỷ)</label>
+                                    <input type="number" step="0.01" min="0" id="form-p-t${w}-kq" class="form-control" style="font-size:0.75rem; padding:4px 6px;" value="${getBillion(kqVal)}" ${isLocked ? 'disabled' : ''}>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label style="font-size:0.7rem; color: var(--text-secondary);">Đánh giá</label>
@@ -3090,11 +3110,11 @@ function openEditModalForm(rowIdx) {
             row.tt_khcu = document.getElementById("edit-form-tt-khcu").value;
 
             // Save progress fields safely
-            const getPctInput = (id) => {
+            const getBillionInput = (id) => {
                 const el = document.getElementById(id);
                 if (!el || el.value === "") return "";
                 const val = parseFloat(el.value);
-                return isNaN(val) ? "" : val / 100;
+                return isNaN(val) ? "" : val;
             };
             const getValInput = (id) => {
                 const el = document.getElementById(id);
@@ -3106,24 +3126,24 @@ function openEditModalForm(rowIdx) {
 
             if (!isLocked) {
                 const progData = {
-                    qa_kh_klcv_thang: getPctInput("form-p-kh-thang"),
-                    qa_kq_klcv_thang: getPctInput("form-p-kq-thang"),
+                    qa_kh_klcv_thang: getBillionInput("form-p-kh-thang"),
+                    qa_kq_klcv_thang: getBillionInput("form-p-kq-thang"),
                     qa_danh_gia_thang: getValInput("form-p-dg-thang"),
                     
-                    t1_kh: getPctInput("form-p-t1-kh"),
-                    t1_kq: getPctInput("form-p-t1-kq"),
+                    t1_kh: getBillionInput("form-p-t1-kh"),
+                    t1_kq: getBillionInput("form-p-t1-kq"),
                     t1_dg: getValInput("form-p-t1-dg"),
                     
-                    t2_kh: getPctInput("form-p-t2-kh"),
-                    t2_kq: getPctInput("form-p-t2-kq"),
+                    t2_kh: getBillionInput("form-p-t2-kh"),
+                    t2_kq: getBillionInput("form-p-t2-kq"),
                     t2_dg: getValInput("form-p-t2-dg"),
                     
-                    t3_kh: getPctInput("form-p-t3-kh"),
-                    t3_kq: getPctInput("form-p-t3-kq"),
+                    t3_kh: getBillionInput("form-p-t3-kh"),
+                    t3_kq: getBillionInput("form-p-t3-kq"),
                     t3_dg: getValInput("form-p-t3-dg"),
                     
-                    t4_kh: getPctInput("form-p-t4-kh"),
-                    t4_kq: getPctInput("form-p-t4-kq"),
+                    t4_kh: getBillionInput("form-p-t4-kh"),
+                    t4_kq: getBillionInput("form-p-t4-kq"),
                     t4_dg: getValInput("form-p-t4-dg")
                 };
 
