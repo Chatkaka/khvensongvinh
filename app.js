@@ -646,9 +646,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         while (currentDate.getTime() <= maxTime) {
             const time = currentDate.getTime();
-            const x = ((time - minTime) / (maxTime - minTime)) * (totalWidth - 200) + 180;
+            const x = ((time - minTime) / (maxTime - minTime)) * (totalWidth - 240) + 220;
             
-            if (x >= 180 && x <= totalWidth) {
+            if (x >= 220 && x <= totalWidth) {
                 monthPositions.push({ x, label: `${currentDate.getMonth() + 1}/${currentDate.getFullYear().toString().substr(-2)}` });
             }
             
@@ -685,8 +685,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Today Line (Simulating June 28, 2026)
         const todayTime = new Date("2026-06-28").getTime();
-        const todayX = ((todayTime - minTime) / (maxTime - minTime)) * (totalWidth - 200) + 180;
-        if (todayX >= 180 && todayX <= totalWidth) {
+        const todayX = ((todayTime - minTime) / (maxTime - minTime)) * (totalWidth - 240) + 220;
+        if (todayX >= 220 && todayX <= totalWidth) {
             const todayLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
             todayLine.setAttribute("x1", todayX);
             todayLine.setAttribute("y1", 0);
@@ -722,7 +722,7 @@ document.addEventListener("DOMContentLoaded", () => {
             text.setAttribute("x", 15);
             text.setAttribute("y", y + 25);
             text.setAttribute("class", "gantt-text");
-            text.textContent = String(p.ma_bsc).substring(0, 15) + (String(p.ma_bsc).length > 15 ? '..' : '');
+            text.textContent = String(p.ma_bsc);
             
             const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
             title.textContent = `[${p.ma_bsc}] ${p.hang_muc_work}`;
@@ -740,11 +740,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const actualStart = p.ngay_bd_khoi_cong ? new Date(p.ngay_bd_khoi_cong).getTime() : planStart;
             const actualEnd = planEnd + (delayDays * 24 * 60 * 60 * 1000);
 
-            const xPlan = ((planStart - minTime) / (maxTime - minTime)) * (totalWidth - 200) + 180;
-            const wPlan = ((planEnd - planStart) / (maxTime - minTime)) * (totalWidth - 200);
+            const xPlan = ((planStart - minTime) / (maxTime - minTime)) * (totalWidth - 240) + 220;
+            const wPlan = ((planEnd - planStart) / (maxTime - minTime)) * (totalWidth - 240);
 
-            const xActual = ((actualStart - minTime) / (maxTime - minTime)) * (totalWidth - 200) + 180;
-            const wActual = ((actualEnd - actualStart) / (maxTime - minTime)) * (totalWidth - 200);
+            const xActual = ((actualStart - minTime) / (maxTime - minTime)) * (totalWidth - 240) + 220;
+            const wActual = ((actualEnd - actualStart) / (maxTime - minTime)) * (totalWidth - 240);
 
             // Planned Bar (Upper)
             const planBar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
