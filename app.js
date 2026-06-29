@@ -3053,6 +3053,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function exportToExcel() {
         showToast("Xuất Excel", "Đang tải tệp mẫu và xuất dữ liệu...", "info");
+        
+        function parseDateSafe(val) {
+            if (!val) return null;
+            const str = String(val).trim().toLowerCase();
+            if (str === "" || str === "none" || str === "null" || str === "undefined" || str === "invalid date") return null;
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
         try {
             const res = await fetch("TDG_Masterfile BQLDA.xlsx");
             if (!res.ok) throw new Error("Không thể tải tệp mẫu Excel gốc TDG_Masterfile BQLDA.xlsx!");
@@ -3095,27 +3104,27 @@ document.addEventListener("DOMContentLoaded", () => {
                     row.getCell(4).value = rowObj.nhom_ct;
                     row.getCell(5).value = rowObj.hang_muc_work;
                     row.getCell(6).value = rowObj.phu_trach;
-                    row.getCell(7).value = rowObj.ngay_bd_yc ? new Date(rowObj.ngay_bd_yc) : null;
-                    row.getCell(8).value = rowObj.ngay_kt_yc ? new Date(rowObj.ngay_kt_yc) : null;
+                    row.getCell(7).value = parseDateSafe(rowObj.ngay_bd_yc);
+                    row.getCell(8).value = parseDateSafe(rowObj.ngay_kt_yc);
                     row.getCell(9).value = parseFloat(rowObj.ngan_sach) || 0;
-                    row.getCell(10).value = rowObj.kh_phat_hanh_hstktc ? new Date(rowObj.kh_phat_hanh_hstktc) : null;
+                    row.getCell(10).value = parseDateSafe(rowObj.kh_phat_hanh_hstktc);
                     row.getCell(11).value = rowObj.tt_hstktc || null;
                     row.getCell(12).value = rowObj.tt_specs || null;
                     row.getCell(13).value = rowObj.tt_boq_kl || null;
-                    row.getCell(14).value = rowObj.kh_lcnt ? new Date(rowObj.kh_lcnt) : null;
+                    row.getCell(14).value = parseDateSafe(rowObj.kh_lcnt);
                     row.getCell(15).value = rowObj.tt_lcnt || null;
-                    row.getCell(16).value = rowObj.kh_ky_hdcu ? new Date(rowObj.kh_ky_hdcu) : null;
+                    row.getCell(16).value = parseDateSafe(rowObj.kh_ky_hdcu);
                     row.getCell(17).value = rowObj.tt_ky_hdcu || null;
-                    row.getCell(18).value = rowObj.kh_pd_khcu ? new Date(rowObj.kh_pd_khcu) : null;
+                    row.getCell(18).value = parseDateSafe(rowObj.kh_pd_khcu);
                     row.getCell(19).value = rowObj.tt_khcu || null;
                     row.getCell(20).value = parseFloat(rowObj.gia_tri_hdcu) || 0;
 
                     // Formulas
                     row.getCell(21).value = { formula: `IF(OR(I${r}="",T${r}=""),"",T${r}/I${r})` };
                     
-                    row.getCell(22).value = rowObj.kh_ky_plhd_cdt ? new Date(rowObj.kh_ky_plhd_cdt) : null;
+                    row.getCell(22).value = parseDateSafe(rowObj.kh_ky_plhd_cdt);
                     row.getCell(23).value = rowObj.tt_ky_plhd_cdt || null;
-                    row.getCell(24).value = rowObj.kh_pd_khtk ? new Date(rowObj.kh_pd_khtk) : null;
+                    row.getCell(24).value = parseDateSafe(rowObj.kh_pd_khtk);
                     row.getCell(25).value = rowObj.tt_khtk || null;
 
                     row.getCell(26).value = { formula: `IF($B${r}="","",IF(AND(OR(K${r}="Đã phát hành",K${r}="Hoàn thiện"),M${r}="Đã bàn giao"),"✔","✘"))` };
@@ -3123,7 +3132,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     row.getCell(28).value = { formula: `IF($B${r}="","",IF(Y${r}="Đã duyệt","✔","✘"))` };
                     row.getCell(29).value = { formula: `IF($B${r}="","",IF(AND(Z${r}="✔",AA${r}="✔",AB${r}="✔"),"ĐỦ ĐK KHỞI CÔNG","THIẾU ĐK"))` };
 
-                    row.getCell(30).value = rowObj.ngay_bd_khoi_cong ? new Date(rowObj.ngay_bd_khoi_cong) : null;
+                    row.getCell(30).value = parseDateSafe(rowObj.ngay_bd_khoi_cong);
 
                     row.getCell(31).value = { formula: `IF($B${r}="","",COUNTIFS('01_HSo TienKC'!$B:$B,$B${r},'01_HSo TienKC'!$J:$J,"Đã duyệt"))` };
 
@@ -3169,7 +3178,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 row.getCell(4).value = rowObj["Loại hồ sơ"];
                 row.getCell(5).value = rowObj["Tên sản phẩm / Số hiệu"];
                 row.getCell(6).value = rowObj["LINK lưu trữ"];
-                row.getCell(7).value = rowObj["Ngày HT"] ? new Date(rowObj["Ngày HT"]) : null;
+                row.getCell(7).value = parseDateSafe(rowObj["Ngày HT"]);
                 row.getCell(8).value = rowObj["Người lập"];
                 row.getCell(9).value = rowObj["Người duyệt"];
                 row.getCell(10).value = rowObj["TT duyệt"];
@@ -3189,7 +3198,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 row.getCell(10).value = rowObj["TT duyệt"];
                 row.getCell(11).value = rowObj["Người lập"];
                 row.getCell(12).value = rowObj["Người duyệt"];
-                row.getCell(13).value = rowObj["Ngày duyệt"] ? new Date(rowObj["Ngày duyệt"]) : null;
+                row.getCell(13).value = parseDateSafe(rowObj["Ngày duyệt"]);
             });
 
             // 4. Write Sổ 03
@@ -3198,7 +3207,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 row.getCell(2).value = rowObj["Mã PS"];
                 row.getCell(3).value = rowObj["Mã BSC"];
                 row.getCell(4).value = rowObj["Hạng mục"];
-                row.getCell(5).value = rowObj["Ngày PS"] ? new Date(rowObj["Ngày PS"]) : null;
+                row.getCell(5).value = parseDateSafe(rowObj["Ngày PS"]);
                 row.getCell(6).value = rowObj["Loại"];
                 row.getCell(7).value = rowObj["Mô tả"];
                 row.getCell(8).value = rowObj["Nguyên nhân"];
@@ -3208,7 +3217,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 row.getCell(12).value = rowObj["LINK hồ sơ"];
                 row.getCell(13).value = rowObj["TT duyệt"];
                 row.getCell(14).value = rowObj["Người duyệt"];
-                row.getCell(15).value = rowObj["Ngày duyệt"] ? new Date(rowObj["Ngày duyệt"]) : null;
+                row.getCell(15).value = parseDateSafe(rowObj["Ngày duyệt"]);
                 row.getCell(16).value = rowObj["Nội dung điều chỉnh (KH→KQ)"] || rowObj["Nội dung điều chỉnh"] || "";
                 row.getCell(17).value = rowObj["Ghi chú"] || "";
             });
@@ -3219,7 +3228,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 row.getCell(2).value = rowObj["Mã YC"];
                 row.getCell(3).value = rowObj["Mã BSC"];
                 row.getCell(4).value = rowObj["Hạng mục"];
-                row.getCell(5).value = rowObj["Ngày YC"] ? new Date(rowObj["Ngày YC"]) : null;
+                row.getCell(5).value = parseDateSafe(rowObj["Ngày YC"]);
                 row.getCell(6).value = rowObj["Loại YC"];
                 row.getCell(7).value = rowObj["Vật tư / Thiết bị"] || rowObj["Vật tư/Thiết bị"];
                 row.getCell(8).value = rowObj["Đặc tả KT / Lý do"];
@@ -3230,7 +3239,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 row.getCell(13).value = rowObj["LINK hồ sơ"];
                 row.getCell(14).value = rowObj["TT duyệt"];
                 row.getCell(15).value = rowObj["Người duyệt"];
-                row.getCell(16).value = rowObj["Ngày cần"] ? new Date(rowObj["Ngày cần"]) : null;
+                row.getCell(16).value = parseDateSafe(rowObj["Ngày cần"]);
                 row.getCell(17).value = rowObj["TT cung ứng"];
                 row.getCell(18).value = rowObj["Ghi chú"] || "";
             });
@@ -3240,12 +3249,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 row.getCell(1).value = i + 1;
                 row.getCell(2).value = rowObj["Mã BSC"];
                 row.getCell(3).value = rowObj["Hạng mục"];
-                row.getCell(4).value = rowObj["Ngày phát hiện"] ? new Date(rowObj["Ngày phát hiện"]) : null;
+                row.getCell(4).value = parseDateSafe(rowObj["Ngày phát hiện"]);
                 row.getCell(5).value = parseInt(rowObj["Mức chậm (ngày)"]) || 0;
                 row.getCell(6).value = rowObj["Nguyên nhân"];
                 row.getCell(7).value = rowObj["Giải pháp bù"];
                 row.getCell(8).value = rowObj["Chi tiết giải pháp"] || rowObj["Chi tiết phương án"];
-                row.getCell(9).value = rowObj["Mốc cam kết HT"] ? new Date(rowObj["Mốc cam kết HT"]) : null;
+                row.getCell(9).value = parseDateSafe(rowObj["Mốc cam kết HT"]);
                 row.getCell(10).value = rowObj["LINK phương án"];
                 row.getCell(11).value = rowObj["TT duyệt"];
                 row.getCell(12).value = rowObj["Người duyệt"] || "";
