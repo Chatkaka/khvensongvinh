@@ -966,9 +966,11 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 // Sub-item (Child row)
                 let parentBsc = "";
+                let parentGrandParentId = "";
                 for (let k = flatHierarchy.length - 1; k >= 0; k--) {
                     if (flatHierarchy[k].type === "parent") {
                         parentBsc = flatHierarchy[k].id;
+                        parentGrandParentId = flatHierarchy[k].parentId;
                         break;
                     }
                 }
@@ -976,7 +978,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     type: "child",
                     id: String(row.tt),
                     parentId: parentBsc,
-                    grandParentId: goiThauPl,
+                    grandParentId: parentGrandParentId,
                     row_ref: row
                 });
             }
