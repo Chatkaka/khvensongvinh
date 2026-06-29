@@ -158,6 +158,15 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // Ensure every personnel member has a password and Proper CRUD flags
         db.nhan_su.forEach(ns => {
+            const nameLower = String(ns.ho_ten || "").toLowerCase().trim();
+            if (nameLower.includes("nguyễn đình hùng") || nameLower.includes("nguyen dinh hung")) {
+                ns.quyen = "Admin";
+                ns.quyen_them = true;
+                ns.quyen_sua = true;
+                ns.quyen_xoa = true;
+                ns.vai_tro = "Cán bộ quản lý (Admin)";
+            }
+
             if (!ns.mat_khau) ns.mat_khau = "123456";
             if (ns.quyen_them === undefined) {
                 if (ns.quyen === 'Admin') ns.quyen_them = true;
