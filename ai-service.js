@@ -6,6 +6,7 @@
 class GeminiAIService {
     constructor() {
         this.apiKey = localStorage.getItem('gemini_api_key') || '';
+        this.model = localStorage.getItem('gemini_model') || 'gemini-3.5-flash';
         this.isSimulation = !this.apiKey;
     }
 
@@ -13,6 +14,11 @@ class GeminiAIService {
         this.apiKey = key;
         localStorage.setItem('gemini_api_key', key);
         this.isSimulation = !key;
+    }
+
+    setModel(modelName) {
+        this.model = modelName || 'gemini-3.5-flash';
+        localStorage.setItem('gemini_model', this.model);
     }
 
     getAiStatus() {
@@ -25,21 +31,21 @@ class GeminiAIService {
         } else {
             return {
                 mode: 'live',
-                text: 'Gemini AI Live - Sẵn sàng kết nối',
+                text: `Gemini AI Live (${this.model}) - Sẵn sàng kết nối`,
                 color: 'var(--color-green)'
             };
         }
     }
 
     /**
-     * Call Google Gemini API (1.5 Flash)
+     * Call Google Gemini API (Dynamic Model)
      */
     async callGeminiAPI(prompt, systemInstruction = '') {
         if (this.isSimulation) {
             return this.getMockResponse(prompt);
         }
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
         const requestBody = {
             contents: [{
                 parts: [{ text: prompt }]
