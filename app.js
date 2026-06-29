@@ -3283,6 +3283,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("btn-add-package").addEventListener("click", () => openModalForm('master'));
     document.getElementById("btn-export-excel").addEventListener("click", exportToExcel);
     document.getElementById("btn-add-s01").addEventListener("click", () => openModalForm('s01'));
+    document.getElementById("btn-add-s02").addEventListener("click", () => openModalForm('s02'));
     document.getElementById("btn-add-s03").addEventListener("click", () => openModalForm('s03'));
     document.getElementById("btn-add-s04").addEventListener("click", () => openModalForm('s04'));
     document.getElementById("btn-add-s05").addEventListener("click", () => openModalForm('s05'));
