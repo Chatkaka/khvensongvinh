@@ -891,7 +891,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     th.style.width = "50px";
                 } else if (h === "Mã BSC") {
                     th.className = "freeze-2";
-                    th.style.width = "120px";
+                    th.style.width = "220px";
                 } else if (h === "Nhóm Công Trình") {
                     th.style.width = "150px";
                 } else if (h === "Hạng Mục / Công Việc") {
@@ -908,7 +908,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const tr1 = document.createElement("tr");
             tr1.innerHTML = `
                 <th rowspan="2" class="freeze" style="width: 50px;">TT</th>
-                <th rowspan="2" class="freeze-2" style="width: 120px;">Mã BSC</th>
+                <th rowspan="2" class="freeze-2" style="width: 220px;">Mã BSC</th>
                 <th rowspan="2" style="width: 100px;">Gói thầu (PL)</th>
                 <th rowspan="2" style="width: 160px;">Nhóm CT</th>
                 <th rowspan="2" style="width: 280px;">Hạng mục / Công việc</th>

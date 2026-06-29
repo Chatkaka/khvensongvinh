@@ -513,6 +513,10 @@ body {
     background-color: #121620;
     z-index: 10;
     border-right: 2px solid var(--border-color);
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
+    white-space: nowrap;
 }
 
 .erp-table thead th.freeze {
@@ -531,6 +535,10 @@ body {
     z-index: 30;
     background-color: #161c28;
     border-right: 2px solid var(--border-color);
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
+    white-space: nowrap;
 }
 
 .erp-table tbody tr:hover td {
