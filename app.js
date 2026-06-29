@@ -3377,9 +3377,28 @@ function openEditModalForm(rowIdx) {
         if (srcCell.numFmt) destCell.numFmt = srcCell.numFmt;
     }
 
-    async function fillRegistrySheet(workbook, sheetName, startRow, dbData, totalCols, mapRowFunc) {
-        const sheet = workbook.getWorksheet(sheetName);
-        if (!sheet) return;
+    async function fillRegistrySheet(workbook, sheetName, startRow, dbData, totalCols, mapRowFunc, headers) {
+        let sheet = workbook.getWorksheet(sheetName);
+        if (!sheet) {
+            sheet = workbook.addWorksheet(sheetName);
+        }
+        
+        // Add headers programmatically if sheet is newly created/empty
+        if (sheet.rowCount < startRow && headers) {
+            sheet.addRow([]); // Row 1
+            const hRow = sheet.addRow(headers); // Row 2
+            hRow.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+            hRow.height = 24;
+            for (let c = 1; c <= totalCols; c++) {
+                hRow.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+                hRow.getCell(c).border = {
+                    top: { style: 'thin', color: { argb: 'FF334155' } },
+                    bottom: { style: 'thin', color: { argb: 'FF334155' } },
+                    left: { style: 'thin', color: { argb: 'FF334155' } },
+                    right: { style: 'thin', color: { argb: 'FF334155' } }
+                };
+            }
+        }
         
         // Clear extra rows in the template
         const totalRowsInSheet = sheet.rowCount;
@@ -3393,13 +3412,26 @@ function openEditModalForm(rowIdx) {
         // Write records
         dbData.forEach((rowObj, i) => {
             const r = startRow + i;
-            // Copy styles if new row
-            if (r > startRow && !sheet.getRow(r).getCell(1).font) {
+            // Copy styles if new row (only if template rows exist)
+            if (r > startRow && sheet.getRow(startRow) && !sheet.getRow(r).getCell(1).font) {
                 const srcRow = sheet.getRow(startRow);
                 const destRow = sheet.getRow(r);
-                destRow.height = srcRow.height;
+                destRow.height = srcRow.height || 20;
                 for (let c = 1; c <= totalCols; c++) {
                     copyCellFormat(srcRow.getCell(c), destRow.getCell(c));
+                }
+            } else if (r > startRow && !sheet.getRow(r).getCell(1).font) {
+                // Add clean fallback borders and styles for generated sheets
+                const destRow = sheet.getRow(r);
+                destRow.height = 20;
+                for (let c = 1; c <= totalCols; c++) {
+                    destRow.getCell(c).font = { name: 'Arial', size: 9 };
+                    destRow.getCell(c).border = {
+                        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+                    };
                 }
             }
             
@@ -3409,7 +3441,7 @@ function openEditModalForm(rowIdx) {
     }
 
     async function exportToExcel() {
-        showToast("Xuất Excel", "Đang tải tệp mẫu và xuất dữ liệu...", "info");
+        showToast("Xuất Excel", "Đang phân tích dữ liệu và khởi tạo tệp Excel...", "info");
         
         function parseDateSafe(val) {
             if (!val) return null;
@@ -3420,70 +3452,123 @@ function openEditModalForm(rowIdx) {
         }
 
         try {
-            const res = await fetch("TDG_Masterfile BQLDA.xlsx");
-            if (!res.ok) throw new Error("Không thể tải tệp mẫu Excel gốc TDG_Masterfile BQLDA.xlsx!");
-            const arrayBuffer = await res.arrayBuffer();
-
+            let templateLoaded = false;
             const workbook = new ExcelJS.Workbook();
-            await workbook.xlsx.load(arrayBuffer);
+            
+            try {
+                const res = await fetch("TDG_Masterfile BQLDA.xlsx");
+                if (res.ok) {
+                    const arrayBuffer = await res.arrayBuffer();
+                    await workbook.xlsx.load(arrayBuffer);
+                    templateLoaded = true;
+                    console.log("Successfully loaded local Excel template file.");
+                } else {
+                    console.warn("Template fetch returned status:", res.status);
+                }
+            } catch (err) {
+                console.warn("Failed to load local Excel template file, building programmatically...", err);
+            }
 
-            // 1. Write BANG TONG HOP
-            const sheetMaster = workbook.getWorksheet('BANG TONG HOP');
-            if (sheetMaster) {
-                const startRow = 6;
+            // Build dynamic tree hierarchy
+            const flatHierarchy = [];
+            const seenGrandParents = new Set();
 
-                // Build flat hierarchy list exactly like in UI renderMasterGrid to preserve tree dividers and colors
-                const flatHierarchy = [];
-                const seenGrandParents = new Set();
+            db.master.forEach(row => {
+                const bsc = String(row.ma_bsc || "").trim();
+                const goiThauPl = String(row.goi_thau_pl || "").trim();
+                const isParentPackage = bsc !== "";
 
-                db.master.forEach(row => {
-                    const bsc = String(row.ma_bsc || "").trim();
-                    const goiThauPl = String(row.goi_thau_pl || "").trim();
-                    const isParentPackage = bsc !== "";
+                if (isParentPackage && goiThauPl !== "" && !seenGrandParents.has(goiThauPl)) {
+                    seenGrandParents.add(goiThauPl);
+                    flatHierarchy.push({
+                        type: "grand_parent",
+                        id: goiThauPl,
+                        tt: row.nhom_ct,
+                        nhom_ct: row.nhom_ct,
+                        hang_muc_work: `GÓI THẦU ${row.nhom_ct} (${goiThauPl})`,
+                        phu_trach: "",
+                        row_ref: row
+                    });
+                }
 
-                    // Insert Grand Parent package row if new
-                    if (isParentPackage && goiThauPl !== "" && !seenGrandParents.has(goiThauPl)) {
-                        seenGrandParents.add(goiThauPl);
-                        flatHierarchy.push({
-                            type: "grand_parent",
-                            id: goiThauPl,
-                            tt: row.nhom_ct,
-                            nhom_ct: row.nhom_ct,
-                            hang_muc_work: `GÓI THẦU ${row.nhom_ct} (${goiThauPl})`,
-                            phu_trach: "",
-                            row_ref: row
-                        });
-                    }
-
-                    if (isParentPackage) {
-                        flatHierarchy.push({
-                            type: "parent",
-                            id: bsc,
-                            parentId: goiThauPl,
-                            row_ref: row
-                        });
-                    } else {
-                        // Sub-item (Child row)
-                        let parentBsc = "";
-                        let parentGrandParentId = "";
-                        for (let k = flatHierarchy.length - 1; k >= 0; k--) {
-                            if (flatHierarchy[k].type === "parent") {
-                                parentBsc = flatHierarchy[k].id;
-                                parentGrandParentId = flatHierarchy[k].parentId;
-                                break;
-                            }
+                if (isParentPackage) {
+                    flatHierarchy.push({
+                        type: "parent",
+                        id: bsc,
+                        parentId: goiThauPl,
+                        row_ref: row
+                    });
+                } else {
+                    let parentBsc = "";
+                    let parentGrandParentId = "";
+                    for (let k = flatHierarchy.length - 1; k >= 0; k--) {
+                        if (flatHierarchy[k].type === "parent") {
+                            parentBsc = flatHierarchy[k].id;
+                            parentGrandParentId = flatHierarchy[k].parentId;
+                            break;
                         }
-                        flatHierarchy.push({
-                            type: "child",
-                            id: String(row.tt),
-                            parentId: parentBsc,
-                            grandParentId: parentGrandParentId,
-                            row_ref: row
-                        });
                     }
-                });
+                    flatHierarchy.push({
+                        type: "child",
+                        id: String(row.tt),
+                        parentId: parentBsc,
+                        grandParentId: parentGrandParentId,
+                        row_ref: row
+                    });
+                }
+            });
 
-                // Clear any extra rows in template beyond our hierarchy length
+            if (!templateLoaded) {
+                console.log("Creating BANG TONG HOP sheet from scratch.");
+                const sheetMaster = workbook.addWorksheet('BANG TONG HOP');
+                
+                // Add header info
+                const titleRow = sheetMaster.addRow(["BÁO CÁO TỔNG HỢP TIẾN ĐỘ & NGÂN SÁCH DỰ ÁN VSV - TDG GROUP"]);
+                titleRow.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF1E3A8A' } };
+                sheetMaster.addRow([]); // empty spacing
+                
+                const headerRow1 = sheetMaster.addRow([
+                    "TT", "Mã BSC", "Gói thầu (PL)", "Nhóm CT", "Hạng mục / Công việc", "Phụ trách",
+                    "A. Đầu vào CĐT (Tiến độ - Ngân sách - HSKT)", "", "", "", "", "", "",
+                    "B. Kế hoạch Cung ứng & Triển khai", "", "", "", "", "", "",
+                    "D. Chốt Chặn Khởi Công", "", "", "", "",
+                    "E. Ngân sách & Chi phí", "", "",
+                    "F. Giám sát Biến Động Hàng Tháng / Tuần", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""
+                ]);
+                headerRow1.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+                headerRow1.height = 24;
+                
+                const headerRow2 = sheetMaster.addRow([
+                    "", "", "", "", "", "",
+                    "Ngày BĐ (YC)", "Ngày KT (YC)", "Ngân sách (tỷ)", "KH HSTKTC", "TT HSTKTC", "TT SPECS", "TT BOQ/KL",
+                    "KH LCNT", "TT LCNT", "KH Ký HĐCU", "TT Ký HĐCU", "KH PD KHCU", "TT KHCU", "Giá trị HĐCU (tỷ)", "Tỷ lệ HĐ/NS",
+                    "KH Ký PLHĐ", "TT Ký PLHĐ", "KH PD KHTK", "TT KHTK",
+                    "ĐK1 HSKT", "ĐK2 HĐCU", "ĐK3 KHTK", "ĐIỀU KIỆN ĐỦ", "NGÀY BĐ KHỞI CÔNG",
+                    "Lũy Kế HĐ A-B (tỷ)", "Lũy Kế Phát Sinh B-B' (tỷ)", "Lũy Kế Tổng Chi Phí (tỷ)",
+                    "Tài liệu KH Tháng", "Phát sinh chưa duyệt", "Yêu cầu Cung ứng", "Bù Tiến Độ đang chạy",
+                    "QA KH Tháng", "QA KQ Tháng", "QA ĐG Tháng",
+                    "TC KH Tháng", "TC KQ Tháng", "TC ĐG Tháng",
+                    "T1 KH", "T1 KQ", "T1 DG",
+                    "T2 KH", "T2 KQ", "T2 DG",
+                    "T3 KH", "T3 KQ", "T3 DG",
+                    "T4 KH", "T4 KQ", "T4 DG"
+                ]);
+                headerRow2.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+                headerRow2.height = 24;
+
+                // Style scratch header rows
+                for (let col = 1; col <= 56; col++) {
+                    headerRow1.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
+                    headerRow2.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+                    headerRow1.getCell(col).border = { bottom: { style: 'thin', color: { argb: 'FFFFFFFF' } } };
+                }
+            }
+
+            const sheetMaster = workbook.getWorksheet('BANG TONG HOP');
+            const startRow = templateLoaded ? 6 : 5;
+
+            if (sheetMaster) {
+                // Clear extra rows
                 const totalRowsInSheet = sheetMaster.rowCount;
                 for (let r = startRow + flatHierarchy.length; r <= totalRowsInSheet; r++) {
                     const row = sheetMaster.getRow(r);
@@ -3492,30 +3577,39 @@ function openEditModalForm(rowIdx) {
                     }
                 }
 
-                // Write hierarchy with beautiful conditional styling
+                // Write rows
                 flatHierarchy.forEach((item, i) => {
                     const r = startRow + i;
                     const row = sheetMaster.getRow(r);
                     const rowObj = item.row_ref;
 
-                    // Copy general formats from startRow
-                    if (r > startRow && !row.getCell(1).font) {
+                    if (templateLoaded && r > startRow && !row.getCell(1).font) {
                         const srcRow = sheetMaster.getRow(startRow);
                         row.height = srcRow.height;
                         for (let c = 1; c <= 56; c++) {
                             copyCellFormat(srcRow.getCell(c), row.getCell(c));
                         }
+                    } else if (!templateLoaded) {
+                        row.height = 20;
+                        for (let c = 1; c <= 56; c++) {
+                            row.getCell(c).font = { name: 'Arial', size: 9 };
+                            row.getCell(c).border = {
+                                top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                                bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                                left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                                right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+                            };
+                        }
                     }
 
                     if (item.type === 'grand_parent') {
-                        // Merge columns 1 to 56 for Grand Parent Header row
                         sheetMaster.mergeCells(r, 1, r, 56);
                         const cell = row.getCell(1);
                         cell.value = item.hang_muc_work.toUpperCase();
-                        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+                        cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
                         cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-                        row.height = 28;
+                        row.height = 26;
                     } else if (rowObj) {
                         row.getCell(1).value = rowObj.tt;
                         row.getCell(2).value = rowObj.ma_bsc;
@@ -3538,7 +3632,6 @@ function openEditModalForm(rowIdx) {
                         row.getCell(19).value = rowObj.tt_khcu || null;
                         row.getCell(20).value = parseFloat(rowObj.gia_tri_hdcu) || 0;
 
-                        // Formulas
                         row.getCell(21).value = { formula: `IF(OR(I${r}="",T${r}=""),"",T${r}/I${r})` };
                         
                         row.getCell(22).value = parseDateSafe(rowObj.kh_ky_plhd_cdt);
@@ -3587,7 +3680,6 @@ function openEditModalForm(rowIdx) {
                         row.getCell(55).value = rowObj.t4_kq !== undefined ? parseFloat(rowObj.t4_kq) : null;
                         row.getCell(56).value = rowObj.t4_dg || null;
 
-                        // Apply beautiful styling based on item type and lock status
                         if (item.type === 'parent') {
                             const isCritical = isPackageLocked(item.id);
                             const bgColor = isCritical ? 'FFFEE2E2' : 'FFF1F5F9';
@@ -3598,7 +3690,6 @@ function openEditModalForm(rowIdx) {
                                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
                             }
                         } else if (item.type === 'child') {
-                            // Sub-item styling: normal weight, clean white/gray look
                             for (let c = 1; c <= 56; c++) {
                                 const cell = row.getCell(c);
                                 cell.font = { name: 'Arial', size: 9, bold: false, color: { argb: 'FF475569' } };
@@ -3621,7 +3712,7 @@ function openEditModalForm(rowIdx) {
                 row.getCell(8).value = rowObj["Người lập"];
                 row.getCell(9).value = rowObj["Người duyệt"];
                 row.getCell(10).value = rowObj["TT duyệt"];
-            });
+            }, ["STT", "Mã BSC", "Hạng mục", "Loại hồ sơ", "Tên sản phẩm / Số hiệu", "LINK lưu trữ", "Ngày HT", "Người lập", "Người duyệt", "TT duyệt"]);
 
             // 3. Write Sổ 02
             await fillRegistrySheet(workbook, '02_KH Thang_Tuan', 3, db.s02, 13, (row, rowObj, r, i) => {
@@ -3638,7 +3729,7 @@ function openEditModalForm(rowIdx) {
                 row.getCell(11).value = rowObj["Người lập"];
                 row.getCell(12).value = rowObj["Người duyệt"];
                 row.getCell(13).value = parseDateSafe(rowObj["Ngày duyệt"]);
-            });
+            }, ["STT", "Mã BSC", "Hạng mục", "Tháng", "Loại tài liệu", "Nội dung chính", "Đạt YCKT CĐT", "LINK tài liệu", "TT lập", "TT duyệt", "Người lập", "Người duyệt", "Ngày duyệt"]);
 
             // 4. Write Sổ 03
             await fillRegistrySheet(workbook, '03_Phat sinh', 3, db.s03, 17, (row, rowObj, r, i) => {
@@ -3659,7 +3750,7 @@ function openEditModalForm(rowIdx) {
                 row.getCell(15).value = parseDateSafe(rowObj["Ngày duyệt"]);
                 row.getCell(16).value = rowObj["Nội dung điều chỉnh (KH→KQ)"] || rowObj["Nội dung điều chỉnh"] || "";
                 row.getCell(17).value = rowObj["Ghi chú"] || "";
-            });
+            }, ["STT", "Mã PS", "Mã BSC", "Hạng mục", "Ngày PS", "Loại", "Mô tả", "Nguyên nhân", "Đề xuất xử lý", "Giá trị (tỷ)", "Ảnh hưởng TĐ (ngày)", "LINK hồ sơ", "TT duyệt", "Người duyệt", "Ngày duyệt", "Nội dung điều chỉnh", "Ghi chú"]);
 
             // 5. Write Sổ 04
             await fillRegistrySheet(workbook, '04_CU dac thu', 3, db.s04, 18, (row, rowObj, r, i) => {
@@ -3681,7 +3772,7 @@ function openEditModalForm(rowIdx) {
                 row.getCell(16).value = parseDateSafe(rowObj["Ngày cần"]);
                 row.getCell(17).value = rowObj["TT cung ứng"];
                 row.getCell(18).value = rowObj["Ghi chú"] || "";
-            });
+            }, ["STT", "Mã YC", "Mã BSC", "Hạng mục", "Ngày YC", "Loại YC", "Vật tư / Thiết bị", "Đặc tả KT / Lý do", "KL", "ĐVT", "Giá trị (tỷ)", "Trong/Ngoài HĐCU", "LINK hồ sơ", "TT duyệt", "Người duyệt", "Ngày cần", "TT cung ứng", "Ghi chú"]);
 
             // 6. Write Sổ 05
             await fillRegistrySheet(workbook, '05_Bu tien do', 3, db.s05, 15, (row, rowObj, r, i) => {
@@ -3700,9 +3791,8 @@ function openEditModalForm(rowIdx) {
                 row.getCell(13).value = rowObj["KQ thực hiện bù"];
                 row.getCell(14).value = rowObj["TT thực hiện"];
                 row.getCell(15).value = rowObj["Ghi chú"] || "";
-            });
+            }, ["STT", "Mã BSC", "Hạng mục", "Ngày phát hiện", "Mức chậm (ngày)", "Nguyên nhân", "Giải pháp bù", "Chi tiết giải pháp", "Mốc cam kết HT", "LINK phương án", "TT duyệt", "Người duyệt", "KQ thực hiện bù", "TT thực hiện", "Ghi chú"]);
 
-            // Write back and trigger download
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
             const url = window.URL.createObjectURL(blob);
@@ -3711,7 +3801,7 @@ function openEditModalForm(rowIdx) {
             a.download = `TDG_Masterfile_Exported_${new Date().toISOString().substring(0, 10)}.xlsx`;
             a.click();
             window.URL.revokeObjectURL(url);
-            showToast("Xuất Excel", "Đã xuất dữ liệu Excel bảo lưu hoàn toàn định dạng gốc thành công!", "success");
+            showToast("Xuất Excel", "Đã xuất dữ liệu Excel bảo lưu định dạng gốc thành công!", "success");
         } catch (error) {
             console.error("Lỗi xuất Excel:", error);
             showToast("Lỗi Xuất Excel", "Có lỗi xảy ra khi tạo file Excel: " + error.message, "danger");
