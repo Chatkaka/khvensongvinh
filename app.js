@@ -3431,99 +3431,181 @@ function openEditModalForm(rowIdx) {
             const sheetMaster = workbook.getWorksheet('BANG TONG HOP');
             if (sheetMaster) {
                 const startRow = 6;
-                const dbData = db.master;
 
-                // Clear any extra rows beyond database length
+                // Build flat hierarchy list exactly like in UI renderMasterGrid to preserve tree dividers and colors
+                const flatHierarchy = [];
+                const seenGrandParents = new Set();
+
+                db.master.forEach(row => {
+                    const bsc = String(row.ma_bsc || "").trim();
+                    const goiThauPl = String(row.goi_thau_pl || "").trim();
+                    const isParentPackage = bsc !== "";
+
+                    // Insert Grand Parent package row if new
+                    if (isParentPackage && goiThauPl !== "" && !seenGrandParents.has(goiThauPl)) {
+                        seenGrandParents.add(goiThauPl);
+                        flatHierarchy.push({
+                            type: "grand_parent",
+                            id: goiThauPl,
+                            tt: row.nhom_ct,
+                            nhom_ct: row.nhom_ct,
+                            hang_muc_work: `GÓI THẦU ${row.nhom_ct} (${goiThauPl})`,
+                            phu_trach: "",
+                            row_ref: row
+                        });
+                    }
+
+                    if (isParentPackage) {
+                        flatHierarchy.push({
+                            type: "parent",
+                            id: bsc,
+                            parentId: goiThauPl,
+                            row_ref: row
+                        });
+                    } else {
+                        // Sub-item (Child row)
+                        let parentBsc = "";
+                        let parentGrandParentId = "";
+                        for (let k = flatHierarchy.length - 1; k >= 0; k--) {
+                            if (flatHierarchy[k].type === "parent") {
+                                parentBsc = flatHierarchy[k].id;
+                                parentGrandParentId = flatHierarchy[k].parentId;
+                                break;
+                            }
+                        }
+                        flatHierarchy.push({
+                            type: "child",
+                            id: String(row.tt),
+                            parentId: parentBsc,
+                            grandParentId: parentGrandParentId,
+                            row_ref: row
+                        });
+                    }
+                });
+
+                // Clear any extra rows in template beyond our hierarchy length
                 const totalRowsInSheet = sheetMaster.rowCount;
-                for (let r = startRow + dbData.length; r <= totalRowsInSheet; r++) {
+                for (let r = startRow + flatHierarchy.length; r <= totalRowsInSheet; r++) {
                     const row = sheetMaster.getRow(r);
                     for (let c = 1; c <= 56; c++) {
                         row.getCell(c).value = null;
                     }
                 }
 
-                // Write packages
-                dbData.forEach((rowObj, i) => {
+                // Write hierarchy with beautiful conditional styling
+                flatHierarchy.forEach((item, i) => {
                     const r = startRow + i;
-                    if (r > startRow && !sheetMaster.getRow(r).getCell(1).font) {
+                    const row = sheetMaster.getRow(r);
+                    const rowObj = item.row_ref;
+
+                    // Copy general formats from startRow
+                    if (r > startRow && !row.getCell(1).font) {
                         const srcRow = sheetMaster.getRow(startRow);
-                        const destRow = sheetMaster.getRow(r);
-                        destRow.height = srcRow.height;
+                        row.height = srcRow.height;
                         for (let c = 1; c <= 56; c++) {
-                            copyCellFormat(srcRow.getCell(c), destRow.getCell(c));
+                            copyCellFormat(srcRow.getCell(c), row.getCell(c));
                         }
                     }
 
-                    const row = sheetMaster.getRow(r);
-                    row.getCell(1).value = rowObj.tt;
-                    row.getCell(2).value = rowObj.ma_bsc;
-                    row.getCell(3).value = rowObj.goi_thau_pl;
-                    row.getCell(4).value = rowObj.nhom_ct;
-                    row.getCell(5).value = rowObj.hang_muc_work;
-                    row.getCell(6).value = rowObj.phu_trach;
-                    row.getCell(7).value = parseDateSafe(rowObj.ngay_bd_yc);
-                    row.getCell(8).value = parseDateSafe(rowObj.ngay_kt_yc);
-                    row.getCell(9).value = parseFloat(rowObj.ngan_sach) || 0;
-                    row.getCell(10).value = parseDateSafe(rowObj.kh_phat_hanh_hstktc);
-                    row.getCell(11).value = rowObj.tt_hstktc || null;
-                    row.getCell(12).value = rowObj.tt_specs || null;
-                    row.getCell(13).value = rowObj.tt_boq_kl || null;
-                    row.getCell(14).value = parseDateSafe(rowObj.kh_lcnt);
-                    row.getCell(15).value = rowObj.tt_lcnt || null;
-                    row.getCell(16).value = parseDateSafe(rowObj.kh_ky_hdcu);
-                    row.getCell(17).value = rowObj.tt_ky_hdcu || null;
-                    row.getCell(18).value = parseDateSafe(rowObj.kh_pd_khcu);
-                    row.getCell(19).value = rowObj.tt_khcu || null;
-                    row.getCell(20).value = parseFloat(rowObj.gia_tri_hdcu) || 0;
+                    if (item.type === 'grand_parent') {
+                        // Merge columns 1 to 56 for Grand Parent Header row
+                        sheetMaster.mergeCells(r, 1, r, 56);
+                        const cell = row.getCell(1);
+                        cell.value = item.hang_muc_work.toUpperCase();
+                        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+                        cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                        row.height = 28;
+                    } else if (rowObj) {
+                        row.getCell(1).value = rowObj.tt;
+                        row.getCell(2).value = rowObj.ma_bsc;
+                        row.getCell(3).value = rowObj.goi_thau_pl;
+                        row.getCell(4).value = rowObj.nhom_ct;
+                        row.getCell(5).value = item.type === 'child' ? "   " + rowObj.hang_muc_work : rowObj.hang_muc_work;
+                        row.getCell(6).value = rowObj.phu_trach;
+                        row.getCell(7).value = parseDateSafe(rowObj.ngay_bd_yc);
+                        row.getCell(8).value = parseDateSafe(rowObj.ngay_kt_yc);
+                        row.getCell(9).value = parseFloat(rowObj.ngan_sach) || 0;
+                        row.getCell(10).value = parseDateSafe(rowObj.kh_phat_hanh_hstktc);
+                        row.getCell(11).value = rowObj.tt_hstktc || null;
+                        row.getCell(12).value = rowObj.tt_specs || null;
+                        row.getCell(13).value = rowObj.tt_boq_kl || null;
+                        row.getCell(14).value = parseDateSafe(rowObj.kh_lcnt);
+                        row.getCell(15).value = rowObj.tt_lcnt || null;
+                        row.getCell(16).value = parseDateSafe(rowObj.kh_ky_hdcu);
+                        row.getCell(17).value = rowObj.tt_ky_hdcu || null;
+                        row.getCell(18).value = parseDateSafe(rowObj.kh_pd_khcu);
+                        row.getCell(19).value = rowObj.tt_khcu || null;
+                        row.getCell(20).value = parseFloat(rowObj.gia_tri_hdcu) || 0;
 
-                    // Formulas
-                    row.getCell(21).value = { formula: `IF(OR(I${r}="",T${r}=""),"",T${r}/I${r})` };
-                    
-                    row.getCell(22).value = parseDateSafe(rowObj.kh_ky_plhd_cdt);
-                    row.getCell(23).value = rowObj.tt_ky_plhd_cdt || null;
-                    row.getCell(24).value = parseDateSafe(rowObj.kh_pd_khtk);
-                    row.getCell(25).value = rowObj.tt_khtk || null;
+                        // Formulas
+                        row.getCell(21).value = { formula: `IF(OR(I${r}="",T${r}=""),"",T${r}/I${r})` };
+                        
+                        row.getCell(22).value = parseDateSafe(rowObj.kh_ky_plhd_cdt);
+                        row.getCell(23).value = rowObj.tt_ky_plhd_cdt || null;
+                        row.getCell(24).value = parseDateSafe(rowObj.kh_pd_khtk);
+                        row.getCell(25).value = rowObj.tt_khtk || null;
 
-                    row.getCell(26).value = { formula: `IF($B${r}="","",IF(AND(OR(K${r}="Đã phát hành",K${r}="Hoàn thiện"),M${r}="Đã bàn giao"),"✔","✘"))` };
-                    row.getCell(27).value = { formula: `IF($B${r}="","",IF(Q${r}="Đã CU","✔","✘"))` };
-                    row.getCell(28).value = { formula: `IF($B${r}="","",IF(Y${r}="Đã duyệt","✔","✘"))` };
-                    row.getCell(29).value = { formula: `IF($B${r}="","",IF(AND(Z${r}="✔",AA${r}="✔",AB${r}="✔"),"ĐỦ ĐK KHỞI CÔNG","THIẾU ĐK"))` };
+                        row.getCell(26).value = { formula: `IF($B${r}="","",IF(AND(OR(K${r}="Đã phát hành",K${r}="Hoàn thiện"),M${r}="Đã bàn giao"),"✔","✘"))` };
+                        row.getCell(27).value = { formula: `IF($B${r}="","",IF(Q${r}="Đã CU","✔","✘"))` };
+                        row.getCell(28).value = { formula: `IF($B${r}="","",IF(Y${r}="Đã duyệt","✔","✘"))` };
+                        row.getCell(29).value = { formula: `IF($B${r}="","",IF(AND(Z${r}="✔",AA${r}="✔",AB${r}="✔"),"ĐỦ ĐK KHỞI CÔNG","THIẾU ĐK"))` };
 
-                    row.getCell(30).value = parseDateSafe(rowObj.ngay_bd_khoi_cong);
+                        row.getCell(30).value = parseDateSafe(rowObj.ngay_bd_khoi_cong);
 
-                    row.getCell(31).value = { formula: `IF($B${r}="","",COUNTIFS('01_HSo TienKC'!$B:$B,$B${r},'01_HSo TienKC'!$J:$J,"Đã duyệt"))` };
+                        row.getCell(31).value = { formula: `IF($B${r}="","",COUNTIFS('01_HSo TienKC'!$B:$B,$B${r},'01_HSo TienKC'!$J:$J,"Đã duyệt"))` };
 
-                    row.getCell(32).value = { formula: `T${r}` };
-                    row.getCell(33).value = { formula: `SUMIFS('03_Phat sinh'!$J:$J,'03_Phat sinh'!$C:$C,$B${r},'03_Phat sinh'!$M:$M,"Đã duyệt")` };
-                    row.getCell(34).value = { formula: `AF${r}+AG${r}` };
+                        row.getCell(32).value = { formula: `T${r}` };
+                        row.getCell(33).value = { formula: `SUMIFS('03_Phat sinh'!$J:$J,'03_Phat sinh'!$C:$C,$B${r},'03_Phat sinh'!$M:$M,"Đã duyệt")` };
+                        row.getCell(34).value = { formula: `AF${r}+AG${r}` };
 
-                    row.getCell(35).value = { formula: `IF($B${r}="","",COUNTIFS('02_KH Thang_Tuan'!$B:$B,$B${r},'02_KH Thang_Tuan'!$J:$J,"Đã duyệt")&"/"&COUNTIFS('02_KH Thang_Tuan'!$B:$B,$B${r}))` };
-                    row.getCell(36).value = { formula: `IF($B${r}="","",COUNTIFS('03_Phat sinh'!$C:$C,$B${r},'03_Phat sinh'!$M:$M,"<>Đã duyệt"))` };
-                    row.getCell(37).value = { formula: `IF($B${r}="","",COUNTIFS('04_CU dac thu'!$C:$C,$B${r},'04_CU dac thu'!$N:$N,"<>Đã duyệt"))` };
-                    row.getCell(38).value = { formula: `IF($B${r}="","",COUNTIFS('05_Bu tien do'!$B:$B,$B${r},'05_Bu tien do'!$N:$N,"<>Đã hoàn thành"))` };
+                        row.getCell(35).value = { formula: `IF($B${r}="","",COUNTIFS('02_KH Thang_Tuan'!$B:$B,$B${r},'02_KH Thang_Tuan'!$J:$J,"Đã duyệt")&"/"&COUNTIFS('02_KH Thang_Tuan'!$B:$B,$B${r}))` };
+                        row.getCell(36).value = { formula: `IF($B${r}="","",COUNTIFS('03_Phat sinh'!$C:$C,$B${r},'03_Phat sinh'!$M:$M,"<>Đã duyệt"))` };
+                        row.getCell(37).value = { formula: `IF($B${r}="","",COUNTIFS('04_CU dac thu'!$C:$C,$B${r},'04_CU dac thu'!$N:$N,"<>Đã duyệt"))` };
+                        row.getCell(38).value = { formula: `IF($B${r}="","",COUNTIFS('05_Bu tien do'!$B:$B,$B${r},'05_Bu tien do'!$N:$N,"<>Đã hoàn thành"))` };
 
-                    row.getCell(39).value = rowObj.qa_kh_klcv_thang !== undefined ? parseFloat(rowObj.qa_kh_klcv_thang) : null;
-                    row.getCell(40).value = rowObj.qa_kq_klcv_thang !== undefined ? parseFloat(rowObj.qa_kq_klcv_thang) : null;
-                    row.getCell(41).value = rowObj.qa_danh_gia_thang || null;
-                    row.getCell(42).value = rowObj.tc_kh_klcv_thang !== undefined ? parseFloat(rowObj.tc_kh_klcv_thang) : null;
-                    row.getCell(43).value = rowObj.tc_kq_klcv_thang !== undefined ? parseFloat(rowObj.tc_kq_klcv_thang) : null;
-                    row.getCell(44).value = rowObj.tc_danh_gia_thang || null;
+                        row.getCell(39).value = rowObj.qa_kh_klcv_thang !== undefined ? parseFloat(rowObj.qa_kh_klcv_thang) : null;
+                        row.getCell(40).value = rowObj.qa_kq_klcv_thang !== undefined ? parseFloat(rowObj.qa_kq_klcv_thang) : null;
+                        row.getCell(41).value = rowObj.qa_danh_gia_thang || null;
+                        row.getCell(42).value = rowObj.tc_kh_klcv_thang !== undefined ? parseFloat(rowObj.tc_kh_klcv_thang) : null;
+                        row.getCell(43).value = rowObj.tc_kq_klcv_thang !== undefined ? parseFloat(rowObj.tc_kq_klcv_thang) : null;
+                        row.getCell(44).value = rowObj.tc_danh_gia_thang || null;
 
-                    row.getCell(45).value = rowObj.t1_kh !== undefined ? parseFloat(rowObj.t1_kh) : null;
-                    row.getCell(46).value = rowObj.t1_kq !== undefined ? parseFloat(rowObj.t1_kq) : null;
-                    row.getCell(47).value = rowObj.t1_dg || null;
+                        row.getCell(45).value = rowObj.t1_kh !== undefined ? parseFloat(rowObj.t1_kh) : null;
+                        row.getCell(46).value = rowObj.t1_kq !== undefined ? parseFloat(rowObj.t1_kq) : null;
+                        row.getCell(47).value = rowObj.t1_dg || null;
 
-                    row.getCell(48).value = rowObj.t2_kh !== undefined ? parseFloat(rowObj.t2_kh) : null;
-                    row.getCell(49).value = rowObj.t2_kq !== undefined ? parseFloat(rowObj.t2_kq) : null;
-                    row.getCell(50).value = rowObj.t2_dg || null;
+                        row.getCell(48).value = rowObj.t2_kh !== undefined ? parseFloat(rowObj.t2_kh) : null;
+                        row.getCell(49).value = rowObj.t2_kq !== undefined ? parseFloat(rowObj.t2_kq) : null;
+                        row.getCell(50).value = rowObj.t2_dg || null;
 
-                    row.getCell(51).value = rowObj.t3_kh !== undefined ? parseFloat(rowObj.t3_kh) : null;
-                    row.getCell(52).value = rowObj.t3_kq !== undefined ? parseFloat(rowObj.t3_kq) : null;
-                    row.getCell(53).value = rowObj.t3_dg || null;
+                        row.getCell(51).value = rowObj.t3_kh !== undefined ? parseFloat(rowObj.t3_kh) : null;
+                        row.getCell(52).value = rowObj.t3_kq !== undefined ? parseFloat(rowObj.t3_kq) : null;
+                        row.getCell(53).value = rowObj.t3_dg || null;
 
-                    row.getCell(54).value = rowObj.t4_kh !== undefined ? parseFloat(rowObj.t4_kh) : null;
-                    row.getCell(55).value = rowObj.t4_kq !== undefined ? parseFloat(rowObj.t4_kq) : null;
-                    row.getCell(56).value = rowObj.t4_dg || null;
+                        row.getCell(54).value = rowObj.t4_kh !== undefined ? parseFloat(rowObj.t4_kh) : null;
+                        row.getCell(55).value = rowObj.t4_kq !== undefined ? parseFloat(rowObj.t4_kq) : null;
+                        row.getCell(56).value = rowObj.t4_dg || null;
+
+                        // Apply beautiful styling based on item type and lock status
+                        if (item.type === 'parent') {
+                            const isCritical = isPackageLocked(item.id);
+                            const bgColor = isCritical ? 'FFFEE2E2' : 'FFF1F5F9';
+                            const fgColor = isCritical ? 'FFB91C1C' : 'FF334155';
+                            for (let c = 1; c <= 56; c++) {
+                                const cell = row.getCell(c);
+                                cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: fgColor } };
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+                            }
+                        } else if (item.type === 'child') {
+                            // Sub-item styling: normal weight, clean white/gray look
+                            for (let c = 1; c <= 56; c++) {
+                                const cell = row.getCell(c);
+                                cell.font = { name: 'Arial', size: 9, bold: false, color: { argb: 'FF475569' } };
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+                            }
+                        }
+                    }
                 });
             }
 
