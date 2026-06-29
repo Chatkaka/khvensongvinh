@@ -6751,6 +6751,19 @@ const INITIAL_DATABASE = {
       "quyen_sua": true,
       "quyen_xoa": false,
       "goi_thau": "Cung cấp thiết bị"
+    },
+    {
+      "stt": 5,
+      "ho_ten": "Hồ Nghĩa Chất",
+      "email": "chat.hn@tdggroup.vn",
+      "phong_ban": "Ban Quản lý Dự án (BQLDA)",
+      "vai_tro": "Phó Ban Quản lý Dự án (Admin)",
+      "quyen": "Admin",
+      "mat_khau": "123456",
+      "quyen_them": true,
+      "quyen_sua": true,
+      "quyen_xoa": true,
+      "goi_thau": "Tất cả các gói"
     }
   ]
 };
