@@ -2904,8 +2904,268 @@ document.addEventListener("DOMContentLoaded", () => {
         closeModal();
     });
 
+    // 8.5 EXCEL EXPORT (PRESERVING ORIGINAL TEMPLATE STYLING & FORMULAS)
+    function copyCellFormat(srcCell, destCell) {
+        if (srcCell.font) destCell.font = Object.assign({}, srcCell.font);
+        if (srcCell.fill) destCell.fill = Object.assign({}, srcCell.fill);
+        if (srcCell.border) destCell.border = Object.assign({}, srcCell.border);
+        if (srcCell.alignment) destCell.alignment = Object.assign({}, srcCell.alignment);
+        if (srcCell.numFmt) destCell.numFmt = srcCell.numFmt;
+    }
+
+    async function fillRegistrySheet(workbook, sheetName, startRow, dbData, totalCols, mapRowFunc) {
+        const sheet = workbook.getWorksheet(sheetName);
+        if (!sheet) return;
+        
+        // Clear extra rows in the template
+        const totalRowsInSheet = sheet.rowCount;
+        for (let r = startRow + dbData.length; r <= totalRowsInSheet; r++) {
+            const row = sheet.getRow(r);
+            for (let c = 1; c <= totalCols; c++) {
+                row.getCell(c).value = null;
+            }
+        }
+        
+        // Write records
+        dbData.forEach((rowObj, i) => {
+            const r = startRow + i;
+            // Copy styles if new row
+            if (r > startRow && !sheet.getRow(r).getCell(1).font) {
+                const srcRow = sheet.getRow(startRow);
+                const destRow = sheet.getRow(r);
+                destRow.height = srcRow.height;
+                for (let c = 1; c <= totalCols; c++) {
+                    copyCellFormat(srcRow.getCell(c), destRow.getCell(c));
+                }
+            }
+            
+            const row = sheet.getRow(r);
+            mapRowFunc(row, rowObj, r, i);
+        });
+    }
+
+    async function exportToExcel() {
+        showToast("Xuất Excel", "Đang tải tệp mẫu và xuất dữ liệu...", "info");
+        try {
+            const res = await fetch("TDG_Masterfile BQLDA.xlsx");
+            if (!res.ok) throw new Error("Không thể tải tệp mẫu Excel gốc TDG_Masterfile BQLDA.xlsx!");
+            const arrayBuffer = await res.arrayBuffer();
+
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(arrayBuffer);
+
+            // 1. Write BANG TONG HOP
+            const sheetMaster = workbook.getWorksheet('BANG TONG HOP');
+            if (sheetMaster) {
+                const startRow = 6;
+                const dbData = db.master;
+
+                // Clear any extra rows beyond database length
+                const totalRowsInSheet = sheetMaster.rowCount;
+                for (let r = startRow + dbData.length; r <= totalRowsInSheet; r++) {
+                    const row = sheetMaster.getRow(r);
+                    for (let c = 1; c <= 56; c++) {
+                        row.getCell(c).value = null;
+                    }
+                }
+
+                // Write packages
+                dbData.forEach((rowObj, i) => {
+                    const r = startRow + i;
+                    if (r > startRow && !sheetMaster.getRow(r).getCell(1).font) {
+                        const srcRow = sheetMaster.getRow(startRow);
+                        const destRow = sheetMaster.getRow(r);
+                        destRow.height = srcRow.height;
+                        for (let c = 1; c <= 56; c++) {
+                            copyCellFormat(srcRow.getCell(c), destRow.getCell(c));
+                        }
+                    }
+
+                    const row = sheetMaster.getRow(r);
+                    row.getCell(1).value = rowObj.tt;
+                    row.getCell(2).value = rowObj.ma_bsc;
+                    row.getCell(3).value = rowObj.goi_thau_pl;
+                    row.getCell(4).value = rowObj.nhom_ct;
+                    row.getCell(5).value = rowObj.hang_muc_work;
+                    row.getCell(6).value = rowObj.phu_trach;
+                    row.getCell(7).value = rowObj.ngay_bd_yc ? new Date(rowObj.ngay_bd_yc) : null;
+                    row.getCell(8).value = rowObj.ngay_kt_yc ? new Date(rowObj.ngay_kt_yc) : null;
+                    row.getCell(9).value = parseFloat(rowObj.ngan_sach) || 0;
+                    row.getCell(10).value = rowObj.kh_phat_hanh_hstktc ? new Date(rowObj.kh_phat_hanh_hstktc) : null;
+                    row.getCell(11).value = rowObj.tt_hstktc || null;
+                    row.getCell(12).value = rowObj.tt_specs || null;
+                    row.getCell(13).value = rowObj.tt_boq_kl || null;
+                    row.getCell(14).value = rowObj.kh_lcnt ? new Date(rowObj.kh_lcnt) : null;
+                    row.getCell(15).value = rowObj.tt_lcnt || null;
+                    row.getCell(16).value = rowObj.kh_ky_hdcu ? new Date(rowObj.kh_ky_hdcu) : null;
+                    row.getCell(17).value = rowObj.tt_ky_hdcu || null;
+                    row.getCell(18).value = rowObj.kh_pd_khcu ? new Date(rowObj.kh_pd_khcu) : null;
+                    row.getCell(19).value = rowObj.tt_khcu || null;
+                    row.getCell(20).value = parseFloat(rowObj.gia_tri_hdcu) || 0;
+
+                    // Formulas
+                    row.getCell(21).value = { formula: `IF(OR(I${r}="",T${r}=""),"",T${r}/I${r})` };
+                    
+                    row.getCell(22).value = rowObj.kh_ky_plhd_cdt ? new Date(rowObj.kh_ky_plhd_cdt) : null;
+                    row.getCell(23).value = rowObj.tt_ky_plhd_cdt || null;
+                    row.getCell(24).value = rowObj.kh_pd_khtk ? new Date(rowObj.kh_pd_khtk) : null;
+                    row.getCell(25).value = rowObj.tt_khtk || null;
+
+                    row.getCell(26).value = { formula: `IF($B${r}="","",IF(AND(OR(K${r}="Đã phát hành",K${r}="Hoàn thiện"),M${r}="Đã bàn giao"),"✔","✘"))` };
+                    row.getCell(27).value = { formula: `IF($B${r}="","",IF(Q${r}="Đã CU","✔","✘"))` };
+                    row.getCell(28).value = { formula: `IF($B${r}="","",IF(Y${r}="Đã duyệt","✔","✘"))` };
+                    row.getCell(29).value = { formula: `IF($B${r}="","",IF(AND(Z${r}="✔",AA${r}="✔",AB${r}="✔"),"ĐỦ ĐK KHỞI CÔNG","THIẾU ĐK"))` };
+
+                    row.getCell(30).value = rowObj.ngay_bd_khoi_cong ? new Date(rowObj.ngay_bd_khoi_cong) : null;
+
+                    row.getCell(31).value = { formula: `IF($B${r}="","",COUNTIFS('01_HSo TienKC'!$B:$B,$B${r},'01_HSo TienKC'!$J:$J,"Đã duyệt"))` };
+
+                    row.getCell(32).value = { formula: `T${r}` };
+                    row.getCell(33).value = { formula: `SUMIFS('03_Phat sinh'!$J:$J,'03_Phat sinh'!$C:$C,$B${r},'03_Phat sinh'!$M:$M,"Đã duyệt")` };
+                    row.getCell(34).value = { formula: `AF${r}+AG${r}` };
+
+                    row.getCell(35).value = { formula: `IF($B${r}="","",COUNTIFS('02_KH Thang_Tuan'!$B:$B,$B${r},'02_KH Thang_Tuan'!$J:$J,"Đã duyệt")&"/"&COUNTIFS('02_KH Thang_Tuan'!$B:$B,$B${r}))` };
+                    row.getCell(36).value = { formula: `IF($B${r}="","",COUNTIFS('03_Phat sinh'!$C:$C,$B${r},'03_Phat sinh'!$M:$M,"<>Đã duyệt"))` };
+                    row.getCell(37).value = { formula: `IF($B${r}="","",COUNTIFS('04_CU dac thu'!$C:$C,$B${r},'04_CU dac thu'!$N:$N,"<>Đã duyệt"))` };
+                    row.getCell(38).value = { formula: `IF($B${r}="","",COUNTIFS('05_Bu tien do'!$B:$B,$B${r},'05_Bu tien do'!$N:$N,"<>Đã hoàn thành"))` };
+
+                    row.getCell(39).value = rowObj.qa_kh_klcv_thang !== undefined ? parseFloat(rowObj.qa_kh_klcv_thang) : null;
+                    row.getCell(40).value = rowObj.qa_kq_klcv_thang !== undefined ? parseFloat(rowObj.qa_kq_klcv_thang) : null;
+                    row.getCell(41).value = rowObj.qa_danh_gia_thang || null;
+                    row.getCell(42).value = rowObj.tc_kh_klcv_thang !== undefined ? parseFloat(rowObj.tc_kh_klcv_thang) : null;
+                    row.getCell(43).value = rowObj.tc_kq_klcv_thang !== undefined ? parseFloat(rowObj.tc_kq_klcv_thang) : null;
+                    row.getCell(44).value = rowObj.tc_danh_gia_thang || null;
+
+                    row.getCell(45).value = rowObj.t1_kh !== undefined ? parseFloat(rowObj.t1_kh) : null;
+                    row.getCell(46).value = rowObj.t1_kq !== undefined ? parseFloat(rowObj.t1_kq) : null;
+                    row.getCell(47).value = rowObj.t1_danh_gia || null;
+
+                    row.getCell(48).value = rowObj.t2_kh !== undefined ? parseFloat(rowObj.t2_kh) : null;
+                    row.getCell(49).value = rowObj.t2_kq !== undefined ? parseFloat(rowObj.t2_kq) : null;
+                    row.getCell(50).value = rowObj.t2_danh_gia || null;
+
+                    row.getCell(51).value = rowObj.t3_kh !== undefined ? parseFloat(rowObj.t3_kh) : null;
+                    row.getCell(52).value = rowObj.t3_kq !== undefined ? parseFloat(rowObj.t3_kq) : null;
+                    row.getCell(53).value = rowObj.t3_danh_gia || null;
+
+                    row.getCell(54).value = rowObj.t4_kh !== undefined ? parseFloat(rowObj.t4_kh) : null;
+                    row.getCell(55).value = rowObj.t4_kq !== undefined ? parseFloat(rowObj.t4_kq) : null;
+                    row.getCell(56).value = rowObj.t4_danh_gia || null;
+                });
+            }
+
+            // 2. Write Sổ 01
+            await fillRegistrySheet(workbook, '01_HSo TienKC', 3, db.s01, 10, (row, rowObj, r, i) => {
+                row.getCell(1).value = i + 1;
+                row.getCell(2).value = rowObj["Mã BSC"];
+                row.getCell(3).value = rowObj["Hạng mục"];
+                row.getCell(4).value = rowObj["Loại hồ sơ"];
+                row.getCell(5).value = rowObj["Tên sản phẩm / Số hiệu"];
+                row.getCell(6).value = rowObj["LINK lưu trữ"];
+                row.getCell(7).value = rowObj["Ngày HT"] ? new Date(rowObj["Ngày HT"]) : null;
+                row.getCell(8).value = rowObj["Người lập"];
+                row.getCell(9).value = rowObj["Người duyệt"];
+                row.getCell(10).value = rowObj["TT duyệt"];
+            });
+
+            // 3. Write Sổ 02
+            await fillRegistrySheet(workbook, '02_KH Thang_Tuan', 3, db.s02, 13, (row, rowObj, r, i) => {
+                row.getCell(1).value = i + 1;
+                row.getCell(2).value = rowObj["Mã BSC"];
+                row.getCell(3).value = rowObj["Hạng mục"];
+                row.getCell(4).value = rowObj["Tháng"];
+                row.getCell(5).value = rowObj["Loại tài liệu"];
+                row.getCell(6).value = rowObj["Nội dung chính"];
+                row.getCell(7).value = rowObj["Đạt YCKT CĐT"];
+                row.getCell(8).value = rowObj["LINK tài liệu"];
+                row.getCell(9).value = rowObj["TT lập"];
+                row.getCell(10).value = rowObj["TT duyệt"];
+                row.getCell(11).value = rowObj["Người lập"];
+                row.getCell(12).value = rowObj["Người duyệt"];
+                row.getCell(13).value = rowObj["Ngày duyệt"] ? new Date(rowObj["Ngày duyệt"]) : null;
+            });
+
+            // 4. Write Sổ 03
+            await fillRegistrySheet(workbook, '03_Phat sinh', 3, db.s03, 17, (row, rowObj, r, i) => {
+                row.getCell(1).value = i + 1;
+                row.getCell(2).value = rowObj["Mã PS"];
+                row.getCell(3).value = rowObj["Mã BSC"];
+                row.getCell(4).value = rowObj["Hạng mục"];
+                row.getCell(5).value = rowObj["Ngày PS"] ? new Date(rowObj["Ngày PS"]) : null;
+                row.getCell(6).value = rowObj["Loại"];
+                row.getCell(7).value = rowObj["Mô tả"];
+                row.getCell(8).value = rowObj["Nguyên nhân"];
+                row.getCell(9).value = rowObj["Đề xuất xử lý"];
+                row.getCell(10).value = parseFloat(rowObj["Giá trị (tỷ)"]) || 0;
+                row.getCell(11).value = parseInt(rowObj["Ảnh hưởng TĐ (ngày)"]) || 0;
+                row.getCell(12).value = rowObj["LINK hồ sơ"];
+                row.getCell(13).value = rowObj["TT duyệt"];
+                row.getCell(14).value = rowObj["Người duyệt"];
+                row.getCell(15).value = rowObj["Ngày duyệt"] ? new Date(rowObj["Ngày duyệt"]) : null;
+                row.getCell(16).value = rowObj["Nội dung điều chỉnh (KH→KQ)"] || rowObj["Nội dung điều chỉnh"] || "";
+                row.getCell(17).value = rowObj["Ghi chú"] || "";
+            });
+
+            // 5. Write Sổ 04
+            await fillRegistrySheet(workbook, '04_CU dac thu', 3, db.s04, 18, (row, rowObj, r, i) => {
+                row.getCell(1).value = i + 1;
+                row.getCell(2).value = rowObj["Mã YC"];
+                row.getCell(3).value = rowObj["Mã BSC"];
+                row.getCell(4).value = rowObj["Hạng mục"];
+                row.getCell(5).value = rowObj["Ngày YC"] ? new Date(rowObj["Ngày YC"]) : null;
+                row.getCell(6).value = rowObj["Loại YC"];
+                row.getCell(7).value = rowObj["Vật tư / Thiết bị"] || rowObj["Vật tư/Thiết bị"];
+                row.getCell(8).value = rowObj["Đặc tả KT / Lý do"];
+                row.getCell(9).value = parseFloat(rowObj["KL"]) || 0;
+                row.getCell(10).value = rowObj["ĐVT"];
+                row.getCell(11).value = parseFloat(rowObj["Giá trị (tỷ)"]) || 0;
+                row.getCell(12).value = rowObj["Trong/Target Ngoài HĐCU"] || rowObj["Trong/Ngoài HĐCU"];
+                row.getCell(13).value = rowObj["LINK hồ sơ"];
+                row.getCell(14).value = rowObj["TT duyệt"];
+                row.getCell(15).value = rowObj["Người duyệt"];
+                row.getCell(16).value = rowObj["Ngày cần"] ? new Date(rowObj["Ngày cần"]) : null;
+                row.getCell(17).value = rowObj["TT cung ứng"];
+                row.getCell(18).value = rowObj["Ghi chú"] || "";
+            });
+
+            // 6. Write Sổ 05
+            await fillRegistrySheet(workbook, '05_Bu tien do', 3, db.s05, 15, (row, rowObj, r, i) => {
+                row.getCell(1).value = i + 1;
+                row.getCell(2).value = rowObj["Mã BSC"];
+                row.getCell(3).value = rowObj["Hạng mục"];
+                row.getCell(4).value = rowObj["Ngày phát hiện"] ? new Date(rowObj["Ngày phát hiện"]) : null;
+                row.getCell(5).value = parseInt(rowObj["Mức chậm (ngày)"]) || 0;
+                row.getCell(6).value = rowObj["Nguyên nhân"];
+                row.getCell(7).value = rowObj["Giải pháp bù"];
+                row.getCell(8).value = rowObj["Chi tiết giải pháp"] || rowObj["Chi tiết phương án"];
+                row.getCell(9).value = rowObj["Mốc cam kết HT"] ? new Date(rowObj["Mốc cam kết HT"]) : null;
+                row.getCell(10).value = rowObj["LINK phương án"];
+                row.getCell(11).value = rowObj["TT duyệt"];
+                row.getCell(12).value = rowObj["Người duyệt"] || "";
+                row.getCell(13).value = rowObj["KQ thực hiện bù"];
+                row.getCell(14).value = rowObj["TT thực hiện"];
+                row.getCell(15).value = rowObj["Ghi chú"] || "";
+            });
+
+            // Write back and trigger download
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `TDG_Masterfile_Exported_${new Date().toISOString().substring(0, 10)}.xlsx`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            showToast("Xuất Excel", "Đã xuất dữ liệu Excel bảo lưu hoàn toàn định dạng gốc thành công!", "success");
+        } catch (error) {
+            console.error("Lỗi xuất Excel:", error);
+            showToast("Lỗi Xuất Excel", "Có lỗi xảy ra khi tạo file Excel: " + error.message, "danger");
+        }
+    }
+
     // Opening modals buttons mapping
     document.getElementById("btn-add-package").addEventListener("click", () => openModalForm('master'));
+    document.getElementById("btn-export-excel").addEventListener("click", exportToExcel);
     document.getElementById("btn-add-s01").addEventListener("click", () => openModalForm('s01'));
     document.getElementById("btn-add-s03").addEventListener("click", () => openModalForm('s03'));
     document.getElementById("btn-add-s04").addEventListener("click", () => openModalForm('s04'));
