@@ -1788,6 +1788,32 @@ function openEditModalForm(rowIdx) {
         renderMasterGrid();
     });
 
+    // Expand / Collapse all buttons
+    const btnExpandAll = document.getElementById("btn-expand-all");
+    const btnCollapseAll = document.getElementById("btn-collapse-all");
+
+    if (btnExpandAll) {
+        btnExpandAll.addEventListener("click", () => {
+            expandedParents.clear();
+            db.master.forEach(row => {
+                const bsc = String(row.ma_bsc || "").trim();
+                const gp = String(row.goi_thau_pl || "").trim();
+                if (bsc) expandedParents.add(bsc);
+                if (gp) expandedParents.add(gp);
+            });
+            renderMasterGrid();
+            showToast("Mở rộng", "Đã bung toàn bộ các gói thầu và hạng mục chi tiết.", "success");
+        });
+    }
+
+    if (btnCollapseAll) {
+        btnCollapseAll.addEventListener("click", () => {
+            expandedParents.clear();
+            renderMasterGrid();
+            showToast("Thu gọn", "Đã thu gọn toàn bộ các gói thầu.", "info");
+        });
+    }
+
     // Sub-tab buttons click listeners
     const subTabButtons = document.querySelectorAll("#master-sub-tabs .btn-action");
     subTabButtons.forEach(btn => {
@@ -2475,13 +2501,16 @@ function openEditModalForm(rowIdx) {
         const bodyEl = document.getElementById("modal-form-body");
         bodyEl.innerHTML = ""; // Clear
 
-        // Fetch valid Mã BSC list with names for user-friendly dropdowns
-        const bscOptions = db.master
-            .filter(r => String(r.ma_bsc || "").trim() !== "")
-            .map(r => ({
-                code: String(r.ma_bsc).trim(),
-                name: `${String(r.ma_bsc).trim()} - ${r.hang_muc_work} (${r.nhom_ct})`
-            }));
+        // Fetch valid Mã BSC / TT list with names for user-friendly dropdowns (both parent packages & child detailed work items)
+        const bscOptions = db.master.map(r => {
+            const isParent = String(r.ma_bsc || "").trim() !== "";
+            const code = isParent ? String(r.ma_bsc).trim() : String(r.tt).trim();
+            const prefix = isParent ? `[Gói] ${r.ma_bsc}` : `[Chi tiết ${r.tt}]`;
+            return {
+                code: code,
+                name: `${prefix} - ${r.hang_muc_work} (${r.nhom_ct || ""})`
+            };
+        });
 
         if (target === 'master') {
             titleEl.textContent = "Thêm Gói Thầu Mới (Master Package)";
