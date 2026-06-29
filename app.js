@@ -948,7 +948,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 flatHierarchy.push({
                     type: "grand_parent",
                     id: goiThauPl,
-                    tt: row.nhom_ct,
+                    tt: "",
                     nhom_ct: row.nhom_ct,
                     hang_muc_work: `Gói thầu ${row.nhom_ct} (${goiThauPl})`,
                     phu_trach: "",
@@ -3483,7 +3483,7 @@ function openEditModalForm(rowIdx) {
                     flatHierarchy.push({
                         type: "grand_parent",
                         id: goiThauPl,
-                        tt: row.nhom_ct,
+                        tt: "",
                         nhom_ct: row.nhom_ct,
                         hang_muc_work: `GÓI THẦU ${row.nhom_ct} (${goiThauPl})`,
                         phu_trach: "",
@@ -4065,21 +4065,106 @@ function openEditModalForm(rowIdx) {
         reader.readAsArrayBuffer(file);
     }
 
-        function prepareFilePrompt(fileContent, docType, filename) {
-        // Switch to AI tab first
-        navItems.forEach(nav => nav.classList.remove("active"));
-        document.querySelector('[data-tab="ai-center"]').classList.add("active");
-        tabPanes.forEach(pane => pane.classList.remove("active"));
-        document.getElementById("tab-ai-center").classList.add("active");
-        document.getElementById("active-tab-title").textContent = "AI Command Center";
+    async function processDocumentDirectly(fileContent, docType, filename) {
+        showToast("Gemini OCR", `Đang phân tích tài liệu "${filename}"...`, "info");
+        
+        // Show a premium loading overlay
+        const loadingDiv = document.createElement("div");
+        loadingDiv.id = "ocr-loading-overlay";
+        loadingDiv.style = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; font-family: inherit;";
+        loadingDiv.innerHTML = `
+            <div class="spinner" style="border: 4px solid rgba(255,255,255,0.1); border-left-color: var(--color-ai-primary); width: 50px; height: 50px; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
+            <div style="font-weight: 600; font-size: 1.15rem; color: var(--color-ai-primary);">Gemini AI đang bóc tách tài liệu...</div>
+            <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">Vui lòng đợi trong giây lát.</div>
+            <style>
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            </style>
+        `;
+        document.body.appendChild(loadingDiv);
 
-        chatInput.value = `[TÀI LIỆU: ${filename}]
----
-${fileContent}
----
-Hãy đóng vai trò Kỹ sư Dữ liệu để đọc kỹ tài liệu thô trên, bóc tách thông tin và đề xuất điền dữ liệu vào biểu mẫu ${docType.toUpperCase()} giúp tôi.`;
-        chatInput.focus();
-        showToast("AI Ingestion", "Tài liệu đã được tải lên ô chat. Bạn hãy rà soát prompt và ấn nút Gửi ở bên dưới để AI xử lý.", "info");
+        try {
+            const answer = await GeminiAI.parseDocumentWithPrompt(fileContent, docType);
+            
+            // Extract JSON
+            let jsonStr = answer;
+            const match = answer.match(/```json\s*([\s\S]*?)\s*```/) || answer.match(/```\s*([\s\S]*?)\s*```/);
+            if (match) {
+                jsonStr = match[1];
+            }
+            
+            let data = {};
+            try {
+                data = JSON.parse(jsonStr.trim());
+            } catch (err) {
+                console.error("Failed to parse JSON from AI response:", jsonStr);
+                throw new Error("Phản hồi từ AI không đúng định dạng JSON yêu cầu.");
+            }
+
+            // Remove loading overlay
+            const overlay = document.getElementById("ocr-loading-overlay");
+            if (overlay) overlay.remove();
+
+            // Open the target form modal
+            openModalForm(docType);
+            
+            // Auto fill fields
+            setTimeout(() => {
+                if (docType === 's01') {
+                    if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
+                    if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
+                    if (document.getElementById("form-loai")) document.getElementById("form-loai").value = data.loai_ho_so || "";
+                    if (document.getElementById("form-name")) document.getElementById("form-name").value = data.ten_san_pham || "";
+                    if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_luu_tru || "";
+                    if (document.getElementById("form-maker")) document.getElementById("form-maker").value = data.nguoi_lap || "";
+                } else if (docType === 's02') {
+                    if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
+                    if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
+                    if (document.getElementById("form-s02-loai")) document.getElementById("form-s02-loai").value = data.loai_tai_lieu || "";
+                    if (document.getElementById("form-s02-tuan-thang")) document.getElementById("form-s02-tuan-thang").value = data.thang_tuan || "";
+                    if (document.getElementById("form-s02-noi-dung")) document.getElementById("form-s02-noi-dung").value = data.noi_dung || "";
+                    if (document.getElementById("form-s02-dat-yckt")) document.getElementById("form-s02-dat-yckt").value = data.dat_yckt || "Đạt";
+                    if (document.getElementById("form-s02-link")) document.getElementById("form-s02-link").value = data.link || "";
+                    if (document.getElementById("form-s02-nguoi-lap")) document.getElementById("form-s02-nguoi-lap").value = data.nguoi_lap || "";
+                } else if (docType === 's03') {
+                    if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
+                    if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
+                    if (document.getElementById("form-loai")) document.getElementById("form-loai").value = data.loai_ps || "";
+                    if (document.getElementById("form-desc")) document.getElementById("form-desc").value = data.mo_ta || "";
+                    if (document.getElementById("form-cause")) document.getElementById("form-cause").value = data.nguyen_nhan || "";
+                    if (document.getElementById("form-propose")) document.getElementById("form-propose").value = data.de_xuat || "";
+                    if (document.getElementById("form-val")) document.getElementById("form-val").value = data.gia_tri || "";
+                    if (document.getElementById("form-delay")) document.getElementById("form-delay").value = data.tre_han || "";
+                    if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_hs || "";
+                } else if (docType === 's04') {
+                    if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
+                    if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
+                    if (document.getElementById("form-loai")) document.getElementById("form-loai").value = data.loai_yc || "";
+                    if (document.getElementById("form-vattu")) document.getElementById("form-vattu").value = data.vattu || "";
+                    if (document.getElementById("form-spec")) document.getElementById("form-spec").value = data.dac_ta || "";
+                    if (document.getElementById("form-kl")) document.getElementById("form-kl").value = data.kl || "";
+                    if (document.getElementById("form-dvt")) document.getElementById("form-dvt").value = data.dvt || "";
+                    if (document.getElementById("form-val")) document.getElementById("form-val").value = data.gia_tri || "";
+                    if (document.getElementById("form-target")) document.getElementById("form-target").value = data.trong_ngoai || "";
+                    if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_hs || "";
+                } else if (docType === 's05') {
+                    if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
+                    if (document.getElementById("form-date")) document.getElementById("form-date").value = data.ngay_phat_hien || "";
+                    if (document.getElementById("form-delay")) document.getElementById("form-delay").value = data.muc_cham || "";
+                    if (document.getElementById("form-cause")) document.getElementById("form-cause").value = data.nguyen_nhan || "";
+                    if (document.getElementById("form-solution")) document.getElementById("form-solution").value = data.giai_phap || "";
+                    if (document.getElementById("form-detail")) document.getElementById("form-detail").value = data.chi_tiet || "";
+                    if (document.getElementById("form-moc")) document.getElementById("form-moc").value = data.moc_cam_ket || "";
+                    if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_hs || "";
+                }
+                showToast("Form Filler", "Đã bóc tách và điền tự động dữ liệu vào form thành công!", "success");
+            }, 400);
+
+        } catch (e) {
+            console.error(e);
+            const overlay = document.getElementById("ocr-loading-overlay");
+            if (overlay) overlay.remove();
+            showToast("Lỗi Phân Tích", "Lỗi phân tích tài liệu: " + e.message, "danger");
+        }
     }
 
 dropzone.addEventListener("click", () => fileInput.click());
@@ -4101,7 +4186,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                 else if (file.name.toLowerCase().includes('s04') || file.name.toLowerCase().includes('cung ứng') || file.name.toLowerCase().includes('cungung')) docType = 's04';
                 else if (file.name.toLowerCase().includes('s05') || file.name.toLowerCase().includes('bù tiến độ') || file.name.toLowerCase().includes('butiendo')) docType = 's05';
                 
-                prepareFilePrompt(text, docType, file.name);
+                await processDocumentDirectly(text, docType, file.name);
             };
             reader.readAsText(file);
         }
@@ -4136,26 +4221,26 @@ dropzone.addEventListener("click", () => fileInput.click());
                 else if (file.name.toLowerCase().includes('s04') || file.name.toLowerCase().includes('cung ứng') || file.name.toLowerCase().includes('cungung')) docType = 's04';
                 else if (file.name.toLowerCase().includes('s05') || file.name.toLowerCase().includes('bù tiến độ') || file.name.toLowerCase().includes('butiendo')) docType = 's05';
                 
-                prepareFilePrompt(text, docType, file.name);
+                await processDocumentDirectly(text, docType, file.name);
             };
             reader.readAsText(file);
         }
     });
 
     // Click demo files handler
-    document.getElementById("demo-doc-s03").addEventListener("click", () => {
+    document.getElementById("demo-doc-s03").addEventListener("click", async () => {
         const text = `Tờ trình phát sinh ngày 2026-06-12 gửi BQLDA VSV. Tổng thầu An Phong báo cáo túi bùn địa chất yếu cục bộ tại khu vực hố móng nhà mẫu CT-01 (Mã gói thầu: VSV_QLTC_TT.01). Đề xuất gia cố bổ sung 450 cọc tre d100 l=4m và thay đệm cát dày 1.2m. Giá trị phát sinh dự tính là 0.8 tỷ đồng. Thời gian ảnh hưởng tiến độ dự báo chậm 5 ngày. Đính kèm hồ sơ kỹ thuật PS01_NenYeu.pdf. Người trình: CHT Trần Quốc Huy.`;
-        prepareFilePrompt(text, 's03', 'TrinhPhatSinh_NenYeu.pdf');
+        await processDocumentDirectly(text, 's03', 'TrinhPhatSinh_NenYeu.pdf');
     });
     
-    document.getElementById("demo-doc-s04").addEventListener("click", () => {
+    document.getElementById("demo-doc-s04").addEventListener("click", async () => {
         const text = `Yêu cầu cung ứng đặc thù ngày 2026-06-14. Để phục vụ bán sảnh chính nhà mẫu CT-01 (Mã gói thầu: VSV_QLTC_TT.01), chúng tôi yêu cầu cung ứng 120 m2 đá Marble Crema Marfil Tây Ban Nha cao cấp ốp lát mặt tiền sảnh chính ngoài HĐCU đã ký. Dự toán chi phí là 1.2 tỷ đồng. Đính kèm YC01_Marble.pdf. Kính trình phê duyệt.`;
-        prepareFilePrompt(text, 's04', 'YcCungUngDacThu_Marble.pdf');
+        await processDocumentDirectly(text, 's04', 'YcCungUngDacThu_Marble.pdf');
     });
     
-    document.getElementById("demo-doc-s05").addEventListener("click", () => {
+    document.getElementById("demo-doc-s05").addEventListener("click", async () => {
         const text = `Báo cáo bù tiến độ ngày 2026-06-20 cho gói thầu VSV_QLTC_TT.01 (CT-01). Mức độ chậm trễ phát hiện là 9 ngày. Nguyên nhân do mưa lớn ngập úng hố móng. Giải pháp khắc phục đề xuất tăng ca đêm và lắp thêm 2 máy bơm công suất lớn hút nước liên tục 24/24. Chi tiết hành động: Tăng ca thêm 3 giờ/ngày cho đội cốt thép cốp pha. Cam kết mốc hoàn thành mới là 2026-07-05. Đính kèm PA_BuTienDo_T6_CT01.pdf.`;
-        prepareFilePrompt(text, 's05', 'PhuongAnBuTienDo_Mong.pdf');
+        await processDocumentDirectly(text, 's05', 'PhuongAnBuTienDo_Mong.pdf');
     });
 
     // Helper functions for proposal formatting
