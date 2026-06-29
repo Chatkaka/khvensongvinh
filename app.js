@@ -3938,6 +3938,117 @@ function openEditModalForm(rowIdx) {
     document.getElementById("demo-doc-s04").addEventListener("click", () => simulateOCRIngestion('s04'));
     document.getElementById("demo-doc-s05").addEventListener("click", () => simulateOCRIngestion('s05'));
 
+    // Helper functions for proposal formatting
+    function generateProposalTableRows(data, docType) {
+        const labels = {
+            ma_bsc: "Mã BSC / Gói thầu",
+            hang_muc: "Hạng mục công việc",
+            loai_ho_so: "Loại hồ sơ",
+            ten_san_pham: "Tên sản phẩm / Số hiệu",
+            link_luu_tru: "Tệp đính kèm",
+            nguoi_lap: "Người lập",
+            loai_tai_lieu: "Loại tài liệu",
+            thang_tuan: "Tháng/Tuần",
+            noi_dung: "Nội dung chính",
+            dat_yckt: "Đạt YCKT CĐT",
+            link: "Tệp đính kèm",
+            loai_ps: "Loại phát sinh",
+            mo_ta: "Mô tả chi tiết",
+            nguyen_nhan: "Nguyên nhân chính",
+            de_xuat: "Đề xuất giải pháp",
+            gia_tri: "Giá trị (tỷ đồng)",
+            tre_han: "Trễ hạn (ngày)",
+            link_hs: "Tệp đính kèm",
+            loai_yc: "Loại yêu cầu",
+            vattu: "Tên vật tư",
+            dac_ta: "Đặc tả kỹ thuật",
+            kl: "Khối lượng",
+            dvt: "Đơn vị tính",
+            trong_ngoai: "Trong/Ngoài HĐCU",
+            ngay_phat_hien: "Ngày phát hiện",
+            muc_cham: "Mức chậm (ngày)",
+            giai_phap: "Giải pháp khắc phục",
+            chi_tiet: "Chi tiết hành động",
+            moc_cam_ket: "Mốc cam kết hoàn thành"
+        };
+        
+        return Object.entries(data).map(([key, val]) => {
+            const label = labels[key] || key;
+            return `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 6px 4px; font-weight:600; color: var(--color-ai-primary);">${label}</td>
+                    <td style="padding: 6px 4px; color: var(--text-primary);">${val !== null && val !== undefined ? val : '<span style="color:var(--text-muted); font-style:italic;">Không có</span>'}</td>
+                </tr>
+            `;
+        }).join("");
+    }
+
+    window.acceptAIProposal = function(docType) {
+        const data = window.lastExtractedData;
+        if (!data) return;
+        
+        openModalForm(docType);
+        
+        setTimeout(() => {
+            if (docType === 's01') {
+                if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
+                if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
+                if (document.getElementById("form-loai")) document.getElementById("form-loai").value = data.loai_ho_so || "";
+                if (document.getElementById("form-name")) document.getElementById("form-name").value = data.ten_san_pham || "";
+                if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_luu_tru || "";
+                if (document.getElementById("form-maker")) document.getElementById("form-maker").value = data.nguoi_lap || "";
+            } else if (docType === 's02') {
+                if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
+                if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
+                if (document.getElementById("form-s02-loai")) document.getElementById("form-s02-loai").value = data.loai_tai_lieu || "";
+                if (document.getElementById("form-s02-tuan-thang")) document.getElementById("form-s02-tuan-thang").value = data.thang_tuan || "";
+                if (document.getElementById("form-s02-noi-dung")) document.getElementById("form-s02-noi-dung").value = data.noi_dung || "";
+                if (document.getElementById("form-s02-dat-yckt")) document.getElementById("form-s02-dat-yckt").value = data.dat_yckt || "Đạt";
+                if (document.getElementById("form-s02-link")) document.getElementById("form-s02-link").value = data.link || "";
+                if (document.getElementById("form-s02-nguoi-lap")) document.getElementById("form-s02-nguoi-lap").value = data.nguoi_lap || "";
+            } else if (docType === 's03') {
+                if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
+                if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
+                if (document.getElementById("form-loai")) document.getElementById("form-loai").value = data.loai_ps || "";
+                if (document.getElementById("form-desc")) document.getElementById("form-desc").value = data.mo_ta || "";
+                if (document.getElementById("form-cause")) document.getElementById("form-cause").value = data.nguyen_nhan || "";
+                if (document.getElementById("form-propose")) document.getElementById("form-propose").value = data.de_xuat || "";
+                if (document.getElementById("form-val")) document.getElementById("form-val").value = data.gia_tri || "";
+                if (document.getElementById("form-delay")) document.getElementById("form-delay").value = data.tre_han || "";
+                if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_hs || "";
+            } else if (docType === 's04') {
+                if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
+                if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
+                if (document.getElementById("form-loai")) document.getElementById("form-loai").value = data.loai_yc || "";
+                if (document.getElementById("form-vattu")) document.getElementById("form-vattu").value = data.vattu || "";
+                if (document.getElementById("form-spec")) document.getElementById("form-spec").value = data.dac_ta || "";
+                if (document.getElementById("form-kl")) document.getElementById("form-kl").value = data.kl || "";
+                if (document.getElementById("form-dvt")) document.getElementById("form-dvt").value = data.dvt || "";
+                if (document.getElementById("form-val")) document.getElementById("form-val").value = data.gia_tri || "";
+                if (document.getElementById("form-target")) document.getElementById("form-target").value = data.trong_ngoai || "";
+                if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_hs || "";
+            } else if (docType === 's05') {
+                if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
+                if (document.getElementById("form-date")) document.getElementById("form-date").value = data.ngay_phat_hien || "";
+                if (document.getElementById("form-delay")) document.getElementById("form-delay").value = data.muc_cham || "";
+                if (document.getElementById("form-cause")) document.getElementById("form-cause").value = data.nguyen_nhan || "";
+                if (document.getElementById("form-solution")) document.getElementById("form-solution").value = data.giai_phap || "";
+                if (document.getElementById("form-detail")) document.getElementById("form-detail").value = data.chi_tiet || "";
+                if (document.getElementById("form-moc")) document.getElementById("form-moc").value = data.moc_cam_ket || "";
+                if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_hs || "";
+            }
+            showToast("Form Filler", "Đã điền tự động dữ liệu trích xuất vào form thành công!", "success");
+        }, 400);
+    };
+
+    window.rejectAIProposal = function(btn) {
+        const section = btn.closest('div.proposal-card-container');
+        if (section) {
+            section.style.opacity = '0.5';
+            btn.parentElement.innerHTML = '<span style="color:var(--text-secondary); font-size:0.8rem;"><i class="fa-solid fa-ban"></i> Đã bỏ qua đề xuất điền dữ liệu</span>';
+        }
+    };
+
     async function runRealAIOCR(fileContent, docType, filename) {
         showToast("Gemini OCR", `Đang gửi nội dung tài liệu "${filename}" sang Gemini AI để trích xuất cấu trúc...`, "info");
         
@@ -3968,69 +4079,50 @@ function openEditModalForm(rowIdx) {
                 throw new Error("Phản hồi từ AI không đúng định dạng JSON yêu cầu.");
             }
 
+            // Cache data globally for accept handler
+            window.lastExtractedData = data;
+            
+            const tabNames = {
+                s01: "Sổ 01 (Hồ sơ Tiền khởi công)",
+                s02: "Sổ 02 (Kế hoạch tuần/tháng)",
+                s03: "Sổ 03 (Nghiệp vụ Phát sinh)",
+                s04: "Sổ 04 (Cung ứng đặc thù)",
+                s05: "Sổ 05 (Bù tiến độ thi công)"
+            };
+
             botBubble.innerHTML = `
-                <h4><i class="fa-solid fa-circle-check" style="color:var(--color-green);"></i> ĐÃ TRÍCH XUẤT THÀNH CÔNG!</h4>
-                Đã bóc tách dữ liệu từ tài liệu <b>"${filename}"</b>:<br>
-                <div style="background: rgba(0,0,0,0.3); padding:8px; border-radius:6px; font-size:0.75rem; margin:8px 0; border:1px solid var(--border-color); max-height: 250px; overflow-y: auto;">
-                    <pre style="margin:0; font-family:monospace; color: var(--color-green); text-align:left;">${JSON.stringify(data, null, 2)}</pre>
+                <h4><i class="fa-solid fa-circle-check" style="color:var(--color-green);"></i> ĐÃ PHÂN TÍCH XONG TÀI LIỆU!</h4>
+                Tôi đã hoàn thành phân tích nội dung file <b>"${filename}"</b> bằng chuỗi tư duy 4 bước của Kỹ sư Dữ liệu.<br>
+                <div class="proposal-card-container" style="background: rgba(30, 41, 59, 0.7); border: 1px solid var(--color-ai-primary); border-radius: 8px; padding: 16px; margin-top: 12px; font-size: 0.85rem; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">
+                    <h4 style="color: var(--color-ai-primary); margin-bottom: 8px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> AI Đề Xuất Điền Dữ Liệu
+                    </h4>
+                    <div style="margin-bottom: 12px; color: var(--text-secondary); font-size: 0.8rem; text-align:left;">
+                        Đề xuất điền thông tin chi tiết vào <b>${tabNames[docType] || docType.toUpperCase()}</b>:
+                    </div>
+                    
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-secondary); background-color: rgba(0,0,0,0.2);">
+                                <th style="text-align: left; padding: 6px;">Trường dữ liệu</th>
+                                <th style="text-align: left; padding: 6px;">Giá trị đề xuất</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${generateProposalTableRows(data, docType)}
+                        </tbody>
+                    </table>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-action approve" onclick="acceptAIProposal('${docType}')" style="padding: 6px 12px; font-size: 0.8rem; background-color: var(--color-ai-primary); border: none; color: white; cursor: pointer; border-radius: 4px;">
+                            <i class="fa-solid fa-file-signature"></i> Chấp nhận & Điền Form
+                        </button>
+                        <button type="button" class="btn-action reject" onclick="rejectAIProposal(this)" style="padding: 6px 12px; font-size: 0.8rem; background-color: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); cursor: pointer; border-radius: 4px;">
+                            Bỏ qua
+                        </button>
+                    </div>
                 </div>
-                Đang tự động điền dữ liệu vào Biểu mẫu ${docType.toUpperCase()}...
             `;
-
-            // Open corresponding Modal form and fill values
-            setTimeout(() => {
-                openModalForm(docType);
-                setTimeout(() => {
-                    if (docType === 's01') {
-                        if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
-                        if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
-                        if (document.getElementById("form-loai")) document.getElementById("form-loai").value = data.loai_ho_so || "";
-                        if (document.getElementById("form-name")) document.getElementById("form-name").value = data.ten_san_pham || "";
-                        if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_luu_tru || "";
-                        if (document.getElementById("form-maker")) document.getElementById("form-maker").value = data.nguoi_lap || "";
-                    } else if (docType === 's02') {
-                        if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
-                        if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
-                        if (document.getElementById("form-s02-loai")) document.getElementById("form-s02-loai").value = data.loai_tai_lieu || "";
-                        if (document.getElementById("form-s02-tuan-thang")) document.getElementById("form-s02-tuan-thang").value = data.thang_tuan || "";
-                        if (document.getElementById("form-s02-noi-dung")) document.getElementById("form-s02-noi-dung").value = data.noi_dung || "";
-                        if (document.getElementById("form-s02-dat-yckt")) document.getElementById("form-s02-dat-yckt").value = data.dat_yckt || "Đạt";
-                        if (document.getElementById("form-s02-link")) document.getElementById("form-s02-link").value = data.link || "";
-                        if (document.getElementById("form-s02-nguoi-lap")) document.getElementById("form-s02-nguoi-lap").value = data.nguoi_lap || "";
-                    } else if (docType === 's03') {
-                        if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
-                        if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
-                        if (document.getElementById("form-loai")) document.getElementById("form-loai").value = data.loai_ps || "";
-                        if (document.getElementById("form-desc")) document.getElementById("form-desc").value = data.mo_ta || "";
-                        if (document.getElementById("form-cause")) document.getElementById("form-cause").value = data.nguyen_nhan || "";
-                        if (document.getElementById("form-propose")) document.getElementById("form-propose").value = data.de_xuat || "";
-                        if (document.getElementById("form-val")) document.getElementById("form-val").value = data.gia_tri || "";
-                        if (document.getElementById("form-delay")) document.getElementById("form-delay").value = data.tre_han || "";
-                        if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_hs || "";
-                    } else if (docType === 's04') {
-                        if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
-                        if (document.getElementById("form-loai")) document.getElementById("form-loai").value = data.loai_yc || "";
-                        if (document.getElementById("form-vattu")) document.getElementById("form-vattu").value = data.vattu || "";
-                        if (document.getElementById("form-spec")) document.getElementById("form-spec").value = data.dac_ta || "";
-                        if (document.getElementById("form-kl")) document.getElementById("form-kl").value = data.kl || "";
-                        if (document.getElementById("form-dvt")) document.getElementById("form-dvt").value = data.dvt || "";
-                        if (document.getElementById("form-val")) document.getElementById("form-val").value = data.gia_tri || "";
-                        if (document.getElementById("form-target")) document.getElementById("form-target").value = data.trong_ngoai || "";
-                        if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_hs || "";
-                    } else if (docType === 's05') {
-                        if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
-                        if (document.getElementById("form-date")) document.getElementById("form-date").value = data.ngay_phat_hien || "";
-                        if (document.getElementById("form-delay")) document.getElementById("form-delay").value = data.muc_cham || "";
-                        if (document.getElementById("form-cause")) document.getElementById("form-cause").value = data.nguyen_nhan || "";
-                        if (document.getElementById("form-solution")) document.getElementById("form-solution").value = data.giai_phap || "";
-                        if (document.getElementById("form-detail")) document.getElementById("form-detail").value = data.chi_tiet || "";
-                        if (document.getElementById("form-moc")) document.getElementById("form-moc").value = data.moc_cam_ket || "";
-                        if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link_hs || "";
-                    }
-                    showToast("Form Filler", "Đã điền tự động dữ liệu trích xuất vào form thành công!", "success");
-                }, 400);
-            }, 1000);
-
         } catch (e) {
             console.error(e);
             botBubble.innerHTML = `<span style="color:var(--color-red);"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi Phân Tích: ${e.message}</span>`;
