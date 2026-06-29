@@ -484,6 +484,8 @@ body {
     padding: 12px 14px;
     border-bottom: 2px solid var(--border-color);
     border-right: 1px solid var(--border-color);
+    word-wrap: break-word;
+    word-break: break-word;
 }
 
 .erp-table td {
@@ -492,6 +494,8 @@ body {
     border-right: 1px solid var(--border-color);
     vertical-align: middle;
     transition: background 0.15s;
+    word-wrap: break-word;
+    word-break: break-word;
 }
 
 /* Freeze Columns for better view */
@@ -1089,5 +1093,81 @@ body {
 .toggle-children-btn:hover {
     transform: scale(1.15);
     color: #60a5fa;
+}
+
+/* ==================== SEARCHABLE SELECT DROPDOWNS ==================== */
+.searchable-select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.searchable-select-input {
+    padding-right: 32px !important;
+    cursor: text;
+}
+
+.searchable-select-wrapper::after {
+    content: "\f0d7";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+    font-size: 0.8rem;
+    transition: transform 0.2s ease;
+}
+
+.searchable-select-wrapper.open::after {
+    transform: translateY(-50%) rotate(180deg);
+    color: var(--color-ai-primary);
+}
+
+.searchable-select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    margin-top: 5px;
+    background: #1e293b;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 10000;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.55);
+    padding: 4px 0;
+}
+
+.searchable-select-option {
+    padding: 10px 14px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.searchable-select-option:hover {
+    background: rgba(59, 130, 246, 0.18);
+    color: #fff;
+}
+
+.searchable-select-option.selected {
+    background: var(--color-ai-primary);
+    color: #fff;
+    font-weight: 600;
+}
+
+.searchable-select-no-results {
+    padding: 12px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-align: center;
+    font-style: italic;
 }
 
