@@ -451,12 +451,12 @@
                         </div>
                     </div>
                     
-                    <div class="ai-chat-input-bar">
-                        <button class="ai-btn-mic" id="ai-mic-btn" title="Nói với AI">
+                    <div class="ai-chat-input-bar" style="align-items: flex-end; gap: 8px;">
+                        <button class="ai-btn-mic" id="ai-mic-btn" title="Nói với AI" style="margin-bottom: 6px;">
                             <i class="fa-solid fa-microphone"></i>
                         </button>
-                        <input type="text" id="ai-chat-input" class="ai-input" placeholder="Hỏi AI về rủi ro dự án, tóm tắt bù tiến độ gói thầu...">
-                        <button class="ai-btn-send" id="ai-send-btn" title="Gửi câu hỏi">
+                        <textarea id="ai-chat-input" class="ai-input" placeholder="Nhập prompt câu hỏi hoặc tải file lên kèm prompt tại đây..." style="resize: none; height: 60px; padding: 10px 14px; border-radius: 12px; flex: 1; border: 1px solid var(--border-color); background: rgba(0,0,0,0.25); color:#fff; font-family: inherit; font-size: 0.85rem; line-height: 1.4; outline: none; transition: border-color 0.2s;"></textarea>
+                        <button class="ai-btn-send" id="ai-send-btn" title="Gửi câu hỏi" style="margin-bottom: 6px;">
                             <i class="fa-solid fa-paper-plane"></i>
                         </button>
                     </div>

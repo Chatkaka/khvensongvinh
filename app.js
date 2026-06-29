@@ -3651,7 +3651,7 @@ function openEditModalForm(rowIdx) {
     const micBtn = document.getElementById("ai-mic-btn");
     const chatHistory = document.getElementById("ai-chat-history");
 
-    // Send chat text command to Gemini
+    // Send chat text command to Gemini (Supports prompt check and document OCR routing)
     async function handleAiSubmit() {
         const text = chatInput.value.trim();
         if (text === "") return;
@@ -3659,21 +3659,41 @@ function openEditModalForm(rowIdx) {
         appendChatMessage("user", text);
         chatInput.value = "";
 
-        const botBubble = appendChatMessage("bot", "<i>Gemini AI Agent đang phân tích...</i>");
-
-        try {
-            const answer = await GeminiAI.callGeminiAPI(text);
-            botBubble.innerHTML = formatMarkdown(answer);
-        } catch (e) {
-            botBubble.innerHTML = `<span style="color:var(--color-red);">Lỗi: ${e.message}</span>`;
+        const docMatch = text.match(/\[TÀI LIỆU:\s*(.*?)\]/);
+        
+        if (docMatch) {
+            let docType = 's03';
+            if (text.toLowerCase().includes('biểu mẫu s01')) docType = 's01';
+            else if (text.toLowerCase().includes('biểu mẫu s02')) docType = 's02';
+            else if (text.toLowerCase().includes('biểu mẫu s03')) docType = 's03';
+            else if (text.toLowerCase().includes('biểu mẫu s04')) docType = 's04';
+            else if (text.toLowerCase().includes('biểu mẫu s05')) docType = 's05';
+            
+            // Extract file content between --- boundaries
+            const contentMatch = text.match(/---([\s\S]*?)---/);
+            const fileContent = contentMatch ? contentMatch[1].trim() : text;
+            const filename = docMatch[1].trim();
+            
+            await runRealAIOCR(fileContent, docType, filename);
+        } else {
+            const botBubble = appendChatMessage("bot", "<i>Gemini AI Agent đang phân tích...</i>");
+            try {
+                const answer = await GeminiAI.callGeminiAPI(text);
+                botBubble.innerHTML = formatMarkdown(answer);
+            } catch (e) {
+                botBubble.innerHTML = `<span style="color:var(--color-red);">Lỗi: ${e.message}</span>`;
+            }
         }
         
         chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 
     sendBtn.addEventListener("click", handleAiSubmit);
-    chatInput.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") handleAiSubmit();
+    chatInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleAiSubmit();
+        }
     });
 
     // AI speech query (Web Speech API)
@@ -3873,7 +3893,24 @@ function openEditModalForm(rowIdx) {
         reader.readAsArrayBuffer(file);
     }
 
-    dropzone.addEventListener("click", () => fileInput.click());
+        function prepareFilePrompt(fileContent, docType, filename) {
+        // Switch to AI tab first
+        navItems.forEach(nav => nav.classList.remove("active"));
+        document.querySelector('[data-tab="ai-center"]').classList.add("active");
+        tabPanes.forEach(pane => pane.classList.remove("active"));
+        document.getElementById("tab-ai-center").classList.add("active");
+        document.getElementById("active-tab-title").textContent = "AI Command Center";
+
+        chatInput.value = `[TÀI LIỆU: ${filename}]
+---
+${fileContent}
+---
+Hãy đóng vai trò Kỹ sư Dữ liệu để đọc kỹ tài liệu thô trên, bóc tách thông tin và đề xuất điền dữ liệu vào biểu mẫu ${docType.toUpperCase()} giúp tôi.`;
+        chatInput.focus();
+        showToast("AI Ingestion", "Tài liệu đã được tải lên ô chat. Bạn hãy rà soát prompt và ấn nút Gửi ở bên dưới để AI xử lý.", "info");
+    }
+
+dropzone.addEventListener("click", () => fileInput.click());
     
     fileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
@@ -3892,7 +3929,7 @@ function openEditModalForm(rowIdx) {
                 else if (file.name.toLowerCase().includes('s04') || file.name.toLowerCase().includes('cung ứng') || file.name.toLowerCase().includes('cungung')) docType = 's04';
                 else if (file.name.toLowerCase().includes('s05') || file.name.toLowerCase().includes('bù tiến độ') || file.name.toLowerCase().includes('butiendo')) docType = 's05';
                 
-                await runRealAIOCR(text, docType, file.name);
+                prepareFilePrompt(text, docType, file.name);
             };
             reader.readAsText(file);
         }
@@ -3927,16 +3964,27 @@ function openEditModalForm(rowIdx) {
                 else if (file.name.toLowerCase().includes('s04') || file.name.toLowerCase().includes('cung ứng') || file.name.toLowerCase().includes('cungung')) docType = 's04';
                 else if (file.name.toLowerCase().includes('s05') || file.name.toLowerCase().includes('bù tiến độ') || file.name.toLowerCase().includes('butiendo')) docType = 's05';
                 
-                await runRealAIOCR(text, docType, file.name);
+                prepareFilePrompt(text, docType, file.name);
             };
             reader.readAsText(file);
         }
     });
 
     // Click demo files handler
-    document.getElementById("demo-doc-s03").addEventListener("click", () => simulateOCRIngestion('s03'));
-    document.getElementById("demo-doc-s04").addEventListener("click", () => simulateOCRIngestion('s04'));
-    document.getElementById("demo-doc-s05").addEventListener("click", () => simulateOCRIngestion('s05'));
+    document.getElementById("demo-doc-s03").addEventListener("click", () => {
+        const text = `Tờ trình phát sinh ngày 2026-06-12 gửi BQLDA VSV. Tổng thầu An Phong báo cáo túi bùn địa chất yếu cục bộ tại khu vực hố móng nhà mẫu CT-01 (Mã gói thầu: VSV_QLTC_TT.01). Đề xuất gia cố bổ sung 450 cọc tre d100 l=4m và thay đệm cát dày 1.2m. Giá trị phát sinh dự tính là 0.8 tỷ đồng. Thời gian ảnh hưởng tiến độ dự báo chậm 5 ngày. Đính kèm hồ sơ kỹ thuật PS01_NenYeu.pdf. Người trình: CHT Trần Quốc Huy.`;
+        prepareFilePrompt(text, 's03', 'ToTrinhNenYeu_CT01.txt');
+    });
+    
+    document.getElementById("demo-doc-s04").addEventListener("click", () => {
+        const text = `Yêu cầu cung ứng đặc thù ngày 2026-06-14. Để phục vụ bán sảnh chính nhà mẫu CT-01 (Mã gói thầu: VSV_QLTC_TT.01), chúng tôi yêu cầu cung ứng 120 m2 đá Marble Crema Marfil Tây Ban Nha cao cấp ốp lát mặt tiền sảnh chính ngoài HĐCU đã ký. Dự toán chi phí là 1.2 tỷ đồng. Đính kèm YC01_Marble.pdf. Kính trình phê duyệt.`;
+        prepareFilePrompt(text, 's04', 'YcCungUngDaMarble_CT01.txt');
+    });
+    
+    document.getElementById("demo-doc-s05").addEventListener("click", () => {
+        const text = `Báo cáo bù tiến độ ngày 2026-06-20 cho gói thầu VSV_QLTC_TT.01 (CT-01). Mức độ chậm trễ phát hiện là 9 ngày. Nguyên nhân do mưa lớn ngập úng hố móng. Giải pháp khắc phục đề xuất tăng ca đêm và lắp thêm 2 máy bơm công suất lớn hút nước liên tục 24/24. Chi tiết hành động: Tăng ca thêm 3 giờ/ngày cho đội cốt thép cốp pha. Cam kết mốc hoàn thành mới là 2026-07-05. Đính kèm PA_BuTienDo_T6_CT01.pdf.`;
+        prepareFilePrompt(text, 's05', 'PaBuTienDo_T6_CT01.txt');
+    });
 
     // Helper functions for proposal formatting
     function generateProposalTableRows(data, docType) {
@@ -4174,27 +4222,32 @@ function openEditModalForm(rowIdx) {
     // Chat queries shortcuts
     document.getElementById("shortcut-risk").addEventListener("click", () => {
         chatInput.value = "Mã BSC nào đang gặp rủi ro tài chính cao nhất?";
-        handleAiSubmit();
+        chatInput.focus();
+        showToast("AI Prompt", "Đã nạp câu hỏi vào ô chat. Bạn có thể chỉnh sửa và ấn nút Gửi.", "info");
     });
 
     document.getElementById("shortcut-synthesis").addEventListener("click", () => {
-        chatInput.value = "Xuất báo cáo phân tích sức khỏe dự án hàng tháng";
-        handleAiSubmit();
+        chatInput.value = "Xuất Báo cáo Phân tích Sức khỏe Dự án hàng tháng";
+        chatInput.focus();
+        showToast("AI Prompt", "Đã nạp câu hỏi vào ô chat. Bạn có thể chỉnh sửa và ấn nút Gửi.", "info");
     });
 
     document.getElementById("shortcut-ct01").addEventListener("click", () => {
         chatInput.value = "Tóm tắt phương án bù tiến độ gói thầu VSV_QLTC_TT.01";
-        handleAiSubmit();
+        chatInput.focus();
+        showToast("AI Prompt", "Đã nạp câu hỏi vào ô chat. Bạn có thể chỉnh sửa và ấn nút Gửi.", "info");
     });
 
     document.getElementById("ai-quick-query-btn").addEventListener("click", () => {
-        // Direct click asking Gemini AI quick query
+        // Direct click asking Gemini AI quick query (fills prompt and wait)
         chatInput.value = "Mã BSC nào đang gặp rủi ro tài chính cao nhất?";
         navItems.forEach(nav => nav.classList.remove("active"));
         document.querySelector('[data-tab="ai-center"]').classList.add("active");
         tabPanes.forEach(pane => pane.classList.remove("active"));
         document.getElementById("tab-ai-center").classList.add("active");
-        handleAiSubmit();
+        document.getElementById("active-tab-title").textContent = "AI Command Center";
+        chatInput.focus();
+        showToast("AI Prompt", "Đã chuyển sang AI Center và nạp câu hỏi. Bạn hãy ấn nút Gửi để AI trả lời.", "info");
     });
 
     // 9.1 PERSONNEL MANAGEMENT (Danh sách nhân sự & Phân quyền)
