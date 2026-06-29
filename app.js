@@ -3968,16 +3968,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 11. SETTINGS PANEL INTERACTIVES
     const apiKeyInput = document.getElementById("gemini-api-key-input");
+    const modelSelect = document.getElementById("gemini-model-select");
     const saveSettingsBtn = document.getElementById("btn-save-settings");
     const resetFactoryBtn = document.getElementById("btn-reset-db-factory");
 
     // Load initial settings
     apiKeyInput.value = GeminiAI.apiKey;
+    if (modelSelect) {
+        modelSelect.value = GeminiAI.model;
+    }
     updateAiStatusIndicator();
 
     saveSettingsBtn.addEventListener("click", () => {
         const key = apiKeyInput.value.trim();
+        const model = modelSelect ? modelSelect.value : 'gemini-3.5-flash';
         GeminiAI.setApiKey(key);
+        GeminiAI.setModel(model);
         updateAiStatusIndicator();
         showToast("Hệ thống", "Đã lưu cài đặt và kết nối Gemini AI thành công.", "success");
     });
