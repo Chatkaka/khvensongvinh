@@ -1089,11 +1089,22 @@ document.addEventListener("DOMContentLoaded", () => {
                     const canEdit = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua);
                     const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
                     
+                    const getProgressStatusBadge = (status) => {
+                        if (!status) return "";
+                        if (status === 'Chờ duyệt') return `<span class="badge warning" style="font-size:0.7rem; padding:2px 4px; display:inline-block; margin-top:2px;">Chờ duyệt</span>`;
+                        if (status === 'Đã duyệt') return `<span class="badge success" style="font-size:0.7rem; padding:2px 4px; display:inline-block; margin-top:2px;">Đã duyệt</span>`;
+                        if (status === 'Từ chối') return `<span class="badge danger" style="font-size:0.7rem; padding:2px 4px; display:inline-block; margin-top:2px;">Từ chối</span>`;
+                        return "";
+                    };
+                    
                     if (canEdit || canDelete) {
                         tdOps.innerHTML = `
-                            <div style="display: flex; gap: 4px; justify-content: center;">
-                                ${canEdit ? `<button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
-                                ${canDelete ? `<button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
+                            <div style="display: flex; flex-direction: column; gap: 2px; align-items: center;">
+                                <div style="display: flex; gap: 4px; justify-content: center;">
+                                    ${canEdit ? `<button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
+                                    ${canDelete ? `<button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
+                                </div>
+                                ${getProgressStatusBadge(row.progress_status)}
                             </div>
                         `;
                     } else {
@@ -1178,11 +1189,22 @@ document.addEventListener("DOMContentLoaded", () => {
                     const canEdit = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua);
                     const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
                     
+                    const getProgressStatusBadge = (status) => {
+                        if (!status) return "";
+                        if (status === 'Chờ duyệt') return `<span class="badge warning" style="font-size:0.7rem; padding:2px 4px; display:inline-block; margin-top:2px;">Chờ duyệt</span>`;
+                        if (status === 'Đã duyệt') return `<span class="badge success" style="font-size:0.7rem; padding:2px 4px; display:inline-block; margin-top:2px;">Đã duyệt</span>`;
+                        if (status === 'Từ chối') return `<span class="badge danger" style="font-size:0.7rem; padding:2px 4px; display:inline-block; margin-top:2px;">Từ chối</span>`;
+                        return "";
+                    };
+                    
                     if (canEdit || canDelete) {
                         tdOps.innerHTML = `
-                            <div style="display: flex; gap: 4px; justify-content: center;">
-                                ${canEdit ? `<button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
-                                ${canDelete ? `<button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
+                            <div style="display: flex; flex-direction: column; gap: 2px; align-items: center;">
+                                <div style="display: flex; gap: 4px; justify-content: center;">
+                                    ${canEdit ? `<button class="btn-action btn-edit-row" data-idx="${masterRowIndex}" style="color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3); padding: 4px 8px;" title="Chỉnh sửa dòng"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
+                                    ${canDelete ? `<button class="btn-action reject btn-delete-row" data-idx="${masterRowIndex}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.3); padding: 4px 8px;" title="Xóa dòng"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
+                                </div>
+                                ${getProgressStatusBadge(row.progress_status)}
                             </div>
                         `;
                     } else {
@@ -1331,7 +1353,161 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function openEditModalForm(rowIdx) {
+        // Progress and Weekly plans approval helpers
+    function renderProgressApprovalBanner(row, rowIdx) {
+        if (!row.progress_status) return "";
+        const isApprover = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen === 'Supervisor');
+        
+        if (row.progress_status === 'Chờ duyệt') {
+            if (isApprover) {
+                return `
+                    <div style="background-color: rgba(245,158,11,0.15); border: 1px solid var(--color-yellow); border-radius: 6px; padding: 12px; margin-bottom: 16px; font-size: 0.85rem;">
+                        <div style="font-weight: 700; color: var(--color-yellow); margin-bottom: 6px;">
+                            <i class="fa-solid fa-circle-exclamation"></i> Đề xuất cập nhật tiến độ thi công từ Chỉ huy trưởng (CHT) đang chờ duyệt:
+                        </div>
+                        <div style="font-size: 0.8rem; margin-bottom: 10px; color: var(--text-secondary);">
+                            Vui lòng kiểm tra số liệu đề xuất bên dưới và phê duyệt hoặc từ chối.
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" class="btn-action approve" onclick="approveProgressProposal(${rowIdx})" style="padding: 4px 12px; font-size: 0.8rem; background-color: var(--color-green); border: none; color: white; cursor: pointer; border-radius: 4px;">
+                                <i class="fa-solid fa-check"></i> Phê Duyệt Đề Xuất
+                            </button>
+                            <button type="button" class="btn-action reject" onclick="rejectProgressProposal(${rowIdx})" style="padding: 4px 12px; font-size: 0.8rem; background-color: #ff5252; border: none; color: white; cursor: pointer; border-radius: 4px;">
+                                <i class="fa-solid fa-xmark"></i> Từ Chối Đề Xuất
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div style="background-color: rgba(245,158,11,0.15); border: 1px solid var(--color-yellow); border-radius: 6px; padding: 12px; margin-bottom: 16px; font-size: 0.85rem; color: var(--color-yellow);">
+                        <i class="fa-solid fa-clock"></i> Đề xuất cập nhật tiến độ đang chờ TVGS / Ban QLDA phê duyệt. Các trường nhập liệu tạm thời bị khóa.
+                    </div>
+                `;
+            }
+        } else if (row.progress_status === 'Từ chối') {
+            return `
+                <div style="background-color: rgba(255,82,82,0.15); border: 1px solid #ff5252; border-radius: 6px; padding: 12px; margin-bottom: 16px; font-size: 0.85rem;">
+                    <div style="font-weight: 700; color: #ff5252;">
+                        <i class="fa-solid fa-circle-xmark"></i> Đề xuất cập nhật tiến độ bị từ chối!
+                    </div>
+                    <div style="font-size: 0.8rem; margin-top: 4px; color: var(--text-secondary);">
+                        Lý do từ chối: <span style="color: #ff5252; font-style: italic;">${row.progress_ly_do_tu_choi || 'Không nêu lý do'}</span>
+                    </div>
+                </div>
+            `;
+        } else if (row.progress_status === 'Đã duyệt') {
+            return `
+                <div style="background-color: rgba(16,185,129,0.15); border: 1px solid var(--color-green); border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 0.85rem; color: var(--color-green);">
+                    <i class="fa-solid fa-circle-check"></i> Cập nhật tiến độ gần nhất đã được phê duyệt chính thức.
+                </div>
+            `;
+        }
+        return "";
+    }
+
+    function renderProgressFieldsInput(row, rowIdx) {
+        const isContractor = currentUser && currentUser.quyen === 'Contractor';
+        const isLocked = isContractor && row.progress_status === 'Chờ duyệt';
+        
+        const source = (row.progress_status === 'Chờ duyệt' || row.progress_status === 'Từ chối') && row.pending_progress
+            ? row.pending_progress
+            : row;
+            
+        const getPct = (val) => {
+            if (val === undefined || val === null || val === "") return "";
+            const num = parseFloat(val);
+            return isNaN(num) ? "" : (num * 100).toFixed(0);
+        };
+        
+        const getVal = (val) => val || "";
+
+        return `
+            <div style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; display: grid; gap: 12px; ${isLocked ? 'opacity: 0.7;' : ''}">
+                <div style="font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 4px;">
+                    TIẾN ĐỘ THÁNG HIỆN TẠI
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 12px;">
+                    <div class="form-group">
+                        <label style="font-size:0.75rem;">KH KLCV Tháng (%)</label>
+                        <input type="number" step="0.1" min="0" max="100" id="form-p-kh-thang" class="form-control" value="${getPct(source.qa_kh_klcv_thang)}" ${isLocked ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:0.75rem;">KQ KLCV Tháng (%)</label>
+                        <input type="number" step="0.1" min="0" max="100" id="form-p-kq-thang" class="form-control" value="${getPct(source.qa_kq_klcv_thang)}" ${isLocked ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:0.75rem;">Đánh giá & giải pháp tháng</label>
+                        <input type="text" id="form-p-dg-thang" class="form-control" value="${getVal(source.qa_danh_gia_thang)}" placeholder="Đạt kế hoạch, chậm do..." ${isLocked ? 'disabled' : ''}>
+                    </div>
+                </div>
+                
+                <div style="font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 4px; margin-top: 8px;">
+                    TIẾN ĐỘ CHI TIẾT 4 TUẦN KẾ TIẾP
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                    ${[1, 2, 3, 4].map(w => {
+                        const khVal = source[`t${w}_kh`];
+                        const kqVal = source[`t${w}_kq`];
+                        const dgVal = source[`t${w}_dg`];
+                        return `
+                            <div style="border: 1px solid var(--border-color); padding: 8px; border-radius: 6px; background-color: rgba(255,255,255,0.02);">
+                                <h4 style="font-size:0.75rem; margin-bottom:6px; color: var(--color-ai-primary); font-weight:700;">Tuần ${w}</h4>
+                                <div class="form-group" style="margin-bottom:6px;">
+                                    <label style="font-size:0.7rem; color: var(--text-secondary);">KH (%)</label>
+                                    <input type="number" step="0.1" min="0" max="100" id="form-p-t${w}-kh" class="form-control" style="font-size:0.75rem; padding:4px 6px;" value="${getPct(khVal)}" ${isLocked ? 'disabled' : ''}>
+                                </div>
+                                <div class="form-group" style="margin-bottom:6px;">
+                                    <label style="font-size:0.7rem; color: var(--text-secondary);">KQ (%)</label>
+                                    <input type="number" step="0.1" min="0" max="100" id="form-p-t${w}-kq" class="form-control" style="font-size:0.75rem; padding:4px 6px;" value="${getPct(kqVal)}" ${isLocked ? 'disabled' : ''}>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.7rem; color: var(--text-secondary);">Đánh giá</label>
+                                    <input type="text" id="form-p-t${w}-dg" class="form-control" style="font-size:0.75rem; padding:4px 6px;" value="${getVal(dgVal)}" placeholder="..." ${isLocked ? 'disabled' : ''}>
+                                </div>
+                            </div>
+                        `;
+                    }).join("")}
+                </div>
+            </div>
+        `;
+    }
+
+    window.approveProgressProposal = function(rowIdx) {
+        const row = db.master[rowIdx];
+        if (row && row.pending_progress) {
+            Object.assign(row, row.pending_progress);
+            row.progress_status = "Đã duyệt";
+            row.progress_ly_do_tu_choi = "";
+            row.pending_progress = null;
+            
+            calculateRollups();
+            saveDatabase();
+            showToast("Phê duyệt", `Đã phê duyệt cập nhật tiến độ dòng ${row.tt} thành công.`, "success");
+            closeModal();
+            renderMasterGrid();
+        }
+    };
+
+    window.rejectProgressProposal = function(rowIdx) {
+        const row = db.master[rowIdx];
+        if (row) {
+            const reason = prompt("Nhập lý do từ chối phê duyệt tiến độ:");
+            if (reason === null) return;
+            if (!reason.trim()) { alert("Lý do từ chối không được để trống!"); return; }
+            
+            row.progress_status = "Từ chối";
+            row.progress_ly_do_tu_choi = reason.trim();
+            
+            calculateRollups();
+            saveDatabase();
+            showToast("Từ chối", `Đã từ chối đề xuất cập nhật tiến độ dòng ${row.tt}.`, "warning");
+            closeModal();
+            renderMasterGrid();
+        }
+    };
+
+function openEditModalForm(rowIdx) {
         // Enforce Update permission
         const canEdit = currentUser ? (currentUser.quyen === 'Admin' || currentUser.quyen_sua) : false;
         if (!canEdit) {
@@ -1348,97 +1524,110 @@ document.addEventListener("DOMContentLoaded", () => {
         
         titleEl.textContent = `Chỉnh Sửa Gói Thầu / Hạng Mục (Dòng ${row.tt})`;
         
+        const isContractor = currentUser && currentUser.quyen === 'Contractor';
+        
         bodyEl.innerHTML = `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div class="form-group">
-                    <label>TT (Thứ tự dòng)</label>
-                    <input type="text" id="edit-form-tt" class="form-control" value="${row.tt || ''}">
+            <fieldset ${isContractor ? 'disabled' : ''} style="border:none; padding:0; margin:0; display:contents;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>TT (Thứ tự dòng)</label>
+                        <input type="text" id="edit-form-tt" class="form-control" value="${row.tt || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Mã BSC</label>
+                        <input type="text" id="edit-form-ma-bsc" class="form-control" value="${row.ma_bsc || ''}" placeholder="Để trống nếu là hạng mục con">
+                    </div>
+                    <div class="form-group">
+                        <label>Gói thầu (PL)</label>
+                        <input type="text" id="edit-form-goi-thau-pl" class="form-control" value="${row.goi_thau_pl || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Nhóm CT / Hạng mục cha</label>
+                        <input type="text" id="edit-form-nhom-ct" class="form-control" value="${row.nhom_ct || ''}">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Hạng mục / Công việc</label>
+                        <input type="text" id="edit-form-work-name" class="form-control" value="${row.hang_muc_work || ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phụ trách</label>
+                        <input type="text" id="edit-form-phu-trach" class="form-control" value="${row.phu_trach || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Ngân sách (tỷ)</label>
+                        <input type="number" step="0.01" id="edit-form-ngan-sach" class="form-control" value="${row.ngan_sach || 0}">
+                    </div>
+                    <div class="form-group">
+                        <label>Giá trị HĐCU (tỷ)</label>
+                        <input type="number" step="0.01" id="edit-form-gia-tri-hdcu" class="form-control" value="${row.gia_tri_hdcu || 0}">
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày bắt đầu (Yêu cầu)</label>
+                        <input type="date" id="edit-form-start-date" class="form-control" value="${row.ngay_bd_yc || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày kết thúc (Yêu cầu)</label>
+                        <input type="date" id="edit-form-end-date" class="form-control" value="${row.ngay_kt_yc || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày khởi công (Thực tế)</label>
+                        <input type="date" id="edit-form-start-actual" class="form-control" value="${row.ngay_bd_khoi_cong || ''}">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Mã BSC</label>
-                    <input type="text" id="edit-form-ma-bsc" class="form-control" value="${row.ma_bsc || ''}" placeholder="Để trống nếu là hạng mục con">
+                
+                <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label>TT HSTKTC</label>
+                        <select id="edit-form-tt-hstktc" class="form-control">
+                            <option value=""></option>
+                            ${renderOptionsWithSelect(db.danh_muc['TT HSTKTC'] || [], row.tt_hstktc)}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>TT SPECS</label>
+                        <select id="edit-form-tt-specs" class="form-control">
+                            <option value=""></option>
+                            ${renderOptionsWithSelect(db.danh_muc['TT SPECS'] || [], row.tt_specs)}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>TT BOQ/KL</label>
+                        <select id="edit-form-tt-boq-kl" class="form-control">
+                            <option value=""></option>
+                            ${renderOptionsWithSelect(db.danh_muc['TT BOQ/KL'] || [], row.tt_boq_kl)}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>TT LCNT</label>
+                        <select id="edit-form-tt-lcnt" class="form-control">
+                            <option value=""></option>
+                            ${renderOptionsWithSelect(db.danh_muc['TT LCNT'] || [], row.tt_lcnt)}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>TT Ký HĐCU</label>
+                        <select id="edit-form-tt-ky-hdcu" class="form-control">
+                            <option value=""></option>
+                            ${renderOptionsWithSelect(db.danh_muc['TT Ký HĐCU'] || [], row.tt_ky_hdcu)}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>TT KHCU</label>
+                        <select id="edit-form-tt-khcu" class="form-control">
+                            <option value=""></option>
+                            ${renderOptionsWithSelect(db.danh_muc['TT KHCU'] || [], row.tt_khcu)}
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Gói thầu (PL)</label>
-                    <input type="text" id="edit-form-goi-thau-pl" class="form-control" value="${row.goi_thau_pl || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Nhóm CT / Hạng mục cha</label>
-                    <input type="text" id="edit-form-nhom-ct" class="form-control" value="${row.nhom_ct || ''}">
-                </div>
-                <div class="form-group" style="grid-column: span 2;">
-                    <label>Hạng mục / Công việc</label>
-                    <input type="text" id="edit-form-work-name" class="form-control" value="${row.hang_muc_work || ''}" required>
-                </div>
-                <div class="form-group">
-                    <label>Phụ trách</label>
-                    <input type="text" id="edit-form-phu-trach" class="form-control" value="${row.phu_trach || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Ngân sách (tỷ)</label>
-                    <input type="number" step="0.01" id="edit-form-ngan-sach" class="form-control" value="${row.ngan_sach || 0}">
-                </div>
-                <div class="form-group">
-                    <label>Giá trị HĐCU (tỷ)</label>
-                    <input type="number" step="0.01" id="edit-form-gia-tri-hdcu" class="form-control" value="${row.gia_tri_hdcu || 0}">
-                </div>
-                <div class="form-group">
-                    <label>Ngày bắt đầu (Yêu cầu)</label>
-                    <input type="date" id="edit-form-start-date" class="form-control" value="${row.ngay_bd_yc || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Ngày kết thúc (Yêu cầu)</label>
-                    <input type="date" id="edit-form-end-date" class="form-control" value="${row.ngay_kt_yc || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Ngày khởi công (Thực tế)</label>
-                    <input type="date" id="edit-form-start-actual" class="form-control" value="${row.ngay_bd_khoi_cong || ''}">
-                </div>
-            </div>
-            
-            <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                <div class="form-group">
-                    <label>TT HSTKTC</label>
-                    <select id="edit-form-tt-hstktc" class="form-control">
-                        <option value=""></option>
-                        ${renderOptionsWithSelect(db.danh_muc['TT HSTKTC'] || [], row.tt_hstktc)}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>TT SPECS</label>
-                    <select id="edit-form-tt-specs" class="form-control">
-                        <option value=""></option>
-                        ${renderOptionsWithSelect(db.danh_muc['TT SPECS'] || [], row.tt_specs)}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>TT BOQ/KL</label>
-                    <select id="edit-form-tt-boq-kl" class="form-control">
-                        <option value=""></option>
-                        ${renderOptionsWithSelect(db.danh_muc['TT BOQ/KL'] || [], row.tt_boq_kl)}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>TT LCNT</label>
-                    <select id="edit-form-tt-lcnt" class="form-control">
-                        <option value=""></option>
-                        ${renderOptionsWithSelect(db.danh_muc['TT LCNT'] || [], row.tt_lcnt)}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>TT Ký HĐCU</label>
-                    <select id="edit-form-tt-ky-hdcu" class="form-control">
-                        <option value=""></option>
-                        ${renderOptionsWithSelect(db.danh_muc['TT Ký HĐCU'] || [], row.tt_ky_hdcu)}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>TT KHCU</label>
-                    <select id="edit-form-tt-khcu" class="form-control">
-                        <option value=""></option>
-                        ${renderOptionsWithSelect(db.danh_muc['TT KHCU'] || [], row.tt_khcu)}
-                    </select>
-                </div>
+            </fieldset>
+
+            <!-- Section 3: Kế hoạch & Tiến độ thi công -->
+            <div style="margin-top: 20px; border-top: 2px dashed var(--border-color); padding-top: 16px;">
+                <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--color-ai-primary); display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-person-digging"></i> Kế hoạch & Tiến độ Thi công (Tuần/Tháng)
+                </h3>
+                ${renderProgressApprovalBanner(row, rowIdx)}
+                ${renderProgressFieldsInput(row, rowIdx)}
             </div>
         `;
         
@@ -2842,7 +3031,63 @@ document.addEventListener("DOMContentLoaded", () => {
             row.tt_ky_hdcu = document.getElementById("edit-form-tt-ky-hdcu").value;
             row.tt_khcu = document.getElementById("edit-form-tt-khcu").value;
 
-            showToast("Cập nhật thầu", `Đã lưu thay đổi cho dòng ${row.tt} thành công.`, "success");
+            // Save progress fields safely
+            const getPctInput = (id) => {
+                const el = document.getElementById(id);
+                if (!el || el.value === "") return "";
+                const val = parseFloat(el.value);
+                return isNaN(val) ? "" : val / 100;
+            };
+            const getValInput = (id) => {
+                const el = document.getElementById(id);
+                return el ? el.value.trim() : "";
+            };
+
+            const isContractor = currentUser && currentUser.quyen === 'Contractor';
+            const isLocked = isContractor && row.progress_status === 'Chờ duyệt';
+
+            if (!isLocked) {
+                const progData = {
+                    qa_kh_klcv_thang: getPctInput("form-p-kh-thang"),
+                    qa_kq_klcv_thang: getPctInput("form-p-kq-thang"),
+                    qa_danh_gia_thang: getValInput("form-p-dg-thang"),
+                    
+                    t1_kh: getPctInput("form-p-t1-kh"),
+                    t1_kq: getPctInput("form-p-t1-kq"),
+                    t1_dg: getValInput("form-p-t1-dg"),
+                    
+                    t2_kh: getPctInput("form-p-t2-kh"),
+                    t2_kq: getPctInput("form-p-t2-kq"),
+                    t2_dg: getValInput("form-p-t2-dg"),
+                    
+                    t3_kh: getPctInput("form-p-t3-kh"),
+                    t3_kq: getPctInput("form-p-t3-kq"),
+                    t3_dg: getValInput("form-p-t3-dg"),
+                    
+                    t4_kh: getPctInput("form-p-t4-kh"),
+                    t4_kq: getPctInput("form-p-t4-kq"),
+                    t4_dg: getValInput("form-p-t4-dg")
+                };
+
+                if (isContractor) {
+                    row.pending_progress = progData;
+                    row.progress_status = "Chờ duyệt";
+                    row.progress_ly_do_tu_choi = "";
+                    showToast("Gửi đề xuất", `Đã gửi đề xuất cập nhật tiến độ dòng ${row.tt} cho TVGS/Ban QLDA phê duyệt.`, "success");
+                } else {
+                    // Admins and TVGS update directly
+                    Object.assign(row, progData);
+                    row.progress_status = "Đã duyệt";
+                    row.progress_ly_do_tu_choi = "";
+                    row.pending_progress = null;
+                    showToast("Cập nhật thầu", `Đã lưu và phê duyệt trực tiếp tiến độ dòng ${row.tt} thành công.`, "success");
+                }
+            } else {
+                showToast("Cập nhật thầu", `Đã lưu thông tin chung cho dòng ${row.tt} thành công.`, "success");
+            }
+
+            saveDatabase();
+            closeModal();
             renderMasterGrid();
         } else if (currentFormTarget === 's01') {
             if (editRegistrationIndex !== -1) {
