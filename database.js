@@ -1,4 +1,5 @@
-// S"master": [
+const INITIAL_DATABASE = {
+  "master": [
     {
         "tt": 1,
         "ma_bsc": "HT-PL02-01",
@@ -6206,10 +6207,6 @@
         "t4_dg": ""
     }
 ],
-  "s01"  "t4_kq": "",
-      "t4_dg": ""
-    }
-  ],
   "s01": [
     {
       "STT": 1,
