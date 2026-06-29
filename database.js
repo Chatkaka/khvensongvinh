@@ -6714,6 +6714,19 @@ const INITIAL_DATABASE = {
       "goi_thau": "Tất cả các gói"
     },
     {
+      "stt": 6,
+      "ho_ten": "Nguyễn Đình Hùng",
+      "email": "hung.nd@tdggroup.vn",
+      "phong_ban": "Ban Quản lý Dự án (BQLDA)",
+      "vai_tro": "Cán bộ quản lý (Admin)",
+      "quyen": "Admin",
+      "mat_khau": "123456",
+      "quyen_them": true,
+      "quyen_sua": true,
+      "quyen_xoa": true,
+      "goi_thau": "Tất cả các gói"
+    },
+    {
       "stt": 2,
       "ho_ten": "Nguyễn Hoàng Long",
       "email": "long.nh@tvgs.vn",
