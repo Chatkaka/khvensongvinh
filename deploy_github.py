@@ -60,9 +60,10 @@ def main():
     except urllib.error.HTTPError as e:
         if e.code == 422: # Already exists
             print("[!] Repository đã tồn tại. Đang tiến hành cập nhật file...")
+        elif e.code == 403:
+            print("[!] Không có quyền tạo repository mới (403 Forbidden). Sẽ thử tải file trực tiếp lên repository hiện hữu...")
         else:
-            print(f"[✘] Lỗi tạo repository: {e}")
-            return
+            print(f"[!] Cảnh báo tạo repository: {e}. Sẽ thử tải file trực tiếp...")
             
     # Step 2: Upload files
     files_to_upload = [
