@@ -4065,7 +4065,44 @@ function openEditModalForm(rowIdx) {
         reader.readAsArrayBuffer(file);
     }
 
-    async function processDocumentDirectly(fileContent, docType, filename) {
+    // Dynamically create a hidden input for document uploads
+    const docPicker = document.createElement("input");
+    docPicker.type = "file";
+    docPicker.id = "ai-document-picker";
+    docPicker.accept = ".pdf,.png,.jpg,.jpeg,.txt,.doc,.docx";
+    docPicker.style.display = "none";
+    document.body.appendChild(docPicker);
+
+    let activeOcrDocType = 's03';
+
+    docPicker.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const isTxt = file.name.endsWith('.txt');
+        if (isTxt) {
+            const textReader = new FileReader();
+            textReader.onload = async function(evt) {
+                const plainText = evt.target.result;
+                const base64Text = btoa(unescape(encodeURIComponent(plainText)));
+                await processDocumentDirectly(base64Text, "text/plain", activeOcrDocType, file.name);
+            };
+            textReader.readAsText(file);
+        } else {
+            const reader = new FileReader();
+            reader.onload = async function(evt) {
+                const dataUrl = evt.target.result;
+                const base64Data = dataUrl.split(',')[1];
+                const mimeType = file.type || "application/pdf";
+                await processDocumentDirectly(base64Data, mimeType, activeOcrDocType, file.name);
+            };
+            reader.readAsDataURL(file);
+        }
+        // Reset picker
+        docPicker.value = "";
+    });
+
+    async function processDocumentDirectly(base64Data, mimeType, docType, filename) {
         showToast("Gemini OCR", `Đang phân tích tài liệu "${filename}"...`, "info");
         
         // Show a premium loading overlay
@@ -4083,7 +4120,7 @@ function openEditModalForm(rowIdx) {
         document.body.appendChild(loadingDiv);
 
         try {
-            const answer = await GeminiAI.parseDocumentWithPrompt(fileContent, docType);
+            const answer = await GeminiAI.parseMultimodalDocument(base64Data, mimeType, docType);
             
             // Extract JSON
             let jsonStr = answer;
@@ -4175,20 +4212,32 @@ dropzone.addEventListener("click", () => fileInput.click());
         if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
             importExcelData(file);
         } else {
-            // Read file as text for Gemini analysis
-            const reader = new FileReader();
-            reader.onload = async function(evt) {
-                const text = evt.target.result;
-                let docType = 's03';
-                if (file.name.toLowerCase().includes('s01') || file.name.toLowerCase().includes('tiền khởi công') || file.name.toLowerCase().includes('tienkc')) docType = 's01';
-                else if (file.name.toLowerCase().includes('s02') || file.name.toLowerCase().includes('kế hoạch') || file.name.toLowerCase().includes('kehoach')) docType = 's02';
-                else if (file.name.toLowerCase().includes('s03') || file.name.toLowerCase().includes('phát sinh') || file.name.toLowerCase().includes('phatsinh')) docType = 's03';
-                else if (file.name.toLowerCase().includes('s04') || file.name.toLowerCase().includes('cung ứng') || file.name.toLowerCase().includes('cungung')) docType = 's04';
-                else if (file.name.toLowerCase().includes('s05') || file.name.toLowerCase().includes('bù tiến độ') || file.name.toLowerCase().includes('butiendo')) docType = 's05';
-                
-                await processDocumentDirectly(text, docType, file.name);
-            };
-            reader.readAsText(file);
+            let docType = 's03';
+            if (file.name.toLowerCase().includes('s01') || file.name.toLowerCase().includes('tiền khởi công') || file.name.toLowerCase().includes('tienkc')) docType = 's01';
+            else if (file.name.toLowerCase().includes('s02') || file.name.toLowerCase().includes('kế hoạch') || file.name.toLowerCase().includes('kehoach')) docType = 's02';
+            else if (file.name.toLowerCase().includes('s03') || file.name.toLowerCase().includes('phát sinh') || file.name.toLowerCase().includes('phatsinh')) docType = 's03';
+            else if (file.name.toLowerCase().includes('s04') || file.name.toLowerCase().includes('cung ứng') || file.name.toLowerCase().includes('cungung')) docType = 's04';
+            else if (file.name.toLowerCase().includes('s05') || file.name.toLowerCase().includes('bù tiến độ') || file.name.toLowerCase().includes('butiendo')) docType = 's05';
+
+            const isTxt = file.name.endsWith('.txt');
+            if (isTxt) {
+                const textReader = new FileReader();
+                textReader.onload = async function(evt) {
+                    const plainText = evt.target.result;
+                    const base64Text = btoa(unescape(encodeURIComponent(plainText)));
+                    await processDocumentDirectly(base64Text, "text/plain", docType, file.name);
+                };
+                textReader.readAsText(file);
+            } else {
+                const reader = new FileReader();
+                reader.onload = async function(evt) {
+                    const dataUrl = evt.target.result;
+                    const base64Data = dataUrl.split(',')[1];
+                    const mimeType = file.type || "application/pdf";
+                    await processDocumentDirectly(base64Data, mimeType, docType, file.name);
+                };
+                reader.readAsDataURL(file);
+            }
         }
     });
 
@@ -4210,37 +4259,49 @@ dropzone.addEventListener("click", () => fileInput.click());
         if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
             importExcelData(file);
         } else {
-            // Read file as text for Gemini analysis
-            const reader = new FileReader();
-            reader.onload = async function(evt) {
-                const text = evt.target.result;
-                let docType = 's03';
-                if (file.name.toLowerCase().includes('s01') || file.name.toLowerCase().includes('tiền khởi công') || file.name.toLowerCase().includes('tienkc')) docType = 's01';
-                else if (file.name.toLowerCase().includes('s02') || file.name.toLowerCase().includes('kế hoạch') || file.name.toLowerCase().includes('kehoach')) docType = 's02';
-                else if (file.name.toLowerCase().includes('s03') || file.name.toLowerCase().includes('phát sinh') || file.name.toLowerCase().includes('phatsinh')) docType = 's03';
-                else if (file.name.toLowerCase().includes('s04') || file.name.toLowerCase().includes('cung ứng') || file.name.toLowerCase().includes('cungung')) docType = 's04';
-                else if (file.name.toLowerCase().includes('s05') || file.name.toLowerCase().includes('bù tiến độ') || file.name.toLowerCase().includes('butiendo')) docType = 's05';
-                
-                await processDocumentDirectly(text, docType, file.name);
-            };
-            reader.readAsText(file);
+            let docType = 's03';
+            if (file.name.toLowerCase().includes('s01') || file.name.toLowerCase().includes('tiền khởi công') || file.name.toLowerCase().includes('tienkc')) docType = 's01';
+            else if (file.name.toLowerCase().includes('s02') || file.name.toLowerCase().includes('kế hoạch') || file.name.toLowerCase().includes('kehoach')) docType = 's02';
+            else if (file.name.toLowerCase().includes('s03') || file.name.toLowerCase().includes('phát sinh') || file.name.toLowerCase().includes('phatsinh')) docType = 's03';
+            else if (file.name.toLowerCase().includes('s04') || file.name.toLowerCase().includes('cung ứng') || file.name.toLowerCase().includes('cungung')) docType = 's04';
+            else if (file.name.toLowerCase().includes('s05') || file.name.toLowerCase().includes('bù tiến độ') || file.name.toLowerCase().includes('butiendo')) docType = 's05';
+
+            const isTxt = file.name.endsWith('.txt');
+            if (isTxt) {
+                const textReader = new FileReader();
+                textReader.onload = async function(evt) {
+                    const plainText = evt.target.result;
+                    const base64Text = btoa(unescape(encodeURIComponent(plainText)));
+                    await processDocumentDirectly(base64Text, "text/plain", docType, file.name);
+                };
+                textReader.readAsText(file);
+            } else {
+                const reader = new FileReader();
+                reader.onload = async function(evt) {
+                    const dataUrl = evt.target.result;
+                    const base64Data = dataUrl.split(',')[1];
+                    const mimeType = file.type || "application/pdf";
+                    await processDocumentDirectly(base64Data, mimeType, docType, file.name);
+                };
+                reader.readAsDataURL(file);
+            }
         }
     });
 
     // Click demo files handler
-    document.getElementById("demo-doc-s03").addEventListener("click", async () => {
-        const text = `Tờ trình phát sinh ngày 2026-06-12 gửi BQLDA VSV. Tổng thầu An Phong báo cáo túi bùn địa chất yếu cục bộ tại khu vực hố móng nhà mẫu CT-01 (Mã gói thầu: VSV_QLTC_TT.01). Đề xuất gia cố bổ sung 450 cọc tre d100 l=4m và thay đệm cát dày 1.2m. Giá trị phát sinh dự tính là 0.8 tỷ đồng. Thời gian ảnh hưởng tiến độ dự báo chậm 5 ngày. Đính kèm hồ sơ kỹ thuật PS01_NenYeu.pdf. Người trình: CHT Trần Quốc Huy.`;
-        await processDocumentDirectly(text, 's03', 'TrinhPhatSinh_NenYeu.pdf');
+    document.getElementById("demo-doc-s03").addEventListener("click", () => {
+        activeOcrDocType = 's03';
+        docPicker.click();
     });
     
-    document.getElementById("demo-doc-s04").addEventListener("click", async () => {
-        const text = `Yêu cầu cung ứng đặc thù ngày 2026-06-14. Để phục vụ bán sảnh chính nhà mẫu CT-01 (Mã gói thầu: VSV_QLTC_TT.01), chúng tôi yêu cầu cung ứng 120 m2 đá Marble Crema Marfil Tây Ban Nha cao cấp ốp lát mặt tiền sảnh chính ngoài HĐCU đã ký. Dự toán chi phí là 1.2 tỷ đồng. Đính kèm YC01_Marble.pdf. Kính trình phê duyệt.`;
-        await processDocumentDirectly(text, 's04', 'YcCungUngDacThu_Marble.pdf');
+    document.getElementById("demo-doc-s04").addEventListener("click", () => {
+        activeOcrDocType = 's04';
+        docPicker.click();
     });
     
-    document.getElementById("demo-doc-s05").addEventListener("click", async () => {
-        const text = `Báo cáo bù tiến độ ngày 2026-06-20 cho gói thầu VSV_QLTC_TT.01 (CT-01). Mức độ chậm trễ phát hiện là 9 ngày. Nguyên nhân do mưa lớn ngập úng hố móng. Giải pháp khắc phục đề xuất tăng ca đêm và lắp thêm 2 máy bơm công suất lớn hút nước liên tục 24/24. Chi tiết hành động: Tăng ca thêm 3 giờ/ngày cho đội cốt thép cốp pha. Cam kết mốc hoàn thành mới là 2026-07-05. Đính kèm PA_BuTienDo_T6_CT01.pdf.`;
-        await processDocumentDirectly(text, 's05', 'PhuongAnBuTienDo_Mong.pdf');
+    document.getElementById("demo-doc-s05").addEventListener("click", () => {
+        activeOcrDocType = 's05';
+        docPicker.click();
     });
 
     // Helper functions for proposal formatting

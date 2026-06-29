@@ -417,6 +417,194 @@ ${JSON.stringify(targetSchema, null, 2)}
 
         return this.callGeminiAPI(prompt, systemInstruction);
     }
+
+    /**
+     * Parse uploaded PDF/images/text documents directly as multimodal data
+     */
+    async parseMultimodalDocument(base64Data, mimeType, docType) {
+        if (this.isSimulation) {
+            const mockData = await this.ingestDocument(docType);
+            let simulatedJson = {};
+            if (docType === 's01') {
+                simulatedJson = {
+                    ma_bsc: mockData.ma_bsc || 'VSV_QLTC_TT.01',
+                    hang_muc: 'CT-01 Nhà mẫu',
+                    loai_ho_so: 'Biện pháp thi công',
+                    ten_san_pham: 'Bản vẽ biện pháp thi công sảnh chính',
+                    link_luu_tru: 'AP-BPTC-01.pdf',
+                    nguoi_lap: 'Nguyễn Đình Hùng'
+                };
+            } else if (docType === 's02') {
+                simulatedJson = {
+                    ma_bsc: mockData.ma_bsc || 'VSV_QLTC_TT.01',
+                    hang_muc: 'CT-01 Nhà mẫu',
+                    loai_tai_lieu: 'Biện pháp thi công',
+                    thang_tuan: 'Tuần 28 - Tháng 07/2026',
+                    noi_dung: 'Triển khai thi công hoàn thiện phần thô kết cấu sảnh chính nhà mẫu CT-01.',
+                    dat_yckt: 'Đạt',
+                    link: 'KeHoach_T28.pdf',
+                    nguoi_lap: 'Trần Quốc Huy'
+                };
+            } else if (docType === 's03') {
+                simulatedJson = {
+                    ma_bsc: mockData.ma_bsc,
+                    hang_muc: 'CT-01 Nhà mẫu',
+                    loai_ps: mockData.loai_ps,
+                    mo_ta: mockData.mo_ta,
+                    nguyen_nhan: mockData.nguyen_nhan,
+                    de_xuat: mockData.de_xuat,
+                    gia_tri: mockData.gia_tri,
+                    tre_han: mockData.tre_han,
+                    link_hs: mockData.link_hs
+                };
+            } else if (docType === 's04') {
+                simulatedJson = {
+                    ma_bsc: mockData.ma_bsc,
+                    hang_muc: 'CT-01 Nhà mẫu',
+                    loai_yc: mockData.loai_yc,
+                    vattu: mockData.vattu,
+                    dac_ta: mockData.dac_ta,
+                    kl: mockData.kl,
+                    dvt: mockData.dvt,
+                    gia_tri: mockData.gia_tri,
+                    trong_ngoai: mockData.trong_ngoai,
+                    link_hs: mockData.link_hs
+                };
+            } else if (docType === 's05') {
+                simulatedJson = {
+                    ma_bsc: mockData.ma_bsc,
+                    hang_muc: 'CT-01 Nhà mẫu',
+                    ngay_phat_hien: mockData.ngay_phat_hien,
+                    muc_cham: mockData.muc_cham,
+                    nguyen_nhan: mockData.nguyen_nhan,
+                    giai_phap: mockData.giai_phap,
+                    chi_tiet: mockData.chi_tiet,
+                    moc_cam_ket: mockData.moc_cam_ket,
+                    link_hs: mockData.link_hs
+                };
+            }
+            return `\`\`\`json
+${JSON.stringify(simulatedJson, null, 2)}
+\`\`\``;
+        }
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
+        
+        const schemas = {
+            s01: {
+                ma_bsc: "Mã BSC / Gói thầu liên kết (ví dụ: VSV_QLTC_TT.01)",
+                hang_muc: "Hạng mục công việc (ví dụ: Nhà mẫu CT-01)",
+                loai_ho_so: "Loại hồ sơ (chọn một trong các giá trị: Biện pháp thi công, Specs, Bản vẽ, BOQ/KL, LCNT, Ký HĐCU, KHCU)",
+                ten_san_pham: "Tên sản phẩm / Số hiệu (ví dụ: Báo cáo biện pháp thi công phần ngầm số AP-BPTC-01)",
+                link_luu_tru: "Đường dẫn tài liệu đính kèm (tên file hoặc URL)",
+                nguoi_lap: "Tên người lập biểu mẫu"
+            },
+            s02: {
+                ma_bsc: "Mã BSC / Gói thầu liên kết (ví dụ: VSV_QLTC_TT.01)",
+                hang_muc: "Hạng mục công việc (ví dụ: Nhà mẫu CT-01)",
+                loai_tai_lieu: "Loại tài liệu (ví dụ: Biện pháp thi công, Kế hoạch cung ứng...)",
+                thang_tuan: "Tháng/Tuần kế hoạch (ví dụ: Tuần 28 - Tháng 07/2026)",
+                noi_dung: "Nội dung kế hoạch chính",
+                dat_yckt: "Đạt YCKT CĐT (chọn 'Đạt' hoặc 'Chưa đạt')",
+                link: "Đường dẫn tài liệu đính kèm (tên file hoặc URL)",
+                nguoi_lap: "Tên người lập kế hoạch"
+            },
+            s03: {
+                ma_bsc: "Mã BSC / Gói thầu liên kết (ví dụ: VSV_QLTC_TT.01)",
+                hang_muc: "Hạng mục (ví dụ: Nhà mẫu CT-01)",
+                loai_ps: "Loại phát sinh (ví dụ: Phát sinh khối lượng)",
+                mo_ta: "Mô tả chi tiết hạng mục phát sinh",
+                nguyen_nhan: "Nguyên nhân chính dẫn tới phát sinh",
+                de_xuat: "Đề xuất giải pháp khắc phục",
+                gia_tri: "Giá trị phát sinh dự kiến (số thực đơn vị tỷ đồng, ví dụ: 0.8)",
+                tre_han: "Ảnh hưởng tiến độ nếu có (số nguyên số ngày chậm trễ, ví dụ: 5)",
+                link_hs: "Hồ sơ đính kèm (tên tệp hoặc link)"
+            },
+            s04: {
+                ma_bsc: "Mã BSC / Gói thầu liên kết (ví dụ: VSV_QLTC_TT.01)",
+                hang_muc: "Hạng mục (ví dụ: Nhà mẫu CT-01)",
+                loai_yc: "Loại yêu cầu cung ứng (ví dụ: Đặc thù)",
+                vattu: "Tên vật tư / thiết bị",
+                dac_ta: "Đặc tả kỹ thuật của vật tư",
+                kl: "Khối lượng yêu cầu",
+                dvt: "Đơn vị tính",
+                gia_tri: "Dự kiến chi phí (số thực đơn vị tỷ đồng, ví dụ: 1.2)",
+                trong_ngoai: "Trong hay Ngoài HĐCU (chọn 'Trong HĐCU' hoặc 'Ngoài HĐCU')",
+                link_hs: "Hồ sơ đính kèm (tên tệp hoặc link)"
+            },
+            s05: {
+                ma_bsc: "Mã BSC / Gói thầu liên kết (ví dụ: VSV_QLTC_TT.01)",
+                hang_muc: "Hạng mục (ví dụ: Nhà mẫu CT-01)",
+                ngay_phat_hien: "Ngày phát hiện chậm tiến độ (định dạng YYYY-MM-DD)",
+                muc_cham: "Mức độ chậm trễ (số ngày, ví dụ: 9)",
+                nguyen_nhan: "Nguyên nhân gây chậm tiến độ",
+                giai_phap: "Giải pháp khắc phục",
+                chi_tiet: "Chi tiết hành động cụ thể",
+                moc_cam_ket: "Mốc cam kết hoàn thành (định dạng YYYY-MM-DD)",
+                link_hs: "Hồ sơ đính kèm (tên tệp hoặc link)"
+            }
+        };
+
+        const targetSchema = schemas[docType] || schemas.s03;
+
+        const systemInstruction = `
+Mục tiêu:
+Bạn là một Kỹ sư Dữ liệu (Data Engineer) cấp cao và là Chuyên gia Tích hợp Hệ thống trên nền tảng Antigravity. Nhiệm vụ của bạn là đọc kỹ các file tài liệu thô (Excel, Word, PDF), phân tích cấu trúc, bóc tách thông tin và điền dữ liệu vào cấu trúc Form của Web App một cách chính xác tuyệt đối (100%).
+
+Bối cảnh:
+Hệ thống Web App này quản lý luồng dữ liệu thời gian thực. Bất kỳ một sai sót nhỏ nào trong việc nhập liệu (sai số tiền, sai ngày tháng, nhầm trường thông tin) đều sẽ gây ra hậu quả nghiêm trọng cho hệ thống cơ sở dữ liệu. Độ chính xác được ưu tiên cao hơn tốc độ.
+
+Hướng dẫn thực hiện (Chuỗi suy luận từng bước):
+Hãy thực hiện việc xử lý dữ liệu một cách cực kỳ hệ thống theo 4 bước sau:
+Bước 1: Quét và Phân tích cấu trúc gốc (Data Ingestion)
+Bước 2: Ánh xạ dữ liệu (Data Mapping)
+Bước 3: Thẩm định chéo (Cross-Validation - BƯỚC BẮT BUỘC)
+Bước 4: Đóng gói và Trích xuất (Payload Execution)
+
+Giới hạn và Quy chuẩn đầu ra (Constraints):
+- Chính xác tuyệt đối (Strict Grounding): CHỈ trích xuất dữ liệu có sự hiện diện thực tế trong file. TUYỆT ĐỐI KHÔNG tự suy diễn.
+- Xử lý dữ liệu trống (Null Handling): Nếu trong file gốc không có, bắt buộc phải trả về giá trị null.
+- Định dạng đầu ra: Toàn bộ kết quả điền form phải được đặt trong một khối mã (Code Block) định dạng JSON để API của Antigravity có thể đọc trực tiếp.
+`;
+
+        const requestBody = {
+            contents: [{
+                parts: [
+                    {
+                        inlineData: {
+                            mimeType: mimeType,
+                            data: base64Data
+                        }
+                    },
+                    {
+                        text: `Hãy trích xuất và trả về dữ liệu tương ứng với cấu trúc JSON sau:\n${JSON.stringify(targetSchema, null, 2)}`
+                    }
+                ]
+            }]
+        };
+
+        if (systemInstruction) {
+            requestBody.systemInstruction = {
+                parts: [{ text: systemInstruction }]
+            };
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error?.message || 'Lỗi kết nối Gemini API');
+        }
+
+        const resData = await response.json();
+        return resData.candidates[0].content.parts[0].text;
+    }
 }
 
 const GeminiAI = new GeminiAIService();
