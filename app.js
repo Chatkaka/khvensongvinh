@@ -144,7 +144,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!db.s03) db.s03 = [];
         if (!db.s04) db.s04 = [];
         if (!db.s05) db.s05 = [];
-        if (!db.nhan_su) db.nhan_su = defaultDb.nhan_su || [];
+        if (!db.nhan_su || db.nhan_su.length === 0) db.nhan_su = defaultDb.nhan_su || [];
+        if (!db.danh_muc || Object.keys(db.danh_muc).length === 0) db.danh_muc = defaultDb.danh_muc || {};
         
         // Ensure every personnel member has a password and Proper CRUD flags
         db.nhan_su.forEach(ns => {
@@ -3124,19 +3125,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     row.getCell(45).value = rowObj.t1_kh !== undefined ? parseFloat(rowObj.t1_kh) : null;
                     row.getCell(46).value = rowObj.t1_kq !== undefined ? parseFloat(rowObj.t1_kq) : null;
-                    row.getCell(47).value = rowObj.t1_danh_gia || null;
+                    row.getCell(47).value = rowObj.t1_dg || null;
 
                     row.getCell(48).value = rowObj.t2_kh !== undefined ? parseFloat(rowObj.t2_kh) : null;
                     row.getCell(49).value = rowObj.t2_kq !== undefined ? parseFloat(rowObj.t2_kq) : null;
-                    row.getCell(50).value = rowObj.t2_danh_gia || null;
+                    row.getCell(50).value = rowObj.t2_dg || null;
 
                     row.getCell(51).value = rowObj.t3_kh !== undefined ? parseFloat(rowObj.t3_kh) : null;
                     row.getCell(52).value = rowObj.t3_kq !== undefined ? parseFloat(rowObj.t3_kq) : null;
-                    row.getCell(53).value = rowObj.t3_danh_gia || null;
+                    row.getCell(53).value = rowObj.t3_dg || null;
 
                     row.getCell(54).value = rowObj.t4_kh !== undefined ? parseFloat(rowObj.t4_kh) : null;
                     row.getCell(55).value = rowObj.t4_kq !== undefined ? parseFloat(rowObj.t4_kq) : null;
-                    row.getCell(56).value = rowObj.t4_danh_gia || null;
+                    row.getCell(56).value = rowObj.t4_dg || null;
                 });
             }
 
@@ -3365,7 +3366,14 @@ document.addEventListener("DOMContentLoaded", () => {
                         "tt_ky_hdcu", "kh_pd_khcu", "tt_khcu", "gia_tri_hdcu", "percent_hdcu_ns",
                         "kh_ky_plhd_cdt", "tt_ky_plhd_cdt", "kh_pd_khtk", "tt_khtk",
                         "dk1_hskt", "dk2_hdcu", "dk3_khtk", "dieu_kien_du", "ngay_bd_khoi_cong",
-                        "hs_tien_kc_duyet", "luy_ke_ab", "luy_ke_bb", "luy_ke_tong_chi_phi"
+                        "hs_tien_kc_duyet", "luy_ke_ab", "luy_ke_bb", "luy_ke_tong_chi_phi",
+                        "tai_lieu_kh_thang", "phat_sinh_chua_duyet", "yc_cung_ung_cho_duyet", "bu_tien_do_dang_chay",
+                        "qa_kh_klcv_thang", "qa_kq_klcv_thang", "qa_danh_gia_thang",
+                        "tc_kh_klcv_thang", "tc_kq_klcv_thang", "tc_danh_gia_thang",
+                        "t1_kh", "t1_kq", "t1_dg",
+                        "t2_kh", "t2_kq", "t2_dg",
+                        "t3_kh", "t3_kq", "t3_dg",
+                        "t4_kh", "t4_kq", "t4_dg"
                     ];
                     
                     for (let i = 5; i < rows.length; i++) {
