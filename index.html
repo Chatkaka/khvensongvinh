@@ -121,6 +121,35 @@
 
         <!-- ==================== TAB: DASHBOARD ==================== -->
         <div class="tab-pane active" id="tab-dashboard">
+            <!-- Dashboard Tổng quan Hệ thống -->
+            <div class="dashboard-overview-header" style="margin-bottom: 24px; background-color: var(--bg-surface); padding: 18px 24px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-premium);">
+                <h2 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-family: var(--font-heading); text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i class="fa-solid fa-chart-line" style="color: var(--color-ai-primary);"></i> Dashboard Tổng quan Hệ thống
+                </h2>
+                <div class="dashboard-overview-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;">
+                    <div class="overview-card" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #94a3b8; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: default;">
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Tổng hạng mục theo dõi</div>
+                        <div id="dashboard-total-monitored" style="font-size: 1.8rem; font-weight: 700; color: #fff; line-height: 1;">0</div>
+                    </div>
+                    <div class="overview-card" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #ff5252; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: default;">
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🔴 Cảnh báo đỏ</div>
+                        <div id="dashboard-red-alerts" style="font-size: 1.8rem; font-weight: 700; color: #ff5252; line-height: 1;">0</div>
+                    </div>
+                    <div class="overview-card" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: default;">
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🟠 Cảnh báo cam</div>
+                        <div id="dashboard-orange-alerts" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
+                    </div>
+                    <div class="overview-card" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #eab308; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: default;">
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🟡 Cảnh báo vàng</div>
+                        <div id="dashboard-yellow-alerts" style="font-size: 1.8rem; font-weight: 700; color: #eab308; line-height: 1;">0</div>
+                    </div>
+                    <div class="overview-card" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #10b981; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: default;">
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🟢 Bình thường</div>
+                        <div id="dashboard-normal" style="font-size: 1.8rem; font-weight: 700; color: #10b981; line-height: 1;">0</div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="dashboard-row-split">
                 <!-- Gantt Timeline Chart Widget -->
                 <div class="widget" style="min-height: 420px;">

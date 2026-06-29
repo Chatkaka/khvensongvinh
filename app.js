@@ -564,6 +564,51 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("kpi-total-budget").textContent = totalBudget.toFixed(2) + " tỷ";
         document.getElementById("kpi-total-contract").textContent = totalContract.toFixed(2) + " tỷ";
         document.getElementById("kpi-total-variations").textContent = totalVariations.toFixed(2) + " tỷ";
+
+        // Calculate dashboard system overview status counts dynamically
+        let totalMonitored = 0;
+        let redAlerts = 0;
+        let orangeAlerts = 0;
+        let yellowAlerts = 0;
+        let normalAlerts = 0;
+
+        db.master.forEach(row => {
+            const bsc = String(row.ma_bsc || "").trim();
+            // Count unique parent packages
+            if (bsc !== "" && row.goi_thau_pl) {
+                totalMonitored++;
+                
+                // Find delays in s05
+                const delays = db.s05.filter(d => String(d['Mã BSC']).trim() === bsc && d['TT thực hiện'] === 'Đang thực hiện');
+                const maxDelay = delays.length > 0 ? Math.max(...delays.map(d => parseInt(d['Mức chậm (ngày)'] || 0))) : 0;
+
+                const dk = row.dieu_kien_du || 'THIẾU ĐK';
+                if (dk === 'THIẾU ĐK') {
+                    redAlerts++;
+                } else {
+                    if (maxDelay > 5) {
+                        orangeAlerts++;
+                    } else if (maxDelay > 0) {
+                        yellowAlerts++;
+                    } else {
+                        normalAlerts++;
+                    }
+                }
+            }
+        });
+
+        // Set text content
+        const elTotal = document.getElementById("dashboard-total-monitored");
+        const elRed = document.getElementById("dashboard-red-alerts");
+        const elOrange = document.getElementById("dashboard-orange-alerts");
+        const elYellow = document.getElementById("dashboard-yellow-alerts");
+        const elNormal = document.getElementById("dashboard-normal");
+
+        if (elTotal) elTotal.textContent = totalMonitored;
+        if (elRed) elRed.textContent = redAlerts;
+        if (elOrange) elOrange.textContent = orangeAlerts;
+        if (elYellow) elYellow.textContent = yellowAlerts;
+        if (elNormal) elNormal.textContent = normalAlerts;
         
         const variationPct = totalBudget > 0 ? (totalVariations / totalBudget * 100) : 0;
         document.getElementById("kpi-variation-percentage").innerHTML = `<i class="fa-solid fa-calculator"></i> ${variationPct.toFixed(1)}% ngân sách gốc`;
