@@ -1843,17 +1843,8 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".btn-resubmit-s02").forEach(btn => {
             btn.addEventListener("click", () => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
-                const row = db.s02[idx];
-                const newLink = prompt("Nhập Link tài liệu mới hoặc để trống để giữ nguyên:", row['LINK tài liệu']);
-                if (newLink === null) return;
-                if (newLink.trim()) row['LINK tài liệu'] = newLink.trim();
-                row['TT duyệt'] = 'Chờ duyệt';
-                row['Lý do từ chối'] = '';
-                
-                calculateRollups();
-                saveDatabase();
-                renderS02();
-                showToast("Trình Lại", "Đã trình lại kế hoạch tuần/tháng thành công.", "success");
+                editRegistrationIndex = idx;
+                openModalForm('s02');
             });
         });
 
@@ -2386,6 +2377,52 @@ document.addEventListener("DOMContentLoaded", () => {
                     <input type="text" id="form-maker" class="form-control" value="Tổng thầu">
                 </div>
             `;
+        } else if (target === 's02') {
+            titleEl.textContent = "Lập Kế Hoạch Tuần/Tháng";
+            bodyEl.innerHTML = `
+                <div class="form-group" style="position: relative;">
+                    <label>Công trình / Gói thầu liên kết</label>
+                    ${renderSearchableBscSelect('form-bsc')}
+                </div>
+                <div class="form-group">
+                    <label>Hạng mục</label>
+                    <input type="text" id="form-hang-muc" class="form-control" placeholder="Tên dự án/hạng mục...">
+                </div>
+                <div class="form-group">
+                    <label>Tháng / Tuần</label>
+                    <input type="text" id="form-thang" class="form-control" placeholder="ví dụ: Tháng 07/2026, Tuần 28..." required>
+                </div>
+                <div class="form-group">
+                    <label>Loại tài liệu</label>
+                    <select id="form-loai" class="form-control">${renderOptions(db.danh_muc['Loại tài liệu KH tháng'])}</select>
+                </div>
+                <div class="form-group">
+                    <label>Nội dung chính</label>
+                    <textarea id="form-noi-dung" class="form-control" style="height:80px;" placeholder="Tóm tắt nội dung chính kế hoạch..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Đạt YCKT CĐT</label>
+                    <select id="form-dat-yckt" class="form-control">${renderOptions(db.danh_muc['Đạt YCKT CĐT'])}</select>
+                </div>
+                <div class="form-group">
+                    <label>Link, hồ sơ đính kèm</label>
+                    <div style="display: flex; gap: 8px; flex-direction: column;">
+                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="KH_TaiLieu.pdf">
+                        <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Hoặc tải tệp (PDF/ảnh):</span>
+                            <input type="file" id="form-file-upload" accept="image/*,application/pdf" style="display: none;">
+                            <button type="button" class="btn-action" onclick="document.getElementById('form-file-upload').click()" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(59,130,246,0.3);">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Chọn Tệp
+                            </button>
+                            <span id="form-file-status" style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Người lập</label>
+                    <input type="text" id="form-maker" class="form-control" value="Tổng thầu">
+                </div>
+            `;
         } else if (target === 's03') {
             titleEl.textContent = "Ghi Nhận Phát Sinh & Sai Khác Hợp Đồng";
             bodyEl.innerHTML = `
@@ -2576,6 +2613,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("form-loai").value = doc["Loại hồ sơ"] || "";
                 document.getElementById("form-name").value = doc["Tên sản phẩm / Số hiệu"] || "";
                 document.getElementById("form-link").value = doc["LINK lưu trữ"] || "";
+                document.getElementById("form-maker").value = doc["Người lập"] || "";
+            } else if (target === 's02') {
+                const doc = db.s02[editRegistrationIndex];
+                document.getElementById("form-hang-muc").value = doc["Hạng mục"] || "";
+                document.getElementById("form-thang").value = doc["Tháng"] || "";
+                document.getElementById("form-loai").value = doc["Loại tài liệu"] || "";
+                document.getElementById("form-noi-dung").value = doc["Nội dung chính"] || "";
+                document.getElementById("form-dat-yckt").value = doc["Đạt YCKT CĐT"] || "Có";
+                document.getElementById("form-link").value = doc["LINK tài liệu"] || "";
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
             } else if (target === 's03') {
                 const doc = db.s03[editRegistrationIndex];
@@ -2829,6 +2875,42 @@ document.addEventListener("DOMContentLoaded", () => {
                 showToast("Sổ 01", "Đã đăng ký hồ sơ khởi công. Đang chờ duyệt.", "success");
             }
             renderS01();
+        } else if (currentFormTarget === 's02') {
+            if (editRegistrationIndex !== -1) {
+                const doc = db.s02[editRegistrationIndex];
+                doc["Mã BSC"] = document.getElementById("form-bsc").value;
+                doc["Hạng mục"] = document.getElementById("form-hang-muc").value;
+                doc["Tháng"] = document.getElementById("form-thang").value;
+                doc["Loại tài liệu"] = document.getElementById("form-loai").value;
+                doc["Nội dung chính"] = document.getElementById("form-noi-dung").value;
+                doc["Đạt YCKT CĐT"] = document.getElementById("form-dat-yckt").value;
+                doc["LINK tài liệu"] = document.getElementById("form-link").value;
+                doc["Người lập"] = document.getElementById("form-maker").value;
+                doc["TT lập"] = "Tổng thầu";
+                doc["TT duyệt"] = "Chờ duyệt";
+                doc["Lý do từ chối"] = "";
+                showToast("Sổ 02", "Đã cập nhật và trình lại kế hoạch tuần/tháng thành công.", "success");
+                editRegistrationIndex = -1;
+            } else {
+                const newDoc = {
+                    "STT": db.s02.length + 1,
+                    "Mã BSC": document.getElementById("form-bsc").value,
+                    "Hạng mục": document.getElementById("form-hang-muc").value,
+                    "Tháng": document.getElementById("form-thang").value,
+                    "Loại tài liệu": document.getElementById("form-loai").value,
+                    "Nội dung chính": document.getElementById("form-noi-dung").value,
+                    "Đạt YCKT CĐT": document.getElementById("form-dat-yckt").value,
+                    "LINK tài liệu": document.getElementById("form-link").value,
+                    "TT lập": "Tổng thầu",
+                    "TT duyệt": "Chờ duyệt",
+                    "Người lập": document.getElementById("form-maker").value,
+                    "Người duyệt": "TVGS",
+                    "Ngày duyệt": ""
+                };
+                db.s02.push(newDoc);
+                showToast("Sổ 02", "Đã đăng ký kế hoạch tuần/tháng thành công.", "success");
+            }
+            renderS02();
         } else if (currentFormTarget === 's03') {
             const bsc = document.getElementById("form-bsc").value;
             if (editRegistrationIndex !== -1) {
