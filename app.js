@@ -1086,6 +1086,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (item.type === 'grand_parent') {
                     tdOps.textContent = "";
                 } else {
+                    const row = item.row_ref;
                     const canEdit = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua);
                     const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
                     
