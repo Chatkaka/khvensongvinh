@@ -1481,6 +1481,9 @@ document.addEventListener("DOMContentLoaded", () => {
             row.progress_status = "Đã duyệt";
             row.progress_ly_do_tu_choi = "";
             row.pending_progress = null;
+            // Record approver and date
+            row.progress_nguoi_duyet = currentUser ? currentUser.ho_ten : "Hệ thống";
+            row.progress_ngay_duyet = getSystemDateGMT7();
             
             calculateRollups();
             saveDatabase();
@@ -1499,6 +1502,9 @@ document.addEventListener("DOMContentLoaded", () => {
             
             row.progress_status = "Từ chối";
             row.progress_ly_do_tu_choi = reason.trim();
+            // Record rejecter and date
+            row.progress_nguoi_duyet = currentUser ? currentUser.ho_ten : "Hệ thống";
+            row.progress_ngay_duyet = getSystemDateGMT7();
             
             calculateRollups();
             saveDatabase();
@@ -1921,6 +1927,8 @@ function openEditModalForm(rowIdx) {
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 db.s01[idx]['TT duyệt'] = 'Đã duyệt';
                 db.s01[idx]['Lý do từ chối'] = '';
+                db.s01[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'CĐT';
+                db.s01[idx]['Ngày duyệt'] = getSystemDateGMT7();
                 
                 // Rollup real-time
                 calculateRollups();
@@ -1939,6 +1947,8 @@ function openEditModalForm(rowIdx) {
                 
                 db.s01[idx]['TT duyệt'] = 'Từ chối';
                 db.s01[idx]['Lý do từ chối'] = reason.trim();
+                db.s01[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'CĐT';
+                db.s01[idx]['Ngày duyệt'] = getSystemDateGMT7();
                 
                 calculateRollups();
                 saveDatabase();
@@ -2030,6 +2040,8 @@ function openEditModalForm(rowIdx) {
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 db.s02[idx]['TT duyệt'] = 'Đã duyệt';
                 db.s02[idx]['Lý do từ chối'] = '';
+                db.s02[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'TVGS';
+                db.s02[idx]['Ngày duyệt'] = getSystemDateGMT7();
                 db.s02[idx]['Ngày duyệt'] = new Date().toISOString().substring(0, 10);
                 
                 calculateRollups();
@@ -2048,6 +2060,8 @@ function openEditModalForm(rowIdx) {
                 
                 db.s02[idx]['TT duyệt'] = 'Từ chối';
                 db.s02[idx]['Lý do từ chối'] = reason.trim();
+                db.s02[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'TVGS';
+                db.s02[idx]['Ngày duyệt'] = getSystemDateGMT7();
                 
                 calculateRollups();
                 saveDatabase();
@@ -2153,8 +2167,8 @@ function openEditModalForm(rowIdx) {
 
                 db.s03[idx]['TT duyệt'] = 'Đã duyệt';
                 db.s03[idx]['Lý do từ chối'] = '';
-                db.s03[idx]['Người duyệt'] = 'GĐDA';
-                db.s03[idx]['Ngày duyệt'] = new Date().toISOString().substring(0, 10);
+                db.s03[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'GĐDA';
+                db.s03[idx]['Ngày duyệt'] = getSystemDateGMT7();
 
                 // Real-time synchronization rollup < 0.5s
                 calculateRollups();
@@ -2173,8 +2187,8 @@ function openEditModalForm(rowIdx) {
                 
                 db.s03[idx]['TT duyệt'] = 'Từ chối';
                 db.s03[idx]['Lý do từ chối'] = reason.trim();
-                db.s03[idx]['Người duyệt'] = 'GĐDA';
-                db.s03[idx]['Ngày duyệt'] = new Date().toISOString().substring(0, 10);
+                db.s03[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'GĐDA';
+                db.s03[idx]['Ngày duyệt'] = getSystemDateGMT7();
 
                 saveDatabase();
                 renderS03();
@@ -2287,6 +2301,8 @@ function openEditModalForm(rowIdx) {
                 db.s04[idx]['TT duyệt'] = 'Đã duyệt';
                 db.s04[idx]['Lý do từ chối'] = '';
                 db.s04[idx]['TT cung ứng'] = 'Đang cung ứng';
+                db.s04[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'BQLDA';
+                db.s04[idx]['Ngày duyệt'] = getSystemDateGMT7();
                 
                 saveDatabase();
                 renderS04();
@@ -2303,6 +2319,8 @@ function openEditModalForm(rowIdx) {
                 
                 db.s04[idx]['TT duyệt'] = 'Từ chối';
                 db.s04[idx]['Lý do từ chối'] = reason.trim();
+                db.s04[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'BQLDA';
+                db.s04[idx]['Ngày duyệt'] = getSystemDateGMT7();
                 
                 saveDatabase();
                 renderS04();
@@ -2415,6 +2433,8 @@ function openEditModalForm(rowIdx) {
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 db.s05[idx]['TT duyệt'] = 'Đã duyệt';
                 db.s05[idx]['Lý do từ chối'] = '';
+                db.s05[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'BQLDA';
+                db.s05[idx]['Ngày duyệt'] = getSystemDateGMT7();
                 
                 calculateRollups();
                 saveDatabase();
@@ -2432,6 +2452,8 @@ function openEditModalForm(rowIdx) {
                 
                 db.s05[idx]['TT duyệt'] = 'Từ chối';
                 db.s05[idx]['Lý do từ chối'] = reason.trim();
+                db.s05[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'BQLDA';
+                db.s05[idx]['Ngày duyệt'] = getSystemDateGMT7();
                 
                 calculateRollups();
                 saveDatabase();
@@ -2821,6 +2843,12 @@ function openEditModalForm(rowIdx) {
         if (document.getElementById("form-bsc-wrapper")) {
             const defaultVal = editRegistrationIndex !== -1 ? db[target][editRegistrationIndex]["Mã BSC"] : "";
             initSearchableSelect('form-bsc', bscOptions.map(opt => ({ value: opt.code, label: opt.name })), defaultVal);
+        }
+
+        // Auto pre-fill and disable form-maker with logged-in user
+        if (document.getElementById("form-maker")) {
+            document.getElementById("form-maker").value = currentUser ? currentUser.ho_ten : "Tổng thầu";
+            document.getElementById("form-maker").disabled = true;
         }
 
         // Pre-fill input values if editing/resubmitting
@@ -3219,7 +3247,8 @@ function openEditModalForm(rowIdx) {
                     "LINK hồ sơ": document.getElementById("form-link").value,
                     "TT duyệt": "Chờ duyệt",
                     "Người duyệt": "",
-                    "Ngày duyệt": ""
+                    "Ngày duyệt": "",
+                    "Người lập": currentUser ? currentUser.ho_ten : "Tổng thầu"
                 };
                 db.s03.push(newPs);
                 showToast("Sổ 03", "Đã ghi nhận yêu cầu phát sinh mới thành công.", "success");
@@ -3258,7 +3287,8 @@ function openEditModalForm(rowIdx) {
                     "Trong/Target Ngoài HĐCU": document.getElementById("form-target").value,
                     "LINK hồ sơ": document.getElementById("form-link").value,
                     "TT duyệt": "Chờ duyệt",
-                    "TT cung ứng": "Chưa cung ứng"
+                    "TT cung ứng": "Chưa cung ứng",
+                    "Người lập": currentUser ? currentUser.ho_ten : "Tổng thầu"
                 };
                 db.s04.push(newCu);
                 showToast("Sổ 04", "Đã đăng ký yêu cầu vật tư cung ứng đặc thù.", "success");
@@ -3296,7 +3326,8 @@ function openEditModalForm(rowIdx) {
                     "LINK phương án": document.getElementById("form-link").value,
                     "TT duyệt": "Chờ duyệt",
                     "KQ thực hiện bù": "Tổng thầu cam kết bù tiến độ",
-                    "TT thực hiện": "Đang thực hiện"
+                    "TT thực hiện": "Đang thực hiện",
+                    "Người lập": currentUser ? currentUser.ho_ten : "Tổng thầu"
                 };
                 db.s05.push(newS05);
                 showToast("Sổ 05", "Đã đăng ký hồ sơ bù tiến độ.", "success");
