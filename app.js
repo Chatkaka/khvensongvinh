@@ -1558,7 +1558,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const tr = document.createElement("tr");
             
-            const canApprove = row['TT duyệt'] !== 'Đã duyệt' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
+            const canApprove = row['TT duyệt'] !== 'Đã duyệt' && row['TT duyệt'] !== 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
+            const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
@@ -1575,10 +1576,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : (row['TT duyệt'] === 'Từ chối' ? 'danger' : 'warning')}">
                         ${row['TT duyệt'] || "Chờ duyệt"}
                     </span>
+                    ${row['TT duyệt'] === 'Từ chối' && row['Lý do từ chối'] ? `<br><small style="color:#ff5252; font-style:italic; display:block; margin-top:4px; max-width:150px; word-wrap:break-word;">Lý do: ${row['Lý do từ chối']}</small>` : ""}
                 </td>
                 <td>
                     <div style="display:flex; gap:4px; justify-content:center;">
-                        ${canApprove ? `<button class="btn-action approve btn-approve-s01" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>` : ""}
+                        ${canApprove ? `
+                            <button class="btn-action approve btn-approve-s01" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>
+                            <button class="btn-action reject btn-reject-s01" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                        ` : ""}
+                        ${canResubmit ? `<button class="btn-action approve btn-resubmit-s01" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Trình lại hồ sơ"><i class="fa-solid fa-paper-plane"></i> Trình lại</button>` : ""}
                         ${canDelete ? `<button class="btn-action reject btn-delete-s01" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                     </div>
                 </td>
@@ -1591,12 +1597,38 @@ document.addEventListener("DOMContentLoaded", () => {
             btn.addEventListener("click", (e) => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 db.s01[idx]['TT duyệt'] = 'Đã duyệt';
+                db.s01[idx]['Lý do từ chối'] = '';
                 
                 // Rollup real-time
                 calculateRollups();
                 saveDatabase();
                 renderS01();
                 showToast("Duyệt Hồ Sơ", "Đã duyệt hồ sơ khởi công thành công. Đã cộng dồn điều kiện khởi công.", "success");
+            });
+        });
+
+        document.querySelectorAll(".btn-reject-s01").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                const reason = prompt("Nhập lý do từ chối phê duyệt hồ sơ khởi công:");
+                if (reason === null) return;
+                if (!reason.trim()) { alert("Lý do từ chối không được để trống!"); return; }
+                
+                db.s01[idx]['TT duyệt'] = 'Từ chối';
+                db.s01[idx]['Lý do từ chối'] = reason.trim();
+                
+                calculateRollups();
+                saveDatabase();
+                renderS01();
+                showToast("Từ Chối Duyệt", "Đã từ chối hồ sơ tiền khởi công.", "info");
+            });
+        });
+
+        document.querySelectorAll(".btn-resubmit-s01").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                editRegistrationIndex = idx;
+                openModalForm('s01');
             });
         });
 
@@ -1633,7 +1665,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const tr = document.createElement("tr");
             
-            const canApprove = row['TT duyệt'] !== 'Đã duyệt' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
+            const canApprove = row['TT duyệt'] !== 'Đã duyệt' && row['TT duyệt'] !== 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
+            const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
@@ -1650,12 +1683,17 @@ document.addEventListener("DOMContentLoaded", () => {
                     <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : 'warning'}">
                         ${row['TT duyệt'] || "Chờ duyệt"}
                     </span>
+                    ${row['TT duyệt'] === 'Từ chối' && row['Lý do từ chối'] ? `<br><small style="color:#ff5252; font-style:italic; display:block; margin-top:4px; max-width:150px; word-wrap:break-word;">Lý do: ${row['Lý do từ chối']}</small>` : ""}
                 </td>
                 <td>${row['Người lập'] || ""}/${row['Người duyệt'] || ""}</td>
                 <td>${row['Ngày duyệt'] || ""}</td>
                 <td>
                     <div style="display:flex; gap:4px; justify-content:center;">
-                        ${canApprove ? `<button class="btn-action approve btn-approve-s02" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>` : ""}
+                        ${canApprove ? `
+                            <button class="btn-action approve btn-approve-s02" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>
+                            <button class="btn-action reject btn-reject-s02" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                        ` : ""}
+                        ${canResubmit ? `<button class="btn-action approve btn-resubmit-s02" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Trình lại kế hoạch"><i class="fa-solid fa-paper-plane"></i> Trình lại</button>` : ""}
                         ${canDelete ? `<button class="btn-action reject btn-delete-s02" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                     </div>
                 </td>
@@ -1668,12 +1706,47 @@ document.addEventListener("DOMContentLoaded", () => {
             btn.addEventListener("click", (e) => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 db.s02[idx]['TT duyệt'] = 'Đã duyệt';
+                db.s02[idx]['Lý do từ chối'] = '';
                 db.s02[idx]['Ngày duyệt'] = new Date().toISOString().substring(0, 10);
                 
                 calculateRollups();
                 saveDatabase();
                 renderS02();
                 showToast("Duyệt Kế Hoạch", "Kế hoạch tuần/tháng đã được TVGS phê duyệt.", "success");
+            });
+        });
+
+        document.querySelectorAll(".btn-reject-s02").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                const reason = prompt("Nhập lý do từ chối phê duyệt kế hoạch tuần/tháng:");
+                if (reason === null) return;
+                if (!reason.trim()) { alert("Lý do từ chối không được để trống!"); return; }
+                
+                db.s02[idx]['TT duyệt'] = 'Từ chối';
+                db.s02[idx]['Lý do từ chối'] = reason.trim();
+                
+                calculateRollups();
+                saveDatabase();
+                renderS02();
+                showToast("Từ Chối Duyệt", "Đã từ chối kế hoạch tuần/tháng.", "info");
+            });
+        });
+
+        document.querySelectorAll(".btn-resubmit-s02").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                const row = db.s02[idx];
+                const newLink = prompt("Nhập Link tài liệu mới hoặc để trống để giữ nguyên:", row['LINK tài liệu']);
+                if (newLink === null) return;
+                if (newLink.trim()) row['LINK tài liệu'] = newLink.trim();
+                row['TT duyệt'] = 'Chờ duyệt';
+                row['Lý do từ chối'] = '';
+                
+                calculateRollups();
+                saveDatabase();
+                renderS02();
+                showToast("Trình Lại", "Đã trình lại kế hoạch tuần/tháng thành công.", "success");
             });
         });
 
@@ -1712,6 +1785,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const valPs = parseFloat(row['Giá trị (tỷ)'] || 0);
 
             const canApprove = row['TT duyệt'] === 'Chờ duyệt' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
+            const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
@@ -1730,6 +1804,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : (row['TT duyệt'] === 'Từ chối' ? 'danger' : 'warning')}">
                         ${row['TT duyệt'] || "Chờ duyệt"}
                     </span>
+                    ${row['TT duyệt'] === 'Từ chối' && row['Lý do từ chối'] ? `<br><small style="color:#ff5252; font-style:italic; display:block; margin-top:4px; max-width:150px; word-wrap:break-word;">Lý do: ${row['Lý do từ chối']}</small>` : ""}
                 </td>
                 <td>${row['Người duyệt'] || ""}<br><small>${row['Ngày duyệt'] || ""}</small></td>
                 <td>
@@ -1738,6 +1813,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <button class="btn-action approve btn-approve-s03" data-idx="${index}" data-bsc="${bsc}"><i class="fa-solid fa-check"></i> Duyệt</button>
                             <button class="btn-action reject btn-reject-s03" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
                         ` : ""}
+                        ${canResubmit ? `<button class="btn-action approve btn-resubmit-s03" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Trình lại phát sinh"><i class="fa-solid fa-paper-plane"></i> Trình lại</button>` : ""}
                         ${canDelete ? `<button class="btn-action reject btn-delete-s03" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                     </div>
                 </td>
@@ -1762,6 +1838,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 db.s03[idx]['TT duyệt'] = 'Đã duyệt';
+                db.s03[idx]['Lý do từ chối'] = '';
                 db.s03[idx]['Người duyệt'] = 'GĐDA';
                 db.s03[idx]['Ngày duyệt'] = new Date().toISOString().substring(0, 10);
 
@@ -1776,13 +1853,26 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".btn-reject-s03").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
+                const reason = prompt("Nhập lý do từ chối phê duyệt yêu cầu phát sinh hợp đồng:");
+                if (reason === null) return;
+                if (!reason.trim()) { alert("Lý do từ chối không được để trống!"); return; }
+                
                 db.s03[idx]['TT duyệt'] = 'Từ chối';
+                db.s03[idx]['Lý do từ chối'] = reason.trim();
                 db.s03[idx]['Người duyệt'] = 'GĐDA';
                 db.s03[idx]['Ngày duyệt'] = new Date().toISOString().substring(0, 10);
 
                 saveDatabase();
                 renderS03();
                 showToast("Phát Sinh", "Đã từ chối phát sinh hợp đồng.", "info");
+            });
+        });
+
+        document.querySelectorAll(".btn-resubmit-s03").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                editRegistrationIndex = idx;
+                openModalForm('s03');
             });
         });
 
@@ -1822,6 +1912,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const canApprove = row['TT duyệt'] === 'Chờ duyệt' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
             const canSupply = row['TT duyệt'] === 'Đã duyệt' && row['TT cung ứng'] !== 'Đã cung ứng' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supply')));
+            const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
@@ -1841,6 +1932,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : (row['TT duyệt'] === 'Từ chối' ? 'danger' : 'warning')}">
                         ${row['TT duyệt'] || "Chờ duyệt"}
                     </span>
+                    ${row['TT duyệt'] === 'Từ chối' && row['Lý do từ chối'] ? `<br><small style="color:#ff5252; font-style:italic; display:block; margin-top:4px; max-width:150px; word-wrap:break-word;">Lý do: ${row['Lý do từ chối']}</small>` : ""}
                 </td>
                 <td>
                     <span class="badge ${row['TT cung ứng'] === 'Đã cung ứng' ? 'success' : (row['TT cung ứng'] === 'Đang cung ứng' ? 'warning' : 'danger')}">
@@ -1849,8 +1941,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 </td>
                 <td>
                     <div style="display:flex; gap:4px; justify-content:center; align-items:center;">
-                        ${canApprove ? `<button class="btn-action approve btn-approve-s04" data-idx="${index}" data-bsc="${bsc}"><i class="fa-solid fa-check"></i> Duyệt</button>` : ""}
+                        ${canApprove ? `
+                            <button class="btn-action approve btn-approve-s04" data-idx="${index}" data-bsc="${bsc}"><i class="fa-solid fa-check"></i> Duyệt</button>
+                            <button class="btn-action reject btn-reject-s04" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                        ` : ""}
                         ${canSupply ? `<button class="btn-action approve btn-supply-s04" data-idx="${index}" style="color:var(--color-yellow); border-color:var(--color-yellow);"><i class="fa-solid fa-truck"></i> Cấp vật tư</button>` : ""}
+                        ${canResubmit ? `<button class="btn-action approve btn-resubmit-s04" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Trình lại cung ứng"><i class="fa-solid fa-paper-plane"></i> Trình lại</button>` : ""}
                         ${canDelete ? `<button class="btn-action reject btn-delete-s04" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                     </div>
                 </td>
@@ -1875,11 +1971,36 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 db.s04[idx]['TT duyệt'] = 'Đã duyệt';
+                db.s04[idx]['Lý do từ chối'] = '';
                 db.s04[idx]['TT cung ứng'] = 'Đang cung ứng';
                 
                 saveDatabase();
                 renderS04();
                 showToast("Cung Ứng", "Đã phê duyệt yêu cầu cung ứng vật tư.", "success");
+            });
+        });
+
+        document.querySelectorAll(".btn-reject-s04").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                const reason = prompt("Nhập lý do từ chối phê duyệt yêu cầu cung ứng:");
+                if (reason === null) return;
+                if (!reason.trim()) { alert("Lý do từ chối không được để trống!"); return; }
+                
+                db.s04[idx]['TT duyệt'] = 'Từ chối';
+                db.s04[idx]['Lý do từ chối'] = reason.trim();
+                
+                saveDatabase();
+                renderS04();
+                showToast("Từ Chối Cung Ứng", "Đã từ chối yêu cầu cung ứng vật tư.", "info");
+            });
+        });
+
+        document.querySelectorAll(".btn-resubmit-s04").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                editRegistrationIndex = idx;
+                openModalForm('s04');
             });
         });
 
@@ -1930,6 +2051,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const canApprove = row['TT duyệt'] === 'Chờ duyệt' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
             const canComplete = row['TT thực hiện'] !== 'Đã hoàn thành' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
+            const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
@@ -1948,9 +2070,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${row['Mốc cam kết HT'] || ""}</td>
                 <td>${renderLinkHtml(row['LINK phương án'] || row['LINK phương án chi tiết'])}</td>
                 <td>
-                    <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : 'warning'}">
+                    <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : (row['TT duyệt'] === 'Từ chối' ? 'danger' : 'warning')}">
                         ${row['TT duyệt'] || "Chờ duyệt"}
                     </span>
+                    ${row['TT duyệt'] === 'Từ chối' && row['Lý do từ chối'] ? `<br><small style="color:#ff5252; font-style:italic; display:block; margin-top:4px; max-width:150px; word-wrap:break-word;">Lý do: ${row['Lý do từ chối']}</small>` : ""}
                 </td>
                 <td>${row['KQ thực hiện bù'] || ""}</td>
                 <td>
@@ -1960,8 +2083,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 </td>
                 <td>
                     <div style="display:flex; gap:4px; justify-content:center; align-items:center;">
-                        ${canApprove ? `<button class="btn-action approve btn-approve-s05" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>` : ""}
+                        ${canApprove ? `
+                            <button class="btn-action approve btn-approve-s05" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>
+                            <button class="btn-action reject btn-reject-s05" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                        ` : ""}
                         ${canComplete ? `<button class="btn-action approve btn-complete-s05" data-idx="${index}" style="color:var(--color-green); border-color:var(--color-green);"><i class="fa-solid fa-circle-check"></i> Hoàn thành bù</button>` : ""}
+                        ${canResubmit ? `<button class="btn-action approve btn-resubmit-s05" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Trình lại phương án"><i class="fa-solid fa-paper-plane"></i> Trình lại</button>` : ""}
                         ${canDelete ? `<button class="btn-action reject btn-delete-s05" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                     </div>
                 </td>
@@ -1973,11 +2100,37 @@ document.addEventListener("DOMContentLoaded", () => {
             btn.addEventListener("click", (e) => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 db.s05[idx]['TT duyệt'] = 'Đã duyệt';
+                db.s05[idx]['Lý do từ chối'] = '';
                 
                 calculateRollups();
                 saveDatabase();
                 renderS05();
                 showToast("Bù Tiến Độ", "Đã phê duyệt phương án bù tiến độ của Tổng thầu.", "success");
+            });
+        });
+
+        document.querySelectorAll(".btn-reject-s05").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                const reason = prompt("Nhập lý do từ chối phê duyệt phương án bù tiến độ:");
+                if (reason === null) return;
+                if (!reason.trim()) { alert("Lý do từ chối không được để trống!"); return; }
+                
+                db.s05[idx]['TT duyệt'] = 'Từ chối';
+                db.s05[idx]['Lý do từ chối'] = reason.trim();
+                
+                calculateRollups();
+                saveDatabase();
+                renderS05();
+                showToast("Từ Chối Duyệt", "Đã từ chối phương án bù tiến độ.", "info");
+            });
+        });
+
+        document.querySelectorAll(".btn-resubmit-s05").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                editRegistrationIndex = idx;
+                openModalForm('s05');
             });
         });
 
@@ -2021,10 +2174,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const modalCancelBtn = document.getElementById("modal-cancel-btn");
     const modalSaveBtn = document.getElementById("modal-save-btn");
     let currentFormTarget = "";
+    let editRegistrationIndex = -1;
 
     function openModalForm(target) {
-        // Enforce Create permission
-        const canAdd = currentUser ? (currentUser.quyen === 'Admin' || currentUser.quyen_them) : false;
+        // Enforce Create permission - Allow if they have quyen_them OR if they are resubmitting/editing an existing rejected document
+        const canAdd = currentUser ? (currentUser.quyen === 'Admin' || currentUser.quyen_them || editRegistrationIndex !== -1) : false;
         if (!canAdd) {
             showToast("Bảo Mật", "Quyền hạn hạn chế: Tài khoản của bạn không có quyền THÊM dữ liệu mới!", "danger");
             return;
@@ -2302,7 +2456,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Initialize searchable select for BSC if wrapper exists
         if (document.getElementById("form-bsc-wrapper")) {
-            initSearchableSelect('form-bsc', bscOptions.map(opt => ({ value: opt.code, label: opt.name })));
+            const defaultVal = editRegistrationIndex !== -1 ? db[target][editRegistrationIndex]["Mã BSC"] : "";
+            initSearchableSelect('form-bsc', bscOptions.map(opt => ({ value: opt.code, label: opt.name })), defaultVal);
+        }
+
+        // Pre-fill input values if editing/resubmitting
+        if (editRegistrationIndex !== -1) {
+            titleEl.textContent = `Trình Lại & Cập Nhật Hồ Sơ: Sổ ${target.substring(1)}`;
+            if (target === 's01') {
+                const doc = db.s01[editRegistrationIndex];
+                document.getElementById("form-hang-muc").value = doc["Hạng mục"] || "";
+                document.getElementById("form-loai").value = doc["Loại hồ sơ"] || "";
+                document.getElementById("form-name").value = doc["Tên sản phẩm / Số hiệu"] || "";
+                document.getElementById("form-link").value = doc["LINK lưu trữ"] || "";
+                document.getElementById("form-maker").value = doc["Người lập"] || "";
+            } else if (target === 's03') {
+                const doc = db.s03[editRegistrationIndex];
+                document.getElementById("form-hang-muc").value = doc["Hạng mục"] || "";
+                document.getElementById("form-loai").value = doc["Loại"] || "";
+                document.getElementById("form-desc").value = doc["Mô tả"] || "";
+                document.getElementById("form-cause").value = doc["Nguyên nhân"] || "";
+                document.getElementById("form-propose").value = doc["Đề xuất xử lý"] || "";
+                document.getElementById("form-val").value = doc["Giá trị (tỷ)"] || 0;
+                document.getElementById("form-delay").value = doc["Ảnh hưởng TĐ (ngày)"] || 0;
+                document.getElementById("form-link").value = doc["LINK hồ sơ"] || "";
+            } else if (target === 's04') {
+                const doc = db.s04[editRegistrationIndex];
+                document.getElementById("form-hang-muc").value = doc["Hạng mục"] || "";
+                document.getElementById("form-loai").value = doc["Loại YC"] || "";
+                document.getElementById("form-vattu").value = doc["Vật tư/Thiết bị"] || "";
+                document.getElementById("form-spec").value = doc["Đặc tả KT / Lý do"] || "";
+                document.getElementById("form-kl").value = doc["KL"] || 100;
+                document.getElementById("form-dvt").value = doc["ĐVT"] || "m2";
+                document.getElementById("form-val").value = doc["Giá trị (tỷ)"] || 0;
+                document.getElementById("form-target").value = doc["Trong/Target Ngoài HĐCU"] || doc["Trong/Ngoài HĐCU"] || "Ngoài HĐCU";
+                document.getElementById("form-link").value = doc["LINK hồ sơ"] || "";
+            } else if (target === 's05') {
+                const doc = db.s05[editRegistrationIndex];
+                document.getElementById("form-hang-muc").value = doc["Hạng mục"] || "";
+                document.getElementById("form-delay").value = doc["Mức chậm (ngày)"] || 0;
+                document.getElementById("form-cause").value = doc["Nguyên nhân"] || "";
+                document.getElementById("form-solution").value = doc["Giải pháp bù"] || "";
+                document.getElementById("form-detail").value = doc["Chi tiết giải pháp"] || doc["Chi tiết phương án"] || "";
+                document.getElementById("form-moc").value = doc["Mốc cam kết HT"] || "";
+                document.getElementById("form-link").value = doc["LINK phương án"] || "";
+            }
         }
     }
 
@@ -2420,6 +2618,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function closeModal() {
         formModal.style.display = "none";
+        editRegistrationIndex = -1;
     }
 
     modalCloseBtn.addEventListener("click", closeModal);
@@ -2493,83 +2692,151 @@ document.addEventListener("DOMContentLoaded", () => {
             showToast("Cập nhật thầu", `Đã lưu thay đổi cho dòng ${row.tt} thành công.`, "success");
             renderMasterGrid();
         } else if (currentFormTarget === 's01') {
-            const newDoc = {
-                "STT": db.s01.length + 1,
-                "Mã BSC": document.getElementById("form-bsc").value,
-                "Hạng mục": document.getElementById("form-hang-muc").value,
-                "Loại hồ sơ": document.getElementById("form-loai").value,
-                "Tên sản phẩm / Số hiệu": document.getElementById("form-name").value,
-                "LINK lưu trữ": document.getElementById("form-link").value,
-                "Ngày HT": getSystemDateGMT7(),
-                "Người lập": document.getElementById("form-maker").value,
-                "Người duyệt": "CĐT",
-                "TT duyệt": "Chờ duyệt"
-            };
-            db.s01.push(newDoc);
-            showToast("Sổ 01", "Đã đăng ký hồ sơ khởi công. Đang chờ duyệt.", "success");
+            if (editRegistrationIndex !== -1) {
+                const doc = db.s01[editRegistrationIndex];
+                doc["Mã BSC"] = document.getElementById("form-bsc").value;
+                doc["Hạng mục"] = document.getElementById("form-hang-muc").value;
+                doc["Loại hồ sơ"] = document.getElementById("form-loai").value;
+                doc["Tên sản phẩm / Số hiệu"] = document.getElementById("form-name").value;
+                doc["LINK lưu trữ"] = document.getElementById("form-link").value;
+                doc["Ngày HT"] = getSystemDateGMT7();
+                doc["Người lập"] = document.getElementById("form-maker").value;
+                doc["TT duyệt"] = "Chờ duyệt";
+                doc["Lý do từ chối"] = "";
+                showToast("Sổ 01", "Đã cập nhật và trình lại hồ sơ khởi công thành công.", "success");
+                editRegistrationIndex = -1;
+            } else {
+                const newDoc = {
+                    "STT": db.s01.length + 1,
+                    "Mã BSC": document.getElementById("form-bsc").value,
+                    "Hạng mục": document.getElementById("form-hang-muc").value,
+                    "Loại hồ sơ": document.getElementById("form-loai").value,
+                    "Tên sản phẩm / Số hiệu": document.getElementById("form-name").value,
+                    "LINK lưu trữ": document.getElementById("form-link").value,
+                    "Ngày HT": getSystemDateGMT7(),
+                    "Người lập": document.getElementById("form-maker").value,
+                    "Người duyệt": "CĐT",
+                    "TT duyệt": "Chờ duyệt"
+                };
+                db.s01.push(newDoc);
+                showToast("Sổ 01", "Đã đăng ký hồ sơ khởi công. Đang chờ duyệt.", "success");
+            }
             renderS01();
         } else if (currentFormTarget === 's03') {
             const bsc = document.getElementById("form-bsc").value;
-            const newPs = {
-                "Mã PS": `PS.CT01.${String(db.s03.length + 1).padStart(2, '0')}`,
-                "Mã BSC": bsc,
-                "Hạng mục": document.getElementById("form-hang-muc").value,
-                "Ngày PS": getSystemDateGMT7(),
-                "Loại": document.getElementById("form-loai").value,
-                "Mô tả": document.getElementById("form-desc").value,
-                "Nguyên nhân": document.getElementById("form-cause").value,
-                "Đề xuất xử lý": document.getElementById("form-propose").value,
-                "Giá trị (tỷ)": parseFloat(document.getElementById("form-val").value) || 0,
-                "Ảnh hưởng TĐ (ngày)": parseInt(document.getElementById("form-delay").value) || 0,
-                "LINK hồ sơ": document.getElementById("form-link").value,
-                "TT duyệt": "Chờ duyệt",
-                "Người duyệt": "",
-                "Ngày duyệt": ""
-            };
-            db.s03.push(newPs);
-            showToast("Sổ 03", "Đã ghi nhận yêu cầu phát sinh mới thành công.", "success");
+            if (editRegistrationIndex !== -1) {
+                const doc = db.s03[editRegistrationIndex];
+                doc["Mã BSC"] = bsc;
+                doc["Hạng mục"] = document.getElementById("form-hang-muc").value;
+                doc["Ngày PS"] = getSystemDateGMT7();
+                doc["Loại"] = document.getElementById("form-loai").value;
+                doc["Mô tả"] = document.getElementById("form-desc").value;
+                doc["Nguyên nhân"] = document.getElementById("form-cause").value;
+                doc["Đề xuất xử lý"] = document.getElementById("form-propose").value;
+                doc["Giá trị (tỷ)"] = parseFloat(document.getElementById("form-val").value) || 0;
+                doc["Ảnh hưởng TĐ (ngày)"] = parseInt(document.getElementById("form-delay").value) || 0;
+                doc["LINK hồ sơ"] = document.getElementById("form-link").value;
+                doc["TT duyệt"] = "Chờ duyệt";
+                doc["Lý do từ chối"] = "";
+                showToast("Sổ 03", "Đã cập nhật và trình lại yêu cầu phát sinh thành công.", "success");
+                editRegistrationIndex = -1;
+            } else {
+                const newPs = {
+                    "Mã PS": `PS.CT01.${String(db.s03.length + 1).padStart(2, '0')}`,
+                    "Mã BSC": bsc,
+                    "Hạng mục": document.getElementById("form-hang-muc").value,
+                    "Ngày PS": getSystemDateGMT7(),
+                    "Loại": document.getElementById("form-loai").value,
+                    "Mô tả": document.getElementById("form-desc").value,
+                    "Nguyên nhân": document.getElementById("form-cause").value,
+                    "Đề xuất xử lý": document.getElementById("form-propose").value,
+                    "Giá trị (tỷ)": parseFloat(document.getElementById("form-val").value) || 0,
+                    "Ảnh hưởng TĐ (ngày)": parseInt(document.getElementById("form-delay").value) || 0,
+                    "LINK hồ sơ": document.getElementById("form-link").value,
+                    "TT duyệt": "Chờ duyệt",
+                    "Người duyệt": "",
+                    "Ngày duyệt": ""
+                };
+                db.s03.push(newPs);
+                showToast("Sổ 03", "Đã ghi nhận yêu cầu phát sinh mới thành công.", "success");
+            }
             renderS03();
         } else if (currentFormTarget === 's04') {
-            const newCu = {
-                "Mã YC": `YC.CT01.${String(db.s04.length + 1).padStart(2, '0')}`,
-                "Mã BSC": document.getElementById("form-bsc").value,
-                "Hạng mục": document.getElementById("form-hang-muc").value,
-                "Ngày YC": getSystemDateGMT7(),
-                "Loại YC": document.getElementById("form-loai").value,
-                "Vật tư/Thiết bị": document.getElementById("form-vattu").value,
-                "Đặc tả KT / Lý do": document.getElementById("form-spec").value,
-                "KL": parseFloat(document.getElementById("form-kl").value) || 0,
-                "ĐVT": document.getElementById("form-dvt").value,
-                "Giá trị (tỷ)": parseFloat(document.getElementById("form-val").value) || 0,
-                "Trong/Target Ngoài HĐCU": document.getElementById("form-target").value,
-                "LINK hồ sơ": document.getElementById("form-link").value,
-                "TT duyệt": "Chờ duyệt",
-                "TT cung ứng": "Chưa cung ứng"
-            };
-            db.s04.push(newCu);
-            showToast("Sổ 04", "Đã đăng ký yêu cầu vật tư cung ứng đặc thù.", "success");
+            if (editRegistrationIndex !== -1) {
+                const doc = db.s04[editRegistrationIndex];
+                doc["Mã BSC"] = document.getElementById("form-bsc").value;
+                doc["Hạng mục"] = document.getElementById("form-hang-muc").value;
+                doc["Ngày YC"] = getSystemDateGMT7();
+                doc["Loại YC"] = document.getElementById("form-loai").value;
+                doc["Vật tư/Thiết bị"] = document.getElementById("form-vattu").value;
+                doc["Đặc tả KT / Lý do"] = document.getElementById("form-spec").value;
+                doc["KL"] = parseFloat(document.getElementById("form-kl").value) || 0;
+                doc["ĐVT"] = document.getElementById("form-dvt").value;
+                doc["Giá trị (tỷ)"] = parseFloat(document.getElementById("form-val").value) || 0;
+                doc["Trong/Target Ngoài HĐCU"] = document.getElementById("form-target").value;
+                doc["LINK hồ sơ"] = document.getElementById("form-link").value;
+                doc["TT duyệt"] = "Chờ duyệt";
+                doc["Lý do từ chối"] = "";
+                showToast("Sổ 04", "Đã cập nhật và trình lại yêu cầu cung ứng vật tư thành công.", "success");
+                editRegistrationIndex = -1;
+            } else {
+                const newCu = {
+                    "Mã YC": `YC.CT01.${String(db.s04.length + 1).padStart(2, '0')}`,
+                    "Mã BSC": document.getElementById("form-bsc").value,
+                    "Hạng mục": document.getElementById("form-hang-muc").value,
+                    "Ngày YC": getSystemDateGMT7(),
+                    "Loại YC": document.getElementById("form-loai").value,
+                    "Vật tư/Thiết bị": document.getElementById("form-vattu").value,
+                    "Đặc tả KT / Lý do": document.getElementById("form-spec").value,
+                    "KL": parseFloat(document.getElementById("form-kl").value) || 0,
+                    "ĐVT": document.getElementById("form-dvt").value,
+                    "Giá trị (tỷ)": parseFloat(document.getElementById("form-val").value) || 0,
+                    "Trong/Target Ngoài HĐCU": document.getElementById("form-target").value,
+                    "LINK hồ sơ": document.getElementById("form-link").value,
+                    "TT duyệt": "Chờ duyệt",
+                    "TT cung ứng": "Chưa cung ứng"
+                };
+                db.s04.push(newCu);
+                showToast("Sổ 04", "Đã đăng ký yêu cầu vật tư cung ứng đặc thù.", "success");
+            }
             renderS04();
         } else if (currentFormTarget === 's05') {
             const bsc = document.getElementById("form-bsc").value;
             const delayDays = parseInt(document.getElementById("form-delay").value) || 0;
-            
-            const newS05 = {
-                "STT": db.s05.length + 1,
-                "Mã BSC": bsc,
-                "Hạng mục": document.getElementById("form-hang-muc").value,
-                "Ngày phát hiện": getSystemDateGMT7(),
-                "Mức chậm (ngày)": delayDays,
-                "Nguyên nhân": document.getElementById("form-cause").value,
-                "Giải pháp bù": document.getElementById("form-solution").value,
-                "Chi tiết giải pháp": document.getElementById("form-detail").value,
-                "Mốc cam kết HT": document.getElementById("form-moc").value,
-                "LINK phương án": document.getElementById("form-link").value,
-                "TT duyệt": "Chờ duyệt",
-                "KQ thực hiện bù": "Tổng thầu cam kết bù tiến độ",
-                "TT thực hiện": "Đang thực hiện"
-            };
-            db.s05.push(newS05);
-            showToast("Sổ 05", "Đã đăng ký hồ sơ bù tiến độ.", "success");
+            if (editRegistrationIndex !== -1) {
+                const doc = db.s05[editRegistrationIndex];
+                doc["Mã BSC"] = bsc;
+                doc["Hạng mục"] = document.getElementById("form-hang-muc").value;
+                doc["Ngày phát hiện"] = getSystemDateGMT7();
+                doc["Mức chậm (ngày)"] = delayDays;
+                doc["Nguyên nhân"] = document.getElementById("form-cause").value;
+                doc["Giải pháp bù"] = document.getElementById("form-solution").value;
+                doc["Chi tiết giải pháp"] = document.getElementById("form-detail").value;
+                doc["Mốc cam kết HT"] = document.getElementById("form-moc").value;
+                doc["LINK phương án"] = document.getElementById("form-link").value;
+                doc["TT duyệt"] = "Chờ duyệt";
+                doc["Lý do từ chối"] = "";
+                showToast("Sổ 05", "Đã cập nhật và trình lại phương án bù tiến độ thành công.", "success");
+                editRegistrationIndex = -1;
+            } else {
+                const newS05 = {
+                    "STT": db.s05.length + 1,
+                    "Mã BSC": bsc,
+                    "Hạng mục": document.getElementById("form-hang-muc").value,
+                    "Ngày phát hiện": getSystemDateGMT7(),
+                    "Mức chậm (ngày)": delayDays,
+                    "Nguyên nhân": document.getElementById("form-cause").value,
+                    "Giải pháp bù": document.getElementById("form-solution").value,
+                    "Chi tiết giải pháp": document.getElementById("form-detail").value,
+                    "Mốc cam kết HT": document.getElementById("form-moc").value,
+                    "LINK phương án": document.getElementById("form-link").value,
+                    "TT duyệt": "Chờ duyệt",
+                    "KQ thực hiện bù": "Tổng thầu cam kết bù tiến độ",
+                    "TT thực hiện": "Đang thực hiện"
+                };
+                db.s05.push(newS05);
+                showToast("Sổ 05", "Đã đăng ký hồ sơ bù tiến độ.", "success");
+            }
 
             // PREDICTIVE AI TRIGGER: If delay days > 7 days
             if (delayDays > 7) {
