@@ -144,7 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!db.s03) db.s03 = [];
         if (!db.s04) db.s04 = [];
         if (!db.s05) db.s05 = [];
-        if (!db.nhan_su || db.nhan_su.length === 0) db.nhan_su = defaultDb.nhan_su || [];
+        if (!db.nhan_su || db.nhan_su.length < (defaultDb.nhan_su || []).length) db.nhan_su = defaultDb.nhan_su || [];
         if (!db.danh_muc || Object.keys(db.danh_muc).length === 0) db.danh_muc = defaultDb.danh_muc || {};
         
         // Ensure every personnel member has a password and Proper CRUD flags
