@@ -406,6 +406,12 @@ document.addEventListener("DOMContentLoaded", () => {
         item.addEventListener("click", () => {
             const tabId = item.getAttribute("data-tab");
             
+            // Security check: Only Admin role is allowed to open Personnel tab
+            if (tabId === 'personnel' && (!currentUser || currentUser.quyen !== 'Admin')) {
+                showToast("Bảo Mật", "Quyền hạn hạn chế: Chỉ tài khoản Admin mới được quản lý nhân sự!", "danger");
+                return;
+            }
+            
             navItems.forEach(nav => nav.classList.remove("active"));
             item.classList.add("active");
 
@@ -521,11 +527,36 @@ document.addEventListener("DOMContentLoaded", () => {
             const initials = currentUser.ho_ten.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
             avatarEl.textContent = initials;
         }
+
+        // Show/hide Admin only tabs/buttons
+        const isAdmin = currentUser.quyen === 'Admin';
+        
+        // Hide personnel nav item from sidebar if not Admin
+        const personnelNavItem = document.querySelector(".nav-menu .nav-item[data-tab='personnel']");
+        if (personnelNavItem) {
+            personnelNavItem.style.display = isAdmin ? "block" : "none";
+        }
+        
+        // Hide settings btn from sidebar if not Admin
+        const settingsBtn = document.getElementById("open-settings-btn");
+        if (settingsBtn) {
+            settingsBtn.style.display = isAdmin ? "flex" : "none";
+        }
         
         // Auto refresh permissions on current active view
         const activeNav = document.querySelector(".nav-menu .nav-item.active");
         if (activeNav) {
             const tabId = activeNav.getAttribute("data-tab");
+            
+            // Redirect if user is on restricted tabs
+            if ((tabId === 'personnel' || tabId === 'settings') && !isAdmin) {
+                const dashNav = document.querySelector(".nav-menu .nav-item[data-tab='dashboard']");
+                if (dashNav) {
+                    dashNav.click();
+                    return;
+                }
+            }
+            
             if (tabId === 'dashboard') renderDashboard();
             if (tabId === 'master') renderMasterGrid();
             if (tabId === 's01') renderS01();
@@ -554,6 +585,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     document.getElementById("open-settings-btn").addEventListener("click", () => {
+        // Security check: Only Admin role is allowed to open Settings tab
+        if (!currentUser || currentUser.quyen !== 'Admin') {
+            showToast("Bảo Mật", "Quyền hạn hạn chế: Chỉ tài khoản Admin mới được cấu hình hệ thống!", "danger");
+            return;
+        }
         // Go to settings tab
         navItems.forEach(nav => nav.classList.remove("active"));
         tabPanes.forEach(pane => pane.classList.remove("active"));
