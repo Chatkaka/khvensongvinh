@@ -546,16 +546,33 @@ body {
     background-color: rgba(255, 255, 255, 0.02) !important;
 }
 
-/* Row types colors */
+/* Row types colors (Hierarchical Visual Hierarchy) */
 .erp-table tr.row-parent td {
-    background-color: rgba(255, 255, 255, 0.04);
-    font-weight: 600;
+    background-color: rgba(255, 255, 255, 0.01) !important;
+    font-weight: 500 !important;
+    font-size: 0.8rem !important;
+    color: #e2e8f0 !important;
 }
 
 .erp-table tr.row-parent-master td {
-    background-color: rgba(59, 130, 246, 0.08);
-    font-weight: 700;
-    border-top: 1.5px solid var(--border-color);
+    background-color: rgba(74, 192, 252, 0.08) !important;
+    font-weight: 700 !important;
+    font-size: 0.82rem !important;
+    color: #a5d8ff !important;
+    border-top: 1px solid rgba(74, 192, 252, 0.2) !important;
+    border-bottom: 1px solid rgba(74, 192, 252, 0.2) !important;
+}
+
+.erp-table tr.row-parent-master {
+    border-left: 4px solid #4dabf7 !important;
+}
+
+.erp-table tbody tr.row-parent:hover td {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+.erp-table tbody tr.row-parent-master:hover td {
+    background-color: rgba(74, 192, 252, 0.15) !important;
 }
 
 .erp-table tr.critical-alert td {
@@ -1078,14 +1095,22 @@ body {
 
 /* Parent grouping row styling */
 .row-grand-parent {
-    background-color: rgba(255, 82, 82, 0.05) !important;
+    background-color: rgba(255, 135, 135, 0.08) !important;
     font-weight: 700 !important;
-    border-left: 4px solid #ff5252 !important;
+    border-left: 4px solid #ff8787 !important;
+    border-top: 1.5px solid rgba(255, 135, 135, 0.2) !important;
+    border-bottom: 1.5px solid rgba(255, 135, 135, 0.2) !important;
 }
 
 .row-grand-parent td {
     font-size: 0.85rem !important;
-    color: #fff !important;
+    font-weight: 700 !important;
+    color: #ffd8a8 !important;
+    background-color: rgba(255, 135, 135, 0.08) !important;
+}
+
+.erp-table tbody tr.row-grand-parent:hover td {
+    background-color: rgba(255, 135, 135, 0.15) !important;
 }
 
 .toggle-children-btn {
