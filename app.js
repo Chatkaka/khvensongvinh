@@ -3001,10 +3001,19 @@ function openEditModalForm(rowIdx) {
 
         if (target === 'master') {
             titleEl.textContent = "Thêm Gói Thầu Mới (Master Package)";
+            
+            // Dynamic options collection from database
+            const uniqueBscs = [...new Set(db.master.map(r => r.ma_bsc).filter(Boolean))].sort();
+            const uniquePls = [...new Set(db.master.map(r => r.goi_thau_pl).filter(Boolean))].sort();
+            const uniquePhuTrachs = [...new Set(db.master.map(r => r.phu_trach).filter(Boolean))].sort();
+
             bodyEl.innerHTML = `
                 <div class="form-group">
                     <label>Mã BSC (Giá trị duy nhất)</label>
-                    <input type="text" id="form-ma-bsc" class="form-control" placeholder="ví dụ: CT-09" required>
+                    <input type="text" id="form-ma-bsc" class="form-control" placeholder="ví dụ: CT-09" list="form-ma-bsc-list" required>
+                    <datalist id="form-ma-bsc-list">
+                        ${uniqueBscs.map(bsc => `<option value="${bsc}"></option>`).join("")}
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Hạng mục / Công việc</label>
@@ -3013,10 +3022,7 @@ function openEditModalForm(rowIdx) {
                 <div class="form-group">
                     <label>Gói thầu (PL)</label>
                     <select id="form-goi-thau-pl" class="form-control">
-                        <option value="PL02">PL02</option>
-                        <option value="PL10">PL10</option>
-                        <option value="PL17">PL17</option>
-                        <option value="PL14">PL14</option>
+                        ${uniquePls.map(pl => `<option value="${pl}">${pl}</option>`).join("")}
                     </select>
                 </div>
                 <div class="form-group">
@@ -3029,7 +3035,10 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Phụ trách</label>
-                    <input type="text" id="form-phu-trach" class="form-control" value="An Dương">
+                    <input type="text" id="form-phu-trach" class="form-control" value="An Dương" list="form-phu-trach-list">
+                    <datalist id="form-phu-trach-list">
+                        ${uniquePhuTrachs.map(pt => `<option value="${pt}"></option>`).join("")}
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Ngân sách điều hành (Tỷ)</label>
