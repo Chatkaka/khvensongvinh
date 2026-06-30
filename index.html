@@ -89,28 +89,28 @@
 
         <!-- KPI SUMMARY PANEL -->
         <section class="kpi-grid" id="kpi-panel">
-            <div class="kpi-card blue">
+            <div class="kpi-card blue" id="kpi-card-budget" style="cursor: pointer;">
                 <div class="kpi-label">Tổng Ngân Sách Chủ Đầu Tư</div>
                 <div class="kpi-value" id="kpi-total-budget">0.00 tỷ</div>
                 <div class="kpi-change neutral">
                     <i class="fa-solid fa-circle-info"></i> Toàn bộ gói thầu hiện hữu
                 </div>
             </div>
-            <div class="kpi-card green">
+            <div class="kpi-card green" id="kpi-card-contract" style="cursor: pointer;">
                 <div class="kpi-label">Lũy Kế Hợp Đồng A - B</div>
                 <div class="kpi-value" id="kpi-total-contract">0.00 tỷ</div>
                 <div class="kpi-change neutral">
                     <i class="fa-solid fa-handshake"></i> Đã ký chính thức
                 </div>
             </div>
-            <div class="kpi-card yellow">
+            <div class="kpi-card yellow" id="kpi-card-variations" style="cursor: pointer;">
                 <div class="kpi-label">Lũy Kế Phát Sinh B - B' (Đã Duyệt)</div>
                 <div class="kpi-value" id="kpi-total-variations">0.00 tỷ</div>
                 <div class="kpi-change neutral" id="kpi-variation-percentage">
                     0.0% ngân sách gốc
                 </div>
             </div>
-            <div class="kpi-card red">
+            <div class="kpi-card red" id="kpi-card-delays" style="cursor: pointer;">
                 <div class="kpi-label">Chỉ Số Trễ Hạn Gói Thầu</div>
                 <div class="kpi-value" id="kpi-total-delays">0 ngày</div>
                 <div class="kpi-change down" id="kpi-delay-alert-count">
@@ -127,23 +127,23 @@
                     <i class="fa-solid fa-chart-line" style="color: var(--color-ai-primary);"></i> Dashboard Tổng quan Hệ thống
                 </h2>
                 <div class="dashboard-overview-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;">
-                    <div class="overview-card" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #94a3b8; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: default;">
+                    <div class="overview-card" id="overview-card-monitored" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #94a3b8; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
                         <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Tổng hạng mục theo dõi</div>
                         <div id="dashboard-total-monitored" style="font-size: 1.8rem; font-weight: 700; color: #fff; line-height: 1;">0</div>
                     </div>
-                    <div class="overview-card" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #ff5252; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: default;">
+                    <div class="overview-card" id="overview-card-red" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #ff5252; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
                         <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🔴 Cảnh báo đỏ</div>
                         <div id="dashboard-red-alerts" style="font-size: 1.8rem; font-weight: 700; color: #ff5252; line-height: 1;">0</div>
                     </div>
-                    <div class="overview-card" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: default;">
+                    <div class="overview-card" id="overview-card-orange" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
                         <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🟠 Cảnh báo cam</div>
                         <div id="dashboard-orange-alerts" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
                     </div>
-                    <div class="overview-card" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #eab308; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: default;">
+                    <div class="overview-card" id="overview-card-yellow" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #eab308; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
                         <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🟡 Cảnh báo vàng</div>
                         <div id="dashboard-yellow-alerts" style="font-size: 1.8rem; font-weight: 700; color: #eab308; line-height: 1;">0</div>
                     </div>
-                    <div class="overview-card" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #10b981; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: default;">
+                    <div class="overview-card" id="overview-card-normal" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #10b981; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
                         <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🟢 Bình thường</div>
                         <div id="dashboard-normal" style="font-size: 1.8rem; font-weight: 700; color: #10b981; line-height: 1;">0</div>
                     </div>
@@ -189,6 +189,14 @@
 
         <!-- ==================== TAB: MASTER DATA ==================== -->
         <div class="tab-pane" id="tab-master">
+            <!-- Master Filter Alert (Active Filter Status) -->
+            <div id="master-filter-alert" style="display: none; align-items: center; justify-content: space-between; background: rgba(59, 130, 246, 0.15); border: 1px dashed var(--color-ai-primary); padding: 10px 18px; border-radius: 8px; margin-bottom: 12px; transition: all 0.3s ease;">
+                <span id="master-filter-alert-text" style="font-size: 0.85rem; color: #a5d8ff; font-weight: 600;"></span>
+                <button class="btn-action" id="btn-clear-dashboard-filter" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(239, 68, 68, 0.4); color: #ff5252;">
+                    <i class="fa-solid fa-circle-xmark"></i> Hủy lọc
+                </button>
+            </div>
+
             <!-- Search & Filters -->
             <div style="background-color: var(--bg-surface); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
                 <div style="display: flex; gap: 12px; flex-grow: 1; max-width: 680px;">

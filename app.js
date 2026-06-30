@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let activeSubtab = "cdt";    // "cdt", "cung_ung", "trien_khai", "khoi_cong", "ngan_sach", "thi_cong", "all"
     const expandedParents = new Set(); // Set of expanded parent IDs (Mã BSC / goi_thau_pl)
     let currentRole = "Admin";   // Active role: "Admin", "Supervisor", "Contractor", "Supply"
+    let dashboardAlarmFilter = ""; // Active warning filter: "red", "orange", "yellow", "normal", or ""
 
     // Helper to get system date formatted in GMT+7 (browser local time)
     function getSystemDateGMT7() {
@@ -1032,8 +1033,51 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
+    function getRowAlarmStatus(row) {
+        if (!row) return "normal";
+        const bsc = String(row.ma_bsc || "").trim();
+        if (bsc === "") {
+            // Child row: look up the parent package row
+            const parentTt = String(row.tt).split('.')[0];
+            const parentRow = db.master.find(r => String(r.tt) === parentTt && String(r.ma_bsc || "").trim() !== "");
+            if (parentRow) return getRowAlarmStatus(parentRow);
+            return "normal";
+        }
+        
+        // Find delays in s05
+        const delays = db.s05.filter(d => String(d['Mã BSC']).trim() === bsc && d['TT thực hiện'] === 'Đang thực hiện');
+        const maxDelay = delays.length > 0 ? Math.max(...delays.map(d => parseInt(d['Mức chậm (ngày)'] || 0))) : 0;
+
+        const dk = row.dieu_kien_du || 'THIẾU ĐK';
+        if (dk === 'THIẾU ĐK') {
+            return "red";
+        } else {
+            if (maxDelay > 5) {
+                return "orange";
+            } else if (maxDelay > 0) {
+                return "yellow";
+            } else {
+                return "normal";
+            }
+        }
+    }
+
     function renderMasterGrid() {
         calculateRollups();
+
+        // Auto expand matching packages if warning filter is active
+        if (dashboardAlarmFilter !== "") {
+            db.master.forEach(row => {
+                const bsc = String(row.ma_bsc || "").trim();
+                const goiThauPl = String(row.goi_thau_pl || "").trim();
+                if (bsc !== "") {
+                    if (getRowAlarmStatus(row) === dashboardAlarmFilter) {
+                        if (goiThauPl !== "") expandedParents.add(goiThauPl); // expand grand parent
+                        expandedParents.add(bsc); // expand parent package
+                    }
+                }
+            });
+        }
         
         // Show/hide Add Package button based on quyen_them
         const btnAddPkg = document.getElementById("btn-add-package");
@@ -1220,7 +1264,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 String(row.phu_trach || "").toLowerCase().includes(search);
             const groupMatch = groupFilter === "" || getRowGroup(item) === groupFilter;
             const plMatch = plFilter === "" || getRowPl(item) === plFilter;
-            return textMatch && groupMatch && plMatch;
+            
+            // Alarm status match
+            const alarmStatus = getRowAlarmStatus(row);
+            const alarmMatch = dashboardAlarmFilter === "" || alarmStatus === dashboardAlarmFilter;
+            
+            return textMatch && groupMatch && plMatch && alarmMatch;
         });
 
         // Set visibility values based on expandedParents state
@@ -4375,6 +4424,118 @@ function openEditModalForm(rowIdx) {
             console.error("Lỗi xuất Excel:", error);
             showToast("Lỗi Xuất Excel", "Có lỗi xảy ra khi tạo file Excel: " + error.message, "danger");
         }
+    }
+
+    // Switch to target Master Subtab
+    function switchMasterSubtab(subtabId) {
+        // Find tab-master nav-item
+        const masterNav = Array.from(document.querySelectorAll(".nav-item")).find(n => n.getAttribute("data-tab") === "master");
+        if (masterNav) {
+            masterNav.click();
+        }
+        
+        // Find master sub-tab button and click it
+        const subtabBtn = document.querySelector(`[data-subtab="${subtabId}"]`);
+        if (subtabBtn) {
+            subtabBtn.click();
+        }
+    }
+
+    // Apply dashboard drilldown filter
+    function applyDashboardWarningFilter(alarmType) {
+        dashboardAlarmFilter = alarmType;
+        
+        const alertEl = document.getElementById("master-filter-alert");
+        const textEl = document.getElementById("master-filter-alert-text");
+        
+        if (alarmType !== "") {
+            if (alertEl && textEl) {
+                alertEl.style.display = "flex";
+                let label = "";
+                if (alarmType === "red") label = "CẢNH BÁO ĐỎ (Thiếu ĐK Khởi công)";
+                if (alarmType === "orange") label = "CẢNH BÁO CAM (Chậm trễ > 5 ngày)";
+                if (alarmType === "yellow") label = "CẢNH BÁO VÀNG (Chậm trễ từ 1-5 ngày)";
+                if (alarmType === "normal") label = "BÌNH THƯỜNG (Mọi chỉ số đạt chuẩn)";
+                textEl.innerHTML = `<i class="fa-solid fa-filter" style="margin-right: 6px;"></i> Đang lọc dữ liệu theo trạng thái: <strong style="color: #ffd8a8; text-transform: uppercase;">${label}</strong>`;
+            }
+            
+            // Auto switch display level to detail so child rows are visible
+            const btnDetail = document.getElementById("btn-level-detail");
+            if (btnDetail) {
+                btnDetail.click();
+            }
+        } else {
+            if (alertEl) alertEl.style.display = "none";
+        }
+        
+        // Switch to master tab
+        const masterNav = Array.from(document.querySelectorAll(".nav-item")).find(n => n.getAttribute("data-tab") === "master");
+        if (masterNav) {
+            masterNav.click();
+        } else {
+            renderMasterGrid();
+        }
+    }
+
+    // Bind Dashboard KPI and Overview Cards Drilldowns
+    const cardBudget = document.getElementById("kpi-card-budget");
+    if (cardBudget) {
+        cardBudget.addEventListener("click", () => {
+            dashboardAlarmFilter = ""; // Clear alarm filter
+            const alertEl = document.getElementById("master-filter-alert");
+            if (alertEl) alertEl.style.display = "none";
+            switchMasterSubtab("ngan_sach");
+        });
+    }
+
+    const cardContract = document.getElementById("kpi-card-contract");
+    if (cardContract) {
+        cardContract.addEventListener("click", () => {
+            dashboardAlarmFilter = "";
+            const alertEl = document.getElementById("master-filter-alert");
+            if (alertEl) alertEl.style.display = "none";
+            switchMasterSubtab("ngan_sach");
+        });
+    }
+
+    const cardVariations = document.getElementById("kpi-card-variations");
+    if (cardVariations) {
+        cardVariations.addEventListener("click", () => {
+            dashboardAlarmFilter = "";
+            const alertEl = document.getElementById("master-filter-alert");
+            if (alertEl) alertEl.style.display = "none";
+            switchMasterSubtab("ngan_sach");
+        });
+    }
+
+    const cardDelays = document.getElementById("kpi-card-delays");
+    if (cardDelays) {
+        cardDelays.addEventListener("click", () => {
+            const s05Nav = Array.from(document.querySelectorAll(".nav-item")).find(n => n.getAttribute("data-tab") === "s05");
+            if (s05Nav) s05Nav.click();
+        });
+    }
+
+    // Bind warning status cards
+    const overMonitored = document.getElementById("overview-card-monitored");
+    if (overMonitored) overMonitored.addEventListener("click", () => applyDashboardWarningFilter(""));
+
+    const overRed = document.getElementById("overview-card-red");
+    if (overRed) overRed.addEventListener("click", () => applyDashboardWarningFilter("red"));
+
+    const overOrange = document.getElementById("overview-card-orange");
+    if (overOrange) overOrange.addEventListener("click", () => applyDashboardWarningFilter("orange"));
+
+    const overYellow = document.getElementById("overview-card-yellow");
+    if (overYellow) overYellow.addEventListener("click", () => applyDashboardWarningFilter("yellow"));
+
+    const overNormal = document.getElementById("overview-card-normal");
+    if (overNormal) overNormal.addEventListener("click", () => applyDashboardWarningFilter("normal"));
+
+    // Clear filter button
+    const btnClearFilter = document.getElementById("btn-clear-dashboard-filter");
+    if (btnClearFilter) {
+        btnClearFilter.addEventListener("click", () => applyDashboardWarningFilter(""));
     }
 
     // Opening modals buttons mapping
