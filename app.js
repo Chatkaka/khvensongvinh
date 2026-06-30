@@ -172,6 +172,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 ns.quyen_sua = true;
                 ns.quyen_xoa = true;
                 ns.vai_tro = "Cán bộ quản lý (Admin)";
+                ns.phong_ban = "QLTK";
+            }
+            if (nameLower.includes("hồ nghĩa chất") || nameLower.includes("ho nghia chat")) {
+                ns.quyen = "Admin";
+                ns.quyen_them = true;
+                ns.quyen_sua = true;
+                ns.quyen_xoa = true;
+                ns.vai_tro = "Phó Ban Quản lý Dự án (Admin)";
+                ns.phong_ban = "KTKH";
             }
 
             if (!ns.mat_khau) ns.mat_khau = "123456";
@@ -875,8 +884,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const SUBTAB_COLUMNS = {
         cdt: {
             title: "A. Đầu vào CĐT (Tiến độ - Ngân sách - HSKT)",
-            headers: ["TT", "Nhóm Công Trình", "Mã BSC", "Hạng Mục / Công Việc", "Phụ Trách", "Ngày BĐ (YC)", "Ngày KT (YC)", "Ngân Sách (tỷ)", "KH HSTKTC", "TT HSTKTC", "TT SPECS", "TT BOQ/KL", "Thao Tác"],
-            fields: ["tt", "nhom_ct", "ma_bsc", "hang_muc_work", "phu_trach", "ngay_bd_yc", "ngay_kt_yc", "ngan_sach", "kh_phat_hang_hstktc", "tt_hstktc", "tt_specs", "tt_boq_kl"]
+            headers: ["TT", "Nhóm Công Trình", "Mã BSC", "Hạng Mục / Công Việc", "Phụ Trách", "Ngày BĐ (YC)", "Ngày KT (YC)", "Ngân Sách (tỷ)", "KH HSTKTC", "TT HSTKTC", "TT SPECS", "TT BOQ/KL", "KTKH Nhận BG", "Thao Tác"],
+            fields: ["tt", "nhom_ct", "ma_bsc", "hang_muc_work", "phu_trach", "ngay_bd_yc", "ngay_kt_yc", "ngan_sach", "kh_phat_hang_hstktc", "tt_hstktc", "tt_specs", "tt_boq_kl", "xac_nhan_ktkh"]
         },
         cung_ung: {
             title: "B. Cung ứng & Hợp đồng",
@@ -1295,7 +1304,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function renderCellDropdown(rowIdx, field, currentVal, category) {
-        const options = db.danh_muc[category] || [];
+        const options = getDanhMucList(category);
         const isEditable = currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor'));
         let html = `<select class="grid-select" data-row="${rowIdx}" data-field="${field}" ${!isEditable ? 'disabled title="Khóa: Chỉ Admin/TVGS có quyền sửa mới được chỉnh sửa!"' : ''}>`;
         html += `<option value=""></option>`;
@@ -1412,6 +1421,19 @@ document.addEventListener("DOMContentLoaded", () => {
             td.textContent = isParent && val > 0 ? val.toFixed(2) : "";
             td.style.textAlign = "right";
             td.style.fontWeight = "700";
+        }
+        else if (field === 'xac_nhan_ktkh') {
+            if (isParent) {
+                const val = row.xac_nhan_ktkh || "Chưa nhận";
+                if (val === 'Đã nhận bàn giao') {
+                    td.innerHTML = `<span class="badge success" style="padding:4px 8px; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Đã nhận</span>`;
+                } else {
+                    td.innerHTML = `<span class="badge danger" style="padding:4px 8px; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px; font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> Chưa nhận</span>`;
+                }
+            } else {
+                td.textContent = "";
+            }
+            td.style.textAlign = "center";
         }
         else if (field.startsWith('t') || field.startsWith('qa') || field.startsWith('tc')) {
             const val = row[field];
@@ -1641,6 +1663,9 @@ function openEditModalForm(rowIdx) {
         `;
 
         if (activeSubtab === 'cdt') {
+            const qltkDisabled = !isUserQltk() ? 'disabled style="background: rgba(255,255,255,0.03); cursor: not-allowed;" title="Chỉ phòng QLTK hoặc Admin mới có quyền chỉnh sửa!"' : '';
+            const ktkhDisabled = !isUserKtkh() ? 'disabled style="background: rgba(255,255,255,0.03); cursor: not-allowed;" title="Chỉ phòng KTKH hoặc Admin mới có quyền xác nhận!"' : '';
+
             fieldsHtml = `
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                     <div class="form-group">
@@ -1659,31 +1684,66 @@ function openEditModalForm(rowIdx) {
                         <label>Ngày kết thúc (Yêu cầu)</label>
                         <input type="date" id="edit-form-end-date" class="form-control" value="${row.ngay_kt_yc || ''}">
                     </div>
+                </div>
+                
+                <!-- Nhóm trường của QLTK -->
+                <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <h4 style="margin: 0; font-size: 0.85rem; color: var(--color-ai-primary); display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-drafting-compass"></i> Thông tin thiết kế & Bản vẽ (Phòng QLTK thực hiện)
+                        </h4>
+                    </div>
                     <div class="form-group">
                         <label>KH phát hành HSTKTC</label>
-                        <input type="date" id="edit-form-kh-hstktc" class="form-control" value="${row.kh_phat_hang_hstktc || ''}">
+                        <input type="date" id="edit-form-kh-hstktc" class="form-control" value="${row.kh_phat_hang_hstktc || ''}" ${qltkDisabled}>
                     </div>
                     <div class="form-group">
                         <label>TT HSTKTC</label>
-                        <select id="edit-form-tt-hstktc" class="form-control">
+                        <select id="edit-form-tt-hstktc" class="form-control" ${qltkDisabled}>
                             <option value=""></option>
-                            ${renderOptionsWithSelect(db.danh_muc['TT HSTKTC'] || [], row.tt_hstktc)}
+                            ${renderOptionsWithSelect(getDanhMucList('TT HSTKTC'), row.tt_hstktc)}
                         </select>
                     </div>
                     <div class="form-group">
                         <label>TT SPECS</label>
-                        <select id="edit-form-tt-specs" class="form-control">
+                        <select id="edit-form-tt-specs" class="form-control" ${qltkDisabled}>
                             <option value=""></option>
-                            ${renderOptionsWithSelect(db.danh_muc['TT SPECS'] || [], row.tt_specs)}
+                            ${renderOptionsWithSelect(getDanhMucList('TT SPECS'), row.tt_specs)}
                         </select>
                     </div>
                     <div class="form-group">
                         <label>TT BOQ/KL</label>
-                        <select id="edit-form-tt-boq-kl" class="form-control">
+                        <select id="edit-form-tt-boq-kl" class="form-control" ${qltkDisabled}>
                             <option value=""></option>
-                            ${renderOptionsWithSelect(db.danh_muc['TT BOQ/KL'] || [], row.tt_boq_kl)}
+                            ${renderOptionsWithSelect(getDanhMucList('TT BOQ/KL'), row.tt_boq_kl)}
                         </select>
                     </div>
+                    ${row.nguoi_lap_qltk ? `
+                        <div class="form-group" style="grid-column: span 2; font-size: 0.75rem; color: var(--text-secondary); margin-top: -8px;">
+                            <i class="fa-solid fa-user-pen"></i> Người cập nhật QLTK: <strong>${row.nguoi_lap_qltk}</strong> ${row.ngay_lap_qltk ? `lúc ${row.ngay_lap_qltk}` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Nhóm trường của KTKH -->
+                <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <h4 style="margin: 0; font-size: 0.85rem; color: var(--color-yellow); display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-handshake"></i> Xác nhận bàn giao hồ sơ (Phòng KTKH thực hiện)
+                        </h4>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Xác nhận nhận bàn giao BOQ/KL</label>
+                        <select id="edit-form-xac-nhan-ktkh" class="form-control" ${ktkhDisabled}>
+                            <option value="Chưa nhận" ${row.xac_nhan_ktkh === 'Chưa nhận' || !row.xac_nhan_ktkh ? 'selected' : ''}>Chưa nhận</option>
+                            <option value="Đã nhận bàn giao" ${row.xac_nhan_ktkh === 'Đã nhận bàn giao' ? 'selected' : ''}>Đã nhận bàn giao</option>
+                        </select>
+                    </div>
+                    ${row.nguoi_xac_nhan_ktkh ? `
+                        <div class="form-group" style="grid-column: span 2; font-size: 0.75rem; color: var(--text-secondary); margin-top: -8px;">
+                            <i class="fa-solid fa-user-check"></i> Người xác nhận KTKH: <strong>${row.nguoi_xac_nhan_ktkh}</strong> ${row.ngay_xac_nhan_ktkh ? `lúc ${row.ngay_xac_nhan_ktkh}` : ''}
+                        </div>
+                    ` : ''}
                 </div>
             `;
         } else if (activeSubtab === 'cung_ung') {
@@ -1697,7 +1757,7 @@ function openEditModalForm(rowIdx) {
                         <label>TT LCNT</label>
                         <select id="edit-form-tt-lcnt" class="form-control">
                             <option value=""></option>
-                            ${renderOptionsWithSelect(db.danh_muc['TT LCNT'] || [], row.tt_lcnt)}
+                            ${renderOptionsWithSelect(getDanhMucList('TT LCNT'), row.tt_lcnt)}
                         </select>
                     </div>
                     <div class="form-group">
@@ -1708,7 +1768,7 @@ function openEditModalForm(rowIdx) {
                         <label>TT Ký HĐCU</label>
                         <select id="edit-form-tt-ky-hdcu" class="form-control">
                             <option value=""></option>
-                            ${renderOptionsWithSelect(db.danh_muc['TT Ký HĐCU'] || [], row.tt_ky_hdcu)}
+                            ${renderOptionsWithSelect(getDanhMucList('TT Ký HĐCU'), row.tt_ky_hdcu)}
                         </select>
                     </div>
                     <div class="form-group">
@@ -1719,7 +1779,7 @@ function openEditModalForm(rowIdx) {
                         <label>TT KHCU</label>
                         <select id="edit-form-tt-khcu" class="form-control">
                             <option value=""></option>
-                            ${renderOptionsWithSelect(db.danh_muc['TT KHCU'] || [], row.tt_khcu)}
+                            ${renderOptionsWithSelect(getDanhMucList('TT KHCU'), row.tt_khcu)}
                         </select>
                     </div>
                     <div class="form-group" style="grid-column: span 2;">
@@ -1739,7 +1799,7 @@ function openEditModalForm(rowIdx) {
                         <label>TT Ký PLHĐ CĐT</label>
                         <select id="edit-form-tt-ky-plhd-cdt" class="form-control">
                             <option value=""></option>
-                            ${renderOptionsWithSelect(db.danh_muc['TT Ký PLHĐ'] || [], row.tt_ky_plhd_cdt)}
+                            ${renderOptionsWithSelect(getDanhMucList('TT Ký PLHĐ'), row.tt_ky_plhd_cdt)}
                         </select>
                     </div>
                     <div class="form-group">
@@ -1750,7 +1810,7 @@ function openEditModalForm(rowIdx) {
                         <label>TT KHTK</label>
                         <select id="edit-form-tt-khtk" class="form-control">
                             <option value=""></option>
-                            ${renderOptionsWithSelect(db.danh_muc['TT KHTK'] || [], row.tt_khtk)}
+                            ${renderOptionsWithSelect(getDanhMucList('TT KHTK'), row.tt_khtk)}
                         </select>
                     </div>
                 </div>
@@ -1834,6 +1894,44 @@ function openEditModalForm(rowIdx) {
     function renderOptionsWithSelect(array, selectedVal) {
         if (!array) return "";
         return array.map(v => `<option value="${v}" ${v === selectedVal ? 'selected' : ''}>${v}</option>`).join("");
+    }
+
+    function getDanhMucList(key) {
+        if (db.danh_muc && db.danh_muc[key] && db.danh_muc[key].length > 0) {
+            return db.danh_muc[key];
+        }
+        if (defaultDb.danh_muc && defaultDb.danh_muc[key] && defaultDb.danh_muc[key].length > 0) {
+            return defaultDb.danh_muc[key];
+        }
+        const fallbacks = {
+            'TT HSTKTC': ['Chưa có TK', 'Đang TK', 'Điều chỉnh TK', 'Đã phát hành', 'Hoàn thiện'],
+            'TT SPECS': ['Chưa có', 'Đang lập', 'Đã cấp'],
+            'TT BOQ/KL': ['Chưa bàn giao', 'Đang lập', 'Điều chỉnh', 'Đã bàn giao'],
+            'TT LCNT': ['Chưa LCNT', 'Đang mời thầu', 'Đang đánh giá', 'Đã có KQ', 'Đã ký'],
+            'TT Ký HĐCU': ['Chưa CU', 'Đang trình ký', 'Đã CU', 'Theo đợt TC'],
+            'TT KHCU': ['Chưa lập', 'Đang lập', 'Chờ duyệt', 'Đã duyệt'],
+            'TT Ký PLHĐ': ['Chưa ký', 'Đang lập BPTC', 'Đã ký PLHĐ'],
+            'TT KHTK': ['Chưa trình', 'Đang duyệt', 'Đã duyệt'],
+            'Mức độ': ['Cao', 'Trung bình', 'Thấp'],
+            'Nhóm CT': ['Hạ tầng kỹ thuật', 'Xây dựng dân dụng', 'Công trình phục vụ KD'],
+            'Cấp': ['Gói thầu', 'HM lớn', 'HM thành phần'],
+            'TT duyệt (chung)': ['Chưa lập', 'Đang lập', 'Chờ duyệt', 'Đã duyệt', 'Từ chối']
+        };
+        return fallbacks[key] || [];
+    }
+
+    function isUserQltk() {
+        if (!currentUser) return false;
+        if (currentUser.quyen === 'Admin') return true;
+        const dept = String(currentUser.phong_ban || "").toUpperCase();
+        return dept.includes("QLTK") || dept.includes("THIẾT KẾ") || dept.includes("DESIGN");
+    }
+
+    function isUserKtkh() {
+        if (!currentUser) return false;
+        if (currentUser.quyen === 'Admin') return true;
+        const dept = String(currentUser.phong_ban || "").toUpperCase();
+        return dept.includes("KTKH") || dept.includes("KẾ HOẠCH") || dept.includes("KINH TẾ");
     }
 
     function deleteMasterRow(rowIdx) {
@@ -3282,10 +3380,33 @@ function openEditModalForm(rowIdx) {
             row.ngay_kt_yc = getValue("edit-form-end-date", row.ngay_kt_yc);
             row.ngay_bd_khoi_cong = getValue("edit-form-start-actual", row.ngay_bd_khoi_cong);
             
-            row.kh_phat_hang_hstktc = getValue("edit-form-kh-hstktc", row.kh_phat_hang_hstktc);
-            row.tt_hstktc = getValue("edit-form-tt-hstktc", row.tt_hstktc);
-            row.tt_specs = getValue("edit-form-tt-specs", row.tt_specs);
-            row.tt_boq_kl = getValue("edit-form-tt-boq-kl", row.tt_boq_kl);
+            // QLTK department field updates & audit logging
+            const elKhHstktc = document.getElementById("edit-form-kh-hstktc");
+            const elTtHstktc = document.getElementById("edit-form-tt-hstktc");
+            const elTtSpecs = document.getElementById("edit-form-tt-specs");
+            const elTtBoqKl = document.getElementById("edit-form-tt-boq-kl");
+            
+            let qltkChanged = false;
+            if (elKhHstktc && elKhHstktc.value !== (row.kh_phat_hang_hstktc || "")) { row.kh_phat_hang_hstktc = elKhHstktc.value; qltkChanged = true; }
+            if (elTtHstktc && elTtHstktc.value !== (row.tt_hstktc || "")) { row.tt_hstktc = elTtHstktc.value; qltkChanged = true; }
+            if (elTtSpecs && elTtSpecs.value !== (row.tt_specs || "")) { row.tt_specs = elTtSpecs.value; qltkChanged = true; }
+            if (elTtBoqKl && elTtBoqKl.value !== (row.tt_boq_kl || "")) { row.tt_boq_kl = elTtBoqKl.value; qltkChanged = true; }
+            
+            if (qltkChanged && currentUser) {
+                row.nguoi_lap_qltk = currentUser.ho_ten;
+                row.ngay_lap_qltk = getSystemDateGMT7();
+            }
+
+            // KTKH department field updates & audit logging
+            const elXacNhanKtkh = document.getElementById("edit-form-xac-nhan-ktkh");
+            if (elXacNhanKtkh && elXacNhanKtkh.value !== (row.xac_nhan_ktkh || "Chưa nhận")) {
+                row.xac_nhan_ktkh = elXacNhanKtkh.value;
+                if (currentUser) {
+                    row.nguoi_xac_nhan_ktkh = currentUser.ho_ten;
+                    row.ngay_xac_nhan_ktkh = getSystemDateGMT7();
+                }
+            }
+
             row.tt_lcnt = getValue("edit-form-tt-lcnt", row.tt_lcnt);
             row.tt_ky_hdcu = getValue("edit-form-tt-ky-hdcu", row.tt_ky_hdcu);
             row.tt_khcu = getValue("edit-form-tt-khcu", row.tt_khcu);
