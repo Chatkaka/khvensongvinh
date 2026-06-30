@@ -398,6 +398,22 @@ document.addEventListener("DOMContentLoaded", () => {
         return budget > 0 && (totalCost / budget) > 0.95;
     }
 
+    function isRowHandedOver(item) {
+        if (!item || item.type === 'grand_parent') return false;
+        if (item.type === 'parent') {
+            const val = item.row_ref.xac_nhan_ktkh || "";
+            return val === 'Đã nhận bàn giao' || val === 'Đã nhận';
+        }
+        if (item.type === 'child') {
+            const parentRow = db.master.find(r => String(r.ma_bsc).trim() === item.parentId);
+            if (parentRow) {
+                const val = parentRow.xac_nhan_ktkh || "";
+                return val === 'Đã nhận bàn giao' || val === 'Đã nhận';
+            }
+        }
+        return false;
+    }
+
     // 4. SPA TAB SYSTEM NAVIGATION
     const navItems = document.querySelectorAll(".nav-item");
     const tabPanes = document.querySelectorAll(".tab-pane");
@@ -1261,7 +1277,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     tdOps.textContent = "";
                 } else {
                     const row = item.row_ref;
-                    const canEdit = currentUser && currentUser.quyen === 'Admin';
+                    const isHandedOver = isRowHandedOver(item);
+                    const canEdit = currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && !isHandedOver));
                     const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
                     
                     const getProgressStatusBadge = (status) => {
@@ -1361,7 +1378,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     // Add Operation cell in all mode
                     const tdOps = document.createElement("td");
-                    const canEdit = currentUser && currentUser.quyen === 'Admin';
+                    const isHandedOver = isRowHandedOver(item);
+                    const canEdit = currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && !isHandedOver));
                     const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
                     
                     const getProgressStatusBadge = (status) => {
@@ -1702,15 +1720,33 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
 function openEditModalForm(rowIdx) {
-        // Enforce Update permission - ONLY ADMINS can edit rows
-        const canEdit = currentUser ? currentUser.quyen === 'Admin' : false;
+        const row = db.master[rowIdx];
+        const isParent = String(row.ma_bsc || "").trim() !== "";
+        let isHandedOver = false;
+        if (isParent) {
+            const val = row.xac_nhan_ktkh || "";
+            isHandedOver = val === 'Đã nhận bàn giao' || val === 'Đã nhận';
+        } else {
+            const parentTt = String(row.tt).split('.')[0];
+            const parentRow = db.master.find(r => String(r.tt) === parentTt && String(r.ma_bsc || "").trim() !== "");
+            if (parentRow) {
+                const val = parentRow.xac_nhan_ktkh || "";
+                isHandedOver = val === 'Đã nhận bàn giao' || val === 'Đã nhận';
+            }
+        }
+        
+        // Enforce Update permission - Admin OR (Edit permissions AND package not handed over yet)
+        const canEdit = currentUser ? (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && !isHandedOver)) : false;
         if (!canEdit) {
-            showToast("Bảo Mật", "Quyền hạn hạn chế: Tài khoản của bạn không có quyền SỬA dữ liệu!", "danger");
+            if (isHandedOver) {
+                showToast("Bảo Mật", "Hạng mục đã được KTKH nhận bàn giao, chỉ Admin mới có quyền chỉnh sửa!", "danger");
+            } else {
+                showToast("Bảo Mật", "Quyền hạn hạn chế: Tài khoản của bạn không có quyền SỬA dữ liệu!", "danger");
+            }
             return;
         }
         editRowIndex = rowIdx;
         currentFormTarget = "master_edit";
-        const row = db.master[rowIdx];
         
         const titleEl = document.getElementById("modal-form-title");
         const bodyEl = document.getElementById("modal-form-body");
