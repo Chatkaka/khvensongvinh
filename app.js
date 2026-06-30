@@ -991,6 +991,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const search = document.getElementById("master-search-input").value.toLowerCase();
         const groupFilter = document.getElementById("master-filter-group").value;
+        const plFilterSelect = document.getElementById("master-filter-pl");
+        if (plFilterSelect && plFilterSelect.options.length <= 1) {
+            const uniquePls = [...new Set(db.master.map(r => r.goi_thau_pl).filter(Boolean))].sort();
+            plFilterSelect.innerHTML = `<option value="">Tất cả PL</option>` + 
+                uniquePls.map(pl => `<option value="${pl}">${pl}</option>`).join("");
+        }
+        const plFilter = plFilterSelect ? plFilterSelect.value : "";
 
         // A. Render Table Headers
         const config = SUBTAB_COLUMNS[activeSubtab];
@@ -1119,15 +1126,43 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // Search & Group filters
+        // Helper to retrieve PL and Nhóm CT for all row types (grand_parent, parent, child)
+        const getRowPl = (item) => {
+            if (item.type === 'grand_parent') return item.id;
+            if (item.type === 'parent') return String(item.row_ref.goi_thau_pl || "");
+            if (item.type === 'child') {
+                const parentRow = db.master.find(r => String(r.ma_bsc).trim() === item.parentId);
+                return parentRow ? String(parentRow.goi_thau_pl || "") : "";
+            }
+            return "";
+        };
+
+        const getRowGroup = (item) => {
+            if (item.type === 'grand_parent') return item.nhom_ct;
+            if (item.type === 'parent') return String(item.row_ref.nhom_ct || "");
+            if (item.type === 'child') {
+                if (item.row_ref.nhom_ct) return String(item.row_ref.nhom_ct);
+                const parentRow = db.master.find(r => String(r.ma_bsc).trim() === item.parentId);
+                return parentRow ? String(parentRow.nhom_ct || "") : "";
+            }
+            return "";
+        };
+
+        // Search & Group & PL filters
         const filteredHierarchy = flatHierarchy.filter(item => {
-            if (item.type === "grand_parent") return true;
+            if (item.type === "grand_parent") {
+                const matchesGroup = groupFilter === "" || String(item.nhom_ct) === groupFilter;
+                const matchesPl = plFilter === "" || String(item.id) === plFilter;
+                return matchesGroup && matchesPl;
+            }
             const row = item.row_ref;
             const textMatch = 
                 String(row.ma_bsc || "").toLowerCase().includes(search) || 
-                String(row.hang_muc_work || "").toLowerCase().includes(search);
-            const groupMatch = groupFilter === "" || String(row.nhom_ct) === groupFilter;
-            return textMatch && groupMatch;
+                String(row.hang_muc_work || "").toLowerCase().includes(search) ||
+                String(row.phu_trach || "").toLowerCase().includes(search);
+            const groupMatch = groupFilter === "" || getRowGroup(item) === groupFilter;
+            const plMatch = plFilter === "" || getRowPl(item) === plFilter;
+            return textMatch && groupMatch && plMatch;
         });
 
         // Set visibility values based on expandedParents state
@@ -2100,6 +2135,10 @@ function openEditModalForm(rowIdx) {
     // Filter master search on keyup
     document.getElementById("master-search-input").addEventListener("keyup", renderMasterGrid);
     document.getElementById("master-filter-group").addEventListener("change", renderMasterGrid);
+    const plFilterSelectEl = document.getElementById("master-filter-pl");
+    if (plFilterSelectEl) {
+        plFilterSelectEl.addEventListener("change", renderMasterGrid);
+    }
     document.getElementById("btn-reset-master").addEventListener("click", () => {
         loadDatabase();
         renderMasterGrid();

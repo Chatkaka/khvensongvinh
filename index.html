@@ -191,16 +191,19 @@
         <div class="tab-pane" id="tab-master">
             <!-- Search & Filters -->
             <div style="background-color: var(--bg-surface); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
-                <div style="display: flex; gap: 12px; flex-grow: 1; max-width: 500px;">
+                <div style="display: flex; gap: 12px; flex-grow: 1; max-width: 680px;">
                     <div style="position: relative; flex-grow: 1;">
                         <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 12px; color: var(--text-muted);"></i>
-                        <input type="text" id="master-search-input" class="form-control" placeholder="Tìm kiếm mã gói thầu, tên công việc..." style="padding-left: 36px; border-radius: 20px;">
+                        <input type="text" id="master-search-input" class="form-control" placeholder="Tìm tên hạng mục, công việc..." style="padding-left: 36px; border-radius: 20px;">
                     </div>
                     <select id="master-filter-group" class="form-control" style="width: 180px; border-radius: 20px;">
                         <option value="">Tất cả Nhóm CT</option>
                         <option value="Hạ tầng kỹ thuật">Hạ tầng kỹ thuật</option>
                         <option value="Xây dựng dân dụng">Xây dựng dân dụng</option>
                         <option value="Công trình phục vụ KD">Công trình phục vụ KD</option>
+                    </select>
+                    <select id="master-filter-pl" class="form-control" style="width: 140px; border-radius: 20px;">
+                        <option value="">Tất cả PL</option>
                     </select>
                 </div>
                 <div style="display: flex; gap: 10px;">
