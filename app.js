@@ -1604,29 +1604,45 @@ function openEditModalForm(rowIdx) {
         
         const isContractor = currentUser && currentUser.quyen === 'Contractor';
         
-        bodyEl.innerHTML = `
-            <fieldset ${isContractor ? 'disabled' : ''} style="border:none; padding:0; margin:0; display:contents;">
+        // Build custom fields based on activeSubtab
+        let fieldsHtml = "";
+        let showProgressSection = false;
+        
+        const commonHeaderHtml = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+                <div class="form-group">
+                    <label>TT (Thứ tự dòng)</label>
+                    <input type="text" id="edit-form-tt" class="form-control" value="${row.tt || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''}>
+                </div>
+                <div class="form-group">
+                    <label>Mã BSC</label>
+                    <input type="text" id="edit-form-ma-bsc" class="form-control" value="${row.ma_bsc || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''} placeholder="Để trống nếu là hạng mục con">
+                </div>
+                <div class="form-group">
+                    <label>Nhóm CT / Hạng mục cha</label>
+                    ${activeSubtab === 'cdt' ? `
+                        <select id="edit-form-nhom-ct" class="form-control">
+                            <option value=""></option>
+                            ${renderOptionsWithSelect(db.danh_muc['Nhóm CT'] || [], row.nhom_ct)}
+                        </select>
+                    ` : `
+                        <input type="text" id="edit-form-nhom-ct" class="form-control" value="${row.nhom_ct || ''}" disabled>
+                    `}
+                </div>
+                <div class="form-group">
+                    <label>Gói thầu (PL)</label>
+                    <input type="text" id="edit-form-goi-thau-pl" class="form-control" value="${row.goi_thau_pl || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''}>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Hạng mục / Công việc</label>
+                    <input type="text" id="edit-form-work-name" class="form-control" value="${row.hang_muc_work || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''} required>
+                </div>
+            </div>
+        `;
+
+        if (activeSubtab === 'cdt') {
+            fieldsHtml = `
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div class="form-group">
-                        <label>TT (Thứ tự dòng)</label>
-                        <input type="text" id="edit-form-tt" class="form-control" value="${row.tt || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label>Mã BSC</label>
-                        <input type="text" id="edit-form-ma-bsc" class="form-control" value="${row.ma_bsc || ''}" placeholder="Để trống nếu là hạng mục con">
-                    </div>
-                    <div class="form-group">
-                        <label>Gói thầu (PL)</label>
-                        <input type="text" id="edit-form-goi-thau-pl" class="form-control" value="${row.goi_thau_pl || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label>Nhóm CT / Hạng mục cha</label>
-                        <input type="text" id="edit-form-nhom-ct" class="form-control" value="${row.nhom_ct || ''}">
-                    </div>
-                    <div class="form-group" style="grid-column: span 2;">
-                        <label>Hạng mục / Công việc</label>
-                        <input type="text" id="edit-form-work-name" class="form-control" value="${row.hang_muc_work || ''}" required>
-                    </div>
                     <div class="form-group">
                         <label>Phụ trách</label>
                         <input type="text" id="edit-form-phu-trach" class="form-control" value="${row.phu_trach || ''}">
@@ -1634,10 +1650,6 @@ function openEditModalForm(rowIdx) {
                     <div class="form-group">
                         <label>Ngân sách (tỷ)</label>
                         <input type="number" step="0.01" id="edit-form-ngan-sach" class="form-control" value="${row.ngan_sach || 0}">
-                    </div>
-                    <div class="form-group">
-                        <label>Giá trị HĐCU (tỷ)</label>
-                        <input type="number" step="0.01" id="edit-form-gia-tri-hdcu" class="form-control" value="${row.gia_tri_hdcu || 0}">
                     </div>
                     <div class="form-group">
                         <label>Ngày bắt đầu (Yêu cầu)</label>
@@ -1648,12 +1660,9 @@ function openEditModalForm(rowIdx) {
                         <input type="date" id="edit-form-end-date" class="form-control" value="${row.ngay_kt_yc || ''}">
                     </div>
                     <div class="form-group">
-                        <label>Ngày khởi công (Thực tế)</label>
-                        <input type="date" id="edit-form-start-actual" class="form-control" value="${row.ngay_bd_khoi_cong || ''}">
+                        <label>KH phát hành HSTKTC</label>
+                        <input type="date" id="edit-form-kh-hstktc" class="form-control" value="${row.kh_phat_hang_hstktc || ''}">
                     </div>
-                </div>
-                
-                <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
                     <div class="form-group">
                         <label>TT HSTKTC</label>
                         <select id="edit-form-tt-hstktc" class="form-control">
@@ -1675,12 +1684,25 @@ function openEditModalForm(rowIdx) {
                             ${renderOptionsWithSelect(db.danh_muc['TT BOQ/KL'] || [], row.tt_boq_kl)}
                         </select>
                     </div>
+                </div>
+            `;
+        } else if (activeSubtab === 'cung_ung') {
+            fieldsHtml = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>KH LCNT</label>
+                        <input type="date" id="edit-form-kh-lcnt" class="form-control" value="${row.kh_lcnt || ''}">
+                    </div>
                     <div class="form-group">
                         <label>TT LCNT</label>
                         <select id="edit-form-tt-lcnt" class="form-control">
                             <option value=""></option>
                             ${renderOptionsWithSelect(db.danh_muc['TT LCNT'] || [], row.tt_lcnt)}
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>KH Ký HĐCU</label>
+                        <input type="date" id="edit-form-kh-ky-hdcu" class="form-control" value="${row.kh_ky_hdcu || ''}">
                     </div>
                     <div class="form-group">
                         <label>TT Ký HĐCU</label>
@@ -1690,23 +1712,120 @@ function openEditModalForm(rowIdx) {
                         </select>
                     </div>
                     <div class="form-group">
+                        <label>KH PD KHCU</label>
+                        <input type="date" id="edit-form-kh-pd-khcu" class="form-control" value="${row.kh_pd_khcu || ''}">
+                    </div>
+                    <div class="form-group">
                         <label>TT KHCU</label>
                         <select id="edit-form-tt-khcu" class="form-control">
                             <option value=""></option>
                             ${renderOptionsWithSelect(db.danh_muc['TT KHCU'] || [], row.tt_khcu)}
                         </select>
                     </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Giá Trị HĐCU (tỷ)</label>
+                        <input type="number" step="0.01" id="edit-form-gia-tri-hdcu" class="form-control" value="${row.gia_tri_hdcu || 0}">
+                    </div>
                 </div>
+            `;
+        } else if (activeSubtab === 'trien_khai') {
+            fieldsHtml = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>KH Ký PLHĐ CĐT</label>
+                        <input type="date" id="edit-form-kh-ky-plhd-cdt" class="form-control" value="${row.kh_ky_plhd_cdt || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>TT Ký PLHĐ CĐT</label>
+                        <select id="edit-form-tt-ky-plhd-cdt" class="form-control">
+                            <option value=""></option>
+                            ${renderOptionsWithSelect(db.danh_muc['TT Ký PLHĐ'] || [], row.tt_ky_plhd_cdt)}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>KH PD KHTK</label>
+                        <input type="date" id="edit-form-kh-pd-khtk" class="form-control" value="${row.kh_pd_khtk || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>TT KHTK</label>
+                        <select id="edit-form-tt-khtk" class="form-control">
+                            <option value=""></option>
+                            ${renderOptionsWithSelect(db.danh_muc['TT KHTK'] || [], row.tt_khtk)}
+                        </select>
+                    </div>
+                </div>
+            `;
+        } else if (activeSubtab === 'khoi_cong') {
+            fieldsHtml = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>ĐK1 HSKT (Hệ thống tự tính)</label>
+                        <input type="text" class="form-control" value="${row.dk1_hskt || '✘'}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>ĐK2 HĐCU (Hệ thống tự tính)</label>
+                        <input type="text" class="form-control" value="${row.dk2_hdcu || '✘'}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>ĐK3 KHTK (Hệ thống tự tính)</label>
+                        <input type="text" class="form-control" value="${row.dk3_khtk || '✘'}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Điều Kiện Đủ (Hệ thống tự tính)</label>
+                        <input type="text" class="form-control" value="${row.dieu_kien_du || 'THIẾU ĐK'}" disabled style="font-weight:700; color: ${row.dieu_kien_du === 'ĐỦ ĐK KHỞI CÔNG' ? 'var(--color-green)' : 'var(--color-red)'};">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Ngày bắt đầu khởi công (Thực tế)</label>
+                        <input type="date" id="edit-form-start-actual" class="form-control" value="${row.ngay_bd_khoi_cong || ''}">
+                    </div>
+                </div>
+            `;
+        } else if (activeSubtab === 'ngan_sach') {
+            fieldsHtml = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>Ngân Sách (tỷ)</label>
+                        <input type="number" step="0.01" id="edit-form-ngan-sach" class="form-control" value="${row.ngan_sach || 0}">
+                    </div>
+                    <div class="form-group">
+                        <label>Lũy Kế HĐ A-B (tỷ - từ Giá trị HĐCU)</label>
+                        <input type="number" step="0.01" id="edit-form-gia-tri-hdcu" class="form-control" value="${row.gia_tri_hdcu || 0}">
+                    </div>
+                    <div class="form-group">
+                        <label>Lũy Kế Phát Sinh B-B' (tỷ - từ Sổ 03)</label>
+                        <input type="text" class="form-control" value="${parseFloat(row.luy_ke_bb || 0).toFixed(2)}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Lũy Kế Tổng Chi Phí (tỷ - Hệ thống tự tính)</label>
+                        <input type="text" class="form-control" value="${parseFloat(row.luy_ke_tong_chi_phi || 0).toFixed(2)}" disabled style="font-weight:700; color: var(--color-yellow);">
+                    </div>
+                </div>
+            `;
+        } else if (activeSubtab === 'thi_cong') {
+            fieldsHtml = `
+                <div style="padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-color); text-align: center; color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">
+                    Bạn có thể cập nhật trực tiếp tiến độ tuần/tháng ở khung nhập liệu phía dưới.
+                </div>
+            `;
+            showProgressSection = true;
+        }
+
+        bodyEl.innerHTML = `
+            <fieldset ${isContractor ? 'disabled' : ''} style="border:none; padding:0; margin:0; display:contents;">
+                ${commonHeaderHtml}
+                ${fieldsHtml}
             </fieldset>
 
-            <!-- Section 3: Kế hoạch & Tiến độ thi công -->
-            <div style="margin-top: 20px; border-top: 2px dashed var(--border-color); padding-top: 16px;">
-                <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--color-ai-primary); display: flex; align-items: center; gap: 6px;">
-                    <i class="fa-solid fa-person-digging"></i> Kế hoạch & Tiến độ Thi công (Tuần/Tháng)
-                </h3>
-                ${renderProgressApprovalBanner(row, rowIdx)}
-                ${renderProgressFieldsInput(row, rowIdx)}
-            </div>
+            ${showProgressSection ? `
+                <!-- Section 3: Kế hoạch & Tiến độ thi công -->
+                <div style="margin-top: 20px; border-top: 2px dashed var(--border-color); padding-top: 16px;">
+                    <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--color-ai-primary); display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-person-digging"></i> Kế hoạch & Tiến độ Thi công (Tuần/Tháng)
+                    </h3>
+                    ${renderProgressApprovalBanner(row, rowIdx)}
+                    ${renderProgressFieldsInput(row, rowIdx)}
+                </div>
+            ` : ''}
         `;
         
         formModal.style.display = "flex";
@@ -3134,31 +3253,49 @@ function openEditModalForm(rowIdx) {
             if (editRowIndex < 0) return;
             const row = db.master[editRowIndex];
             
-            const bsc = document.getElementById("edit-form-ma-bsc").value.trim();
+            const elBsc = document.getElementById("edit-form-ma-bsc");
+            const bsc = elBsc ? elBsc.value.trim() : (row.ma_bsc || "");
             
             if (bsc !== "" && bsc !== row.ma_bsc) {
                 const exist = db.master.find((r, idx) => idx !== editRowIndex && String(r.ma_bsc).trim() === bsc);
                 if (exist) { alert("Mã BSC này đã tồn tại!"); return; }
             }
             
-            row.tt = document.getElementById("edit-form-tt").value;
+            const getValue = (id, fallback) => {
+                const el = document.getElementById(id);
+                return el ? el.value : fallback;
+            };
+            const getFloatValue = (id, fallback) => {
+                const el = document.getElementById(id);
+                return el ? (parseFloat(el.value) || 0) : fallback;
+            };
+
+            row.tt = getValue("edit-form-tt", row.tt);
             row.ma_bsc = bsc;
-            row.goi_thau_pl = document.getElementById("edit-form-goi-thau-pl").value;
-            row.nhom_ct = document.getElementById("edit-form-nhom-ct").value;
-            row.hang_muc_work = document.getElementById("edit-form-work-name").value;
-            row.phu_trach = document.getElementById("edit-form-phu-trach").value;
-            row.ngan_sach = parseFloat(document.getElementById("edit-form-ngan-sach").value) || 0;
-            row.gia_tri_hdcu = parseFloat(document.getElementById("edit-form-gia-tri-hdcu").value) || 0;
-            row.ngay_bd_yc = document.getElementById("edit-form-start-date").value;
-            row.ngay_kt_yc = document.getElementById("edit-form-end-date").value;
-            row.ngay_bd_khoi_cong = document.getElementById("edit-form-start-actual").value;
+            row.goi_thau_pl = getValue("edit-form-goi-thau-pl", row.goi_thau_pl);
+            row.nhom_ct = getValue("edit-form-nhom-ct", row.nhom_ct);
+            row.hang_muc_work = getValue("edit-form-work-name", row.hang_muc_work);
+            row.phu_trach = getValue("edit-form-phu-trach", row.phu_trach);
+            row.ngan_sach = getFloatValue("edit-form-ngan-sach", row.ngan_sach);
+            row.gia_tri_hdcu = getFloatValue("edit-form-gia-tri-hdcu", row.gia_tri_hdcu);
+            row.ngay_bd_yc = getValue("edit-form-start-date", row.ngay_bd_yc);
+            row.ngay_kt_yc = getValue("edit-form-end-date", row.ngay_kt_yc);
+            row.ngay_bd_khoi_cong = getValue("edit-form-start-actual", row.ngay_bd_khoi_cong);
             
-            row.tt_hstktc = document.getElementById("edit-form-tt-hstktc").value;
-            row.tt_specs = document.getElementById("edit-form-tt-specs").value;
-            row.tt_boq_kl = document.getElementById("edit-form-tt-boq-kl").value;
-            row.tt_lcnt = document.getElementById("edit-form-tt-lcnt").value;
-            row.tt_ky_hdcu = document.getElementById("edit-form-tt-ky-hdcu").value;
-            row.tt_khcu = document.getElementById("edit-form-tt-khcu").value;
+            row.kh_phat_hang_hstktc = getValue("edit-form-kh-hstktc", row.kh_phat_hang_hstktc);
+            row.tt_hstktc = getValue("edit-form-tt-hstktc", row.tt_hstktc);
+            row.tt_specs = getValue("edit-form-tt-specs", row.tt_specs);
+            row.tt_boq_kl = getValue("edit-form-tt-boq-kl", row.tt_boq_kl);
+            row.tt_lcnt = getValue("edit-form-tt-lcnt", row.tt_lcnt);
+            row.tt_ky_hdcu = getValue("edit-form-tt-ky-hdcu", row.tt_ky_hdcu);
+            row.tt_khcu = getValue("edit-form-tt-khcu", row.tt_khcu);
+            row.kh_lcnt = getValue("edit-form-kh-lcnt", row.kh_lcnt);
+            row.kh_ky_hdcu = getValue("edit-form-kh-ky-hdcu", row.kh_ky_hdcu);
+            row.kh_pd_khcu = getValue("edit-form-kh-pd-khcu", row.kh_pd_khcu);
+            row.kh_ky_plhd_cdt = getValue("edit-form-kh-ky-plhd-cdt", row.kh_ky_plhd_cdt);
+            row.tt_ky_plhd_cdt = getValue("edit-form-tt-ky-plhd-cdt", row.tt_ky_plhd_cdt);
+            row.kh_pd_khtk = getValue("edit-form-kh-pd-khtk", row.kh_pd_khtk);
+            row.tt_khtk = getValue("edit-form-tt-khtk", row.tt_khtk);
 
             // Save progress fields safely
             const getBillionInput = (id) => {
