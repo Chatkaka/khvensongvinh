@@ -6,7 +6,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     // 1. STATE MANAGEMENT & INITIALIZATION
     let db = {};
-    const defaultDb = window.INITIAL_DATABASE || { master: [], s01: [], s02: [], s03: [], s04: [], s05: [], danh_muc: {} };
+    const defaultDb = (typeof INITIAL_DATABASE !== 'undefined' ? INITIAL_DATABASE : (window.INITIAL_DATABASE || { master: [], s01: [], s02: [], s03: [], s04: [], s05: [], danh_muc: {} }));
     
     // View level and column sub-tabs state variables
     let activeLevel = "project"; // "project" (Cấp công trình) or "detail" (Cấp chi tiết)
@@ -3192,6 +3192,10 @@ function openEditModalForm(rowIdx) {
                         </div>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label>Người lập</label>
+                    <input type="text" id="form-maker" class="form-control" value="Tổng thầu">
+                </div>
             `;
         } else if (target === 's04') {
             titleEl.textContent = "Đăng Ký Cung Ứng Vật Tư Đặc Thù";
@@ -3249,6 +3253,10 @@ function openEditModalForm(rowIdx) {
                         </div>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label>Người lập</label>
+                    <input type="text" id="form-maker" class="form-control" value="Tổng thầu">
+                </div>
             `;
         } else if (target === 's05') {
             titleEl.textContent = "Đăng Ký Phương Án Bù Tiến Độ Thi Công";
@@ -3294,6 +3302,10 @@ function openEditModalForm(rowIdx) {
                             <span id="form-file-status" style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;"></span>
                         </div>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label>Người lập</label>
+                    <input type="text" id="form-maker" class="form-control" value="Tổng thầu">
                 </div>
             `;
         }
@@ -3359,6 +3371,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-val").value = doc["Giá trị (tỷ)"] || 0;
                 document.getElementById("form-delay").value = doc["Ảnh hưởng TĐ (ngày)"] || 0;
                 document.getElementById("form-link").value = doc["LINK hồ sơ"] || "";
+                document.getElementById("form-maker").value = doc["Người lập"] || "";
             } else if (target === 's04') {
                 const doc = db.s04[editRegistrationIndex];
                 document.getElementById("form-hang-muc").value = doc["Hạng mục"] || "";
@@ -3370,6 +3383,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-val").value = doc["Giá trị (tỷ)"] || 0;
                 document.getElementById("form-target").value = doc["Trong/Target Ngoài HĐCU"] || doc["Trong/Ngoài HĐCU"] || "Ngoài HĐCU";
                 document.getElementById("form-link").value = doc["LINK hồ sơ"] || "";
+                document.getElementById("form-maker").value = doc["Người lập"] || "";
             } else if (target === 's05') {
                 const doc = db.s05[editRegistrationIndex];
                 document.getElementById("form-hang-muc").value = doc["Hạng mục"] || "";
@@ -3378,6 +3392,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-solution").value = doc["Giải pháp bù"] || "";
                 document.getElementById("form-detail").value = doc["Chi tiết giải pháp"] || doc["Chi tiết phương án"] || "";
                 document.getElementById("form-moc").value = doc["Mốc cam kết HT"] || "";
+                document.getElementById("form-maker").value = doc["Người lập"] || "";
                 document.getElementById("form-link").value = doc["LINK phương án"] || "";
             }
         }
@@ -3750,6 +3765,7 @@ function openEditModalForm(rowIdx) {
                 doc["LINK hồ sơ"] = document.getElementById("form-link").value;
                 doc["TT duyệt"] = "Chờ duyệt";
                 doc["Lý do từ chối"] = "";
+                doc["Người lập"] = document.getElementById("form-maker").value;
                 showToast("Sổ 03", "Đã cập nhật và trình lại yêu cầu phát sinh thành công.", "success");
                 editRegistrationIndex = -1;
             } else {
@@ -3768,7 +3784,7 @@ function openEditModalForm(rowIdx) {
                     "TT duyệt": "Chờ duyệt",
                     "Người duyệt": "",
                     "Ngày duyệt": "",
-                    "Người lập": currentUser ? currentUser.ho_ten : "Tổng thầu"
+                    "Người lập": document.getElementById("form-maker").value
                 };
                 db.s03.push(newPs);
                 showToast("Sổ 03", "Đã ghi nhận yêu cầu phát sinh mới thành công.", "success");
@@ -3790,6 +3806,7 @@ function openEditModalForm(rowIdx) {
                 doc["LINK hồ sơ"] = document.getElementById("form-link").value;
                 doc["TT duyệt"] = "Chờ duyệt";
                 doc["Lý do từ chối"] = "";
+                doc["Người lập"] = document.getElementById("form-maker").value;
                 showToast("Sổ 04", "Đã cập nhật và trình lại yêu cầu cung ứng vật tư thành công.", "success");
                 editRegistrationIndex = -1;
             } else {
@@ -3808,7 +3825,7 @@ function openEditModalForm(rowIdx) {
                     "LINK hồ sơ": document.getElementById("form-link").value,
                     "TT duyệt": "Chờ duyệt",
                     "TT cung ứng": "Chưa cung ứng",
-                    "Người lập": currentUser ? currentUser.ho_ten : "Tổng thầu"
+                    "Người lập": document.getElementById("form-maker").value
                 };
                 db.s04.push(newCu);
                 showToast("Sổ 04", "Đã đăng ký yêu cầu vật tư cung ứng đặc thù.", "success");
@@ -3830,6 +3847,7 @@ function openEditModalForm(rowIdx) {
                 doc["LINK phương án"] = document.getElementById("form-link").value;
                 doc["TT duyệt"] = "Chờ duyệt";
                 doc["Lý do từ chối"] = "";
+                doc["Người lập"] = document.getElementById("form-maker").value;
                 showToast("Sổ 05", "Đã cập nhật và trình lại phương án bù tiến độ thành công.", "success");
                 editRegistrationIndex = -1;
             } else {
@@ -3847,7 +3865,7 @@ function openEditModalForm(rowIdx) {
                     "TT duyệt": "Chờ duyệt",
                     "KQ thực hiện bù": "Tổng thầu cam kết bù tiến độ",
                     "TT thực hiện": "Đang thực hiện",
-                    "Người lập": currentUser ? currentUser.ho_ten : "Tổng thầu"
+                    "Người lập": document.getElementById("form-maker").value
                 };
                 db.s05.push(newS05);
                 showToast("Sổ 05", "Đã đăng ký hồ sơ bù tiến độ.", "success");
