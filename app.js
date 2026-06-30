@@ -1261,7 +1261,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     tdOps.textContent = "";
                 } else {
                     const row = item.row_ref;
-                    const canEdit = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua);
+                    const canEdit = currentUser && currentUser.quyen === 'Admin';
                     const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
                     
                     const getProgressStatusBadge = (status) => {
@@ -1361,7 +1361,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     // Add Operation cell in all mode
                     const tdOps = document.createElement("td");
-                    const canEdit = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua);
+                    const canEdit = currentUser && currentUser.quyen === 'Admin';
                     const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
                     
                     const getProgressStatusBadge = (status) => {
@@ -1519,7 +1519,7 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (field === 'xac_nhan_ktkh') {
             if (isParent) {
                 const val = row.xac_nhan_ktkh || "Chưa nhận";
-                if (val === 'Đã nhận bàn giao') {
+                if (val === 'Đã nhận bàn giao' || val === 'Đã nhận') {
                     td.innerHTML = `<span class="badge success" style="padding:4px 8px; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Đã nhận</span>`;
                 } else {
                     td.innerHTML = `<span class="badge danger" style="padding:4px 8px; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px; font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> Chưa nhận</span>`;
@@ -1702,8 +1702,8 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
 function openEditModalForm(rowIdx) {
-        // Enforce Update permission
-        const canEdit = currentUser ? (currentUser.quyen === 'Admin' || currentUser.quyen_sua) : false;
+        // Enforce Update permission - ONLY ADMINS can edit rows
+        const canEdit = currentUser ? currentUser.quyen === 'Admin' : false;
         if (!canEdit) {
             showToast("Bảo Mật", "Quyền hạn hạn chế: Tài khoản của bạn không có quyền SỬA dữ liệu!", "danger");
             return;
