@@ -279,6 +279,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Step B: Calculate rollups from Sổ nghiệp vụ (01-05) referencing Mã BSC
         db.master.forEach(row => {
             const bsc = String(row.ma_bsc || "").trim();
+            const tt = String(row.tt || "").trim();
             if (bsc === "") {
                 // If it is a sub-item, we clean its fields
                 row.luy_ke_ab = "";
