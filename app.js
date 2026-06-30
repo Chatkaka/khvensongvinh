@@ -331,21 +331,42 @@ document.addEventListener("DOMContentLoaded", () => {
             const s05Active = db.s05.filter(s => String(s['Mã BSC']).trim() === bsc && s['TT thực hiện'] === 'Đang thực hiện').length;
             row.bu_tien_do_dang_chay = s05Active;
 
-            // 6. Automatically calculate Chốt chặn Điều kiện Khởi công
-            // ĐK1 HSKT đủ = (K6="Đang phát hành" or K6="Hoàn thiện") and M6="Đã bàn giao"
-            const hstktc = String(row.tt_hstktc).trim();
-            const boq = String(row.tt_boq_kl).trim();
-            const dk1 = (hstktc === 'Hoàn thiện' || hstktc === 'Đã phát hành') && boq === 'Đã bàn giao';
+            // 6. Automatically calculate Chốt chặn Điều kiện Khởi công (Hierarchy Rollup Enabled)
+            const parentHstktc = String(row.tt_hstktc).trim();
+            const parentBoq = String(row.tt_boq_kl).trim();
+            const parentDk1 = (parentHstktc === 'Hoàn thiện' || parentHstktc === 'Đã phát hành') && parentBoq === 'Đã bàn giao';
+            
+            const parentHdcu = String(row.tt_ky_hdcu).trim();
+            const parentDk2 = parentHdcu === 'Đã CU';
+            
+            const parentKhtk = String(row.tt_khtk).trim();
+            const parentDk3 = parentKhtk === 'Đã duyệt';
+
+            let dk1 = parentDk1;
+            let dk2 = parentDk2;
+            let dk3 = parentDk3;
+
+            // Rollup child rows evaluations if present
+            if (subItemsGrouped[tt] && subItemsGrouped[tt].length > 0) {
+                const childrenDk1 = subItemsGrouped[tt].every(sub => {
+                    const hstktc = String(sub.tt_hstktc).trim();
+                    const boq = String(sub.tt_boq_kl).trim();
+                    return (hstktc === 'Hoàn thiện' || hstktc === 'Đã phát hành') && boq === 'Đã bàn giao';
+                });
+                const childrenDk2 = subItemsGrouped[tt].every(sub => {
+                    return String(sub.tt_ky_hdcu).trim() === 'Đã CU';
+                });
+                const childrenDk3 = subItemsGrouped[tt].every(sub => {
+                    return String(sub.tt_khtk).trim() === 'Đã duyệt';
+                });
+
+                dk1 = dk1 || childrenDk1;
+                dk2 = dk2 || childrenDk2;
+                dk3 = dk3 || childrenDk3;
+            }
+
             row.dk1_hskt = dk1 ? '✔' : '✘';
-
-            // ĐK2 HĐCU ký = Q6="Đã CU"
-            const hdcu = String(row.tt_ky_hdcu).trim();
-            const dk2 = hdcu === 'Đã CU';
             row.dk2_hdcu = dk2 ? '✔' : '✘';
-
-            // ĐK3 KHTK duyệt = Y6="Đã duyệt"
-            const khtk = String(row.tt_khtk).trim();
-            const dk3 = khtk === 'Đã duyệt';
             row.dk3_khtk = dk3 ? '✔' : '✘';
 
             // ĐIỀU KIỆN ĐỦ = AND(DK1, DK2, DK3)
