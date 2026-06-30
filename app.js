@@ -1817,7 +1817,7 @@ function openEditModalForm(rowIdx) {
                     ${activeSubtab === 'cdt' ? `
                         <select id="edit-form-nhom-ct" class="form-control">
                             <option value=""></option>
-                            ${renderOptionsWithSelect(db.danh_muc['Nhóm CT'] || [], row.nhom_ct)}
+                            ${renderOptionsWithSelect(getDanhMucList('Nhóm CT') || [], row.nhom_ct)}
                         </select>
                     ` : `
                         <input type="text" id="edit-form-nhom-ct" class="form-control" value="${row.nhom_ct || ''}" disabled>
@@ -2087,7 +2087,13 @@ function openEditModalForm(rowIdx) {
             'Mức độ': ['Cao', 'Trung bình', 'Thấp'],
             'Nhóm CT': ['Hạ tầng kỹ thuật', 'Xây dựng dân dụng', 'Công trình phục vụ KD'],
             'Cấp': ['Gói thầu', 'HM lớn', 'HM thành phần'],
-            'TT duyệt (chung)': ['Chưa lập', 'Đang lập', 'Chờ duyệt', 'Đã duyệt', 'Từ chối']
+            'TT duyệt (chung)': ['Chưa lập', 'Đang lập', 'Chờ duyệt', 'Đã duyệt', 'Từ chối'],
+            'Loại hồ sơ tiền KC': ['Biện pháp thi công', 'Bản vẽ Shop', 'Specs', 'Bản vẽ hoàn công'],
+            'Loại tài liệu KH tháng': ['Kế hoạch tháng', 'Kế hoạch tuần', 'Báo cáo tháng', 'Báo cáo tuần'],
+            'Đạt YCKT CĐT': ['Có', 'Không'],
+            'Loại phát sinh': ['Phát sinh khối lượng', 'Sai khác thiết kế', 'Thay đổi vật tư', 'Thay đổi biện pháp', 'Khác'],
+            'Loại YC cung ứng': ['Đặc thù', 'Đột xuất'],
+            'Giải pháp bù': ['Tăng ca', 'Thêm nhân lực', 'Thay đổi BPTC', 'Thêm thiết bị', 'Điều phối lại']
         };
         return fallbacks[key] || [];
     }
@@ -3066,7 +3072,7 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Loại hồ sơ</label>
-                    <select id="form-loai" class="form-control">${renderOptions(db.danh_muc['Loại hồ sơ tiền KC'])}</select>
+                    <select id="form-loai" class="form-control">${renderOptions(getDanhMucList('Loại hồ sơ tiền KC'))}</select>
                 </div>
                 <div class="form-group">
                     <label>Tên sản phẩm / Số hiệu bản vẽ</label>
@@ -3108,7 +3114,7 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Loại tài liệu</label>
-                    <select id="form-loai" class="form-control">${renderOptions(db.danh_muc['Loại tài liệu KH tháng'])}</select>
+                    <select id="form-loai" class="form-control">${renderOptions(getDanhMucList('Loại tài liệu KH tháng'))}</select>
                 </div>
                 <div class="form-group">
                     <label>Nội dung chính</label>
@@ -3116,7 +3122,7 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Đạt YCKT CĐT</label>
-                    <select id="form-dat-yckt" class="form-control">${renderOptions(db.danh_muc['Đạt YCKT CĐT'])}</select>
+                    <select id="form-dat-yckt" class="form-control">${renderOptions(getDanhMucList('Đạt YCKT CĐT'))}</select>
                 </div>
                 <div class="form-group">
                     <label>Link, hồ sơ đính kèm</label>
@@ -3150,7 +3156,7 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Loại phát sinh</label>
-                    <select id="form-loai" class="form-control">${renderOptions(db.danh_muc['Loại phát sinh'])}</select>
+                    <select id="form-loai" class="form-control">${renderOptions(getDanhMucList('Loại phát sinh'))}</select>
                 </div>
                 <div class="form-group">
                     <label>Mô tả chi tiết</label>
@@ -3200,7 +3206,7 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Loại yêu cầu</label>
-                    <select id="form-loai" class="form-control">${renderOptions(db.danh_muc['Loại YC cung ứng'])}</select>
+                    <select id="form-loai" class="form-control">${renderOptions(getDanhMucList('Loại YC cung ứng'))}</select>
                 </div>
                 <div class="form-group">
                     <label>Vật tư / Thiết bị đặc thù</label>
@@ -3265,7 +3271,7 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Giải pháp bù</label>
-                    <select id="form-solution" class="form-control">${renderOptions(db.danh_muc['Giải pháp bù'])}</select>
+                    <select id="form-solution" class="form-control">${renderOptions(getDanhMucList('Giải pháp bù'))}</select>
                 </div>
                 <div class="form-group">
                     <label>Chi tiết phương án hành động</label>
