@@ -1085,9 +1085,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 item.visible = gpExpanded;
                 item.isExpanded = expandedParents.has(item.id);
             } else if (item.type === "child") {
-                const gpExpanded = expandedParents.has(item.grandParentId);
-                const pExpanded = expandedParents.has(item.parentId);
-                item.visible = gpExpanded && pExpanded;
+                if (activeLevel === 'project') {
+                    item.visible = false; // Hide all detailed children in project level
+                } else {
+                    const gpExpanded = expandedParents.has(item.grandParentId);
+                    const pExpanded = expandedParents.has(item.parentId);
+                    item.visible = gpExpanded && pExpanded;
+                }
             }
         });
 
@@ -1221,7 +1225,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td>${row.goi_thau_pl || ""}</td>
                         <td>${row.nhom_ct || ""}</td>
                         <td>
-                            ${isParent ? `<button class="toggle-children-btn" data-id="${row.ma_bsc}"><i class="fa-solid ${item.isExpanded ? 'fa-circle-minus' : 'fa-circle-plus'}"></i></button>` : ""}
+                            ${isParent && activeLevel === 'detail' ? `<button class="toggle-children-btn" data-id="${row.ma_bsc}"><i class="fa-solid ${item.isExpanded ? 'fa-circle-minus' : 'fa-circle-plus'}"></i></button>` : ""}
                             ${row.hang_muc_work || ""}
                         </td>
                         <td>${row.phu_trach || ""}</td>
@@ -1322,7 +1326,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let html = "";
             if (isParent) {
                 const hasChildren = db.master.some(r => r !== row && String(r.tt).startsWith(row.tt + "."));
-                if (hasChildren) {
+                if (hasChildren && activeLevel === 'detail') {
                     const isExpanded = expandedParents.has(row.ma_bsc);
                     html += `<button class="toggle-children-btn" data-id="${row.ma_bsc}"><i class="fa-solid ${isExpanded ? 'fa-circle-minus' : 'fa-circle-plus'}"></i></button>`;
                 }
