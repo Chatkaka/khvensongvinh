@@ -290,6 +290,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 const ns = parseFloat(row.ngan_sach || 0);
                 const hd = parseFloat(row.gia_tri_hdcu || 0);
                 row.percent_hdcu_ns = ns > 0 ? (hd / ns) : 0;
+
+                // Automatically calculate commencement conditions for detailed child rows
+                const hstktc = String(row.tt_hstktc).trim();
+                const boq = String(row.tt_boq_kl).trim();
+                const dk1 = (hstktc === 'Hoàn thiện' || hstktc === 'Đã phát hành') && boq === 'Đã bàn giao';
+                row.dk1_hskt = dk1 ? '✔' : '✘';
+
+                const hdcu = String(row.tt_ky_hdcu).trim();
+                const dk2 = hdcu === 'Đã CU';
+                row.dk2_hdcu = dk2 ? '✔' : '✘';
+
+                const khtk = String(row.tt_khtk).trim();
+                const dk3 = khtk === 'Đã duyệt';
+                row.dk3_khtk = dk3 ? '✔' : '✘';
+
+                if (dk1 && dk2 && dk3) {
+                    row.dieu_kien_du = 'ĐỦ ĐK KHỞI CÔNG';
+                } else {
+                    row.dieu_kien_du = 'THIẾU ĐK';
+                }
                 return;
             }
 
@@ -1374,13 +1394,13 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td style="text-align:right;">
                             ${isParent ? row.gia_tri_hdcu : `<input type="number" step="0.01" class="grid-input" value="${row.gia_tri_hdcu || ''}" data-row="${masterRowIndex}" data-field="gia_tri_hdcu" style="width:70px; text-align:right;">`}
                         </td>
-                        <td style="text-align:center;">${isParent ? (row.dk1_hskt === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>') : ""}</td>
-                        <td style="text-align:center;">${isParent ? (row.dk2_hdcu === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>') : ""}</td>
-                        <td style="text-align:center;">${isParent ? (row.dk3_khtk === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>') : ""}</td>
+                        <td style="text-align:center;">${row.dk1_hskt === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>'}</td>
+                        <td style="text-align:center;">${row.dk2_hdcu === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>'}</td>
+                        <td style="text-align:center;">${row.dk3_khtk === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>'}</td>
                         <td style="text-align:center;">
-                            ${isParent ? (row.dieu_kien_du === 'ĐỦ ĐK KHỞI CÔNG' ? 
+                            ${row.dieu_kien_du === 'ĐỦ ĐK KHỞI CÔNG' ? 
                                 '<span class="badge success" style="box-shadow: 0 0 8px var(--color-green);">ĐỦ ĐIỀU KIỆN</span>' : 
-                                '<span class="badge danger">CHƯA ĐỦ ĐK</span>') : ""}
+                                '<span class="badge danger">CHƯA ĐỦ ĐK</span>'}
                         </td>
                         <td>
                             ${isParent ? `
@@ -1513,21 +1533,21 @@ document.addEventListener("DOMContentLoaded", () => {
             td.innerHTML = isParent ? renderCellDropdown(rowIdx, 'tt_khtk', row.tt_khtk, 'TT KHTK') : (row.tt_khtk || "");
         }
         else if (field === 'dk1_hskt') {
-            td.innerHTML = isParent ? (row.dk1_hskt === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>') : "";
+            td.innerHTML = row.dk1_hskt === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>';
             td.style.textAlign = "center";
         }
         else if (field === 'dk2_hdcu') {
-            td.innerHTML = isParent ? (row.dk2_hdcu === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>') : "";
+            td.innerHTML = row.dk2_hdcu === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>';
             td.style.textAlign = "center";
         }
         else if (field === 'dk3_khtk') {
-            td.innerHTML = isParent ? (row.dk3_khtk === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>') : "";
+            td.innerHTML = row.dk3_khtk === '✔' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>';
             td.style.textAlign = "center";
         }
         else if (field === 'dieu_kien_du') {
-            td.innerHTML = isParent ? (row.dieu_kien_du === 'ĐỦ ĐK KHỞI CÔNG' ? 
+            td.innerHTML = row.dieu_kien_du === 'ĐỦ ĐK KHỞI CÔNG' ? 
                 '<span class="badge success" style="box-shadow: 0 0 8px var(--color-green);">ĐỦ ĐIỀU KIỆN</span>' : 
-                '<span class="badge danger">CHƯA ĐỦ ĐK</span>') : "";
+                '<span class="badge danger">CHƯA ĐỦ ĐK</span>';
             td.style.textAlign = "center";
         }
         else if (field === 'ngay_bd_khoi_cong') {
