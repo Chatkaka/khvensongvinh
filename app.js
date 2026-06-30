@@ -144,13 +144,32 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!db.s03) db.s03 = [];
         if (!db.s04) db.s04 = [];
         if (!db.s05) db.s05 = [];
-        if (!db.nhan_su) {
-            db.nhan_su = defaultDb.nhan_su || [];
-        } else if (defaultDb.nhan_su) {
-            defaultDb.nhan_su.forEach(defaultNs => {
+        const fallbackNhanSu = [
+            { ho_ten: "Phan Văn Khánh", email: "khanh.pv@tdggroup.vn", quyen: "Admin", vai_tro: "Giám đốc Dự án", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456" },
+            { ho_ten: "Nguyễn Đình Hùng", email: "hung.nd@tdggroup.vn", quyen: "Admin", vai_tro: "Cán bộ quản lý (Admin)", phong_ban: "QLTK", mat_khau: "123456" },
+            { ho_ten: "Nguyễn Hoàng Long", email: "long.nh@tvgs.vn", quyen: "Supervisor", vai_tro: "Trưởng đoàn TVGS", phong_ban: "Đoàn Tư vấn Giám sát", mat_khau: "123456" },
+            { ho_ten: "Trần Quốc Huy", email: "huy.tq@anphong.vn", quyen: "Contractor", vai_tro: "Chỉ huy trưởng Tổng thầu", phong_ban: "Tổng thầu An Phong", mat_khau: "123456" },
+            { ho_ten: "Lê Minh Tú", email: "tu.lm@supply.tdg.vn", quyen: "Supply", vai_tro: "Trưởng nhóm Cung ứng", phong_ban: "Phòng Kế hoạch Cung ứng", mat_khau: "123456" },
+            { ho_ten: "Hồ Nghĩa Chất", email: "chat.hn@tdggroup.vn", quyen: "Admin", vai_tro: "Phó Ban Quản lý Dự án (Admin)", phong_ban: "KTKH", mat_khau: "123456" }
+        ];
+
+        if (!db.nhan_su || db.nhan_su.length === 0) {
+            db.nhan_su = fallbackNhanSu;
+        } else {
+            fallbackNhanSu.forEach(defaultNs => {
                 const exists = db.nhan_su.some(ns => String(ns.email).toLowerCase().trim() === String(defaultNs.email).toLowerCase().trim());
                 if (!exists) {
                     db.nhan_su.push(defaultNs);
+                } else {
+                    const existing = db.nhan_su.find(ns => String(ns.email).toLowerCase().trim() === String(defaultNs.email).toLowerCase().trim());
+                    if (existing) {
+                        if (!existing.phong_ban || existing.phong_ban === "") {
+                            existing.phong_ban = defaultNs.phong_ban;
+                        }
+                        if (existing.mat_khau === undefined) {
+                            existing.mat_khau = "123456";
+                        }
+                    }
                 }
             });
         }
