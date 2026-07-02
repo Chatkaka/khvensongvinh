@@ -1232,6 +1232,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderMasterGrid() {
         calculateRollups();
+        
+        // Ensure toolbar visibility matches active subtab
+        const toolbarEl = document.getElementById("master-subtab-toolbar");
+        if (toolbarEl) {
+            toolbarEl.style.display = (activeSubtab === "thi_cong") ? "flex" : "none";
+        }
 
         // Auto expand matching packages if warning filter is active
         if (dashboardAlarmFilter !== "") {
@@ -2531,6 +2537,12 @@ function openEditModalForm(rowIdx) {
             btn.style.backgroundColor = "var(--color-ai-primary)";
             btn.style.borderColor = "var(--color-ai-primary)";
             btn.style.color = "#fff";
+            
+            // Show/hide subtab guides toolbar for G. Quản lý Thi công
+            const toolbarEl = document.getElementById("master-subtab-toolbar");
+            if (toolbarEl) {
+                toolbarEl.style.display = (activeSubtab === "thi_cong") ? "flex" : "none";
+            }
             
             renderMasterGrid();
         });
@@ -4762,6 +4774,90 @@ function openEditModalForm(rowIdx) {
     const btnClearFilter = document.getElementById("btn-clear-dashboard-filter");
     if (btnClearFilter) {
         btnClearFilter.addEventListener("click", () => applyDashboardWarningFilter(""));
+    }
+
+    // Shift Weeks Action (Tuần cũ -> Tuần mới)
+    function rollWeeklyProgress() {
+        const confirmMsg = "XÁC NHẬN CHUYỂN SANG TUẦN THI CÔNG MỚI:\n\nLưu ý: Hành động này sẽ:\n1. Cộng dồn kết quả tuần hiện tại (T1 KQ) vào lũy kế sản lượng tháng (KQ KLCV Tháng).\n2. Dịch chuyển kế hoạch & kết quả tuần tiếp theo lên trước (T2 -> T1, T3 -> T2, T4 -> T3).\n3. Giải phóng cột Tuần 4 về trống để bạn sẵn sàng lập kế hoạch tuần mới.\n\nBạn có chắc chắn muốn thực hiện?";
+        if (!confirm(confirmMsg)) return;
+
+        let shiftedCount = 0;
+        db.master.forEach(row => {
+            const isChild = String(row.ma_bsc || "").trim() === "";
+            if (isChild) {
+                // 1. Add T1 KQ to Month Actual (qa_kq_klcv_thang)
+                const t1Kq = parseFloat(row.t1_kq || 0);
+                if (t1Kq > 0) {
+                    const currentMonthActual = parseFloat(row.qa_kq_klcv_thang || 0);
+                    row.qa_kq_klcv_thang = parseFloat((currentMonthActual + t1Kq).toFixed(2));
+                }
+
+                // 2. Shift weekly values
+                row.t1_kh = row.t2_kh !== undefined ? row.t2_kh : "";
+                row.t1_kq = row.t2_kq !== undefined ? row.t2_kq : "";
+                row.t1_dg = row.t2_dg || "";
+                
+                row.t2_kh = row.t3_kh !== undefined ? row.t3_kh : "";
+                row.t2_kq = row.t3_kq !== undefined ? row.t3_kq : "";
+                row.t2_dg = row.t3_dg || "";
+                
+                row.t3_kh = row.t4_kh !== undefined ? row.t4_kh : "";
+                row.t3_kq = row.t4_kq !== undefined ? row.t4_kq : "";
+                row.t3_dg = row.t4_dg || "";
+                
+                row.t4_kh = "";
+                row.t4_kq = "";
+                row.t4_dg = "";
+                
+                shiftedCount++;
+            }
+        });
+
+        calculateRollups();
+        saveDatabase();
+        renderMasterGrid();
+        showToast("Chuyển tuần mới", `Đã chuyển tuần thành công! Tự động dịch chuyển dữ liệu của ${shiftedCount} hạng mục chi tiết và cộng dồn lũy kế sản lượng tháng.`, "success");
+    }
+
+    // Reset Month Action (Khởi tạo tháng mới)
+    function rollMonthlyProgress() {
+        const confirmMsg = "XÁC NHẬN KHỞI TẠO CHU KỲ THÁNG MỚI:\n\nLưu ý: Hành động này sẽ:\n1. Xóa toàn bộ kế hoạch, kết quả & đánh giá tháng cũ (KH KLCV Tháng, KQ KLCV Tháng, Đánh giá Tháng).\n2. Giải phóng toàn bộ dữ liệu tuần T1-T4 về trống để chuẩn bị lập kế hoạch tháng thi công mới.\n\nBạn có chắc chắn muốn thực hiện?";
+        if (!confirm(confirmMsg)) return;
+
+        let resetCount = 0;
+        db.master.forEach(row => {
+            const isChild = String(row.ma_bsc || "").trim() === "";
+            if (isChild) {
+                // Reset monthly columns
+                row.qa_kh_klcv_thang = "";
+                row.qa_kq_klcv_thang = "";
+                row.qa_danh_gia_thang = "";
+
+                // Reset all weekly columns
+                for (let w = 1; w <= 4; w++) {
+                    row[`t${w}_kh`] = "";
+                    row[`t${w}_kq`] = "";
+                    row[`t${w}_dg`] = "";
+                }
+                resetCount++;
+            }
+        });
+
+        calculateRollups();
+        saveDatabase();
+        renderMasterGrid();
+        showToast("Khởi tạo tháng mới", `Đã khởi tạo chu kỳ thi công tháng mới thành công! Làm sạch dữ liệu của ${resetCount} hạng mục.`, "success");
+    }
+
+    // Bind new rollover button event listeners
+    const btnRollWeek = document.getElementById("btn-roll-week");
+    if (btnRollWeek) {
+        btnRollWeek.addEventListener("click", rollWeeklyProgress);
+    }
+    
+    const btnRollMonth = document.getElementById("btn-roll-month");
+    if (btnRollMonth) {
+        btnRollMonth.addEventListener("click", rollMonthlyProgress);
     }
 
     // Opening modals buttons mapping

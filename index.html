@@ -314,6 +314,28 @@
                     </button>
 
                 </div>
+
+                <!-- Sub-tab Specific Toolbar (Weekly/Monthly Progress Rollover Guides & Actions) -->
+                <div id="master-subtab-toolbar" style="margin-top: 14px; background: rgba(59, 130, 246, 0.06); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 12px; padding: 14px 18px; display: none; flex-direction: column; gap: 12px; transition: all 0.3s ease;">
+                    <div style="font-size: 0.85rem; color: #a5d8ff; line-height: 1.5; font-family: var(--font-body);">
+                        <i class="fa-solid fa-circle-info" style="color: var(--color-ai-primary); margin-right: 6px;"></i>
+                        <strong>CẨM NANG HƯỚNG DẪN QUẢN LÝ TIẾN ĐỘ TUẦN & THÁNG:</strong>
+                        <ul style="margin: 6px 0 0 18px; padding: 0; list-style-type: disc; display: flex; flex-direction: column; gap: 4px;">
+                            <li><strong>Lập kế hoạch & báo cáo:</strong> Bấm nút <span class="badge success" style="padding: 2px 6px; font-size: 0.7rem;"><i class="fa-solid fa-edit"></i> Sửa</span> ở cột Thao tác để nhập KH & KQ tháng, tuần cho từng hạng mục chi tiết.</li>
+                            <li><strong>Lũy kế sản lượng:</strong> Khi bạn chuyển sang tuần mới, kết quả tuần cũ (T1 KQ) sẽ tự động cộng dồn vào lũy kế của tháng (cột <strong>"KQ KLCV Tháng"</strong>).</li>
+                            <li><strong>Dịch chuyển tuần mới (Shift Weeks):</strong> Khi hết tuần thi công cũ, bấm nút dịch chuyển tuần bên dưới. Hệ thống sẽ tự động chuyển dữ liệu (T2 &rarr; T1, T3 &rarr; T2, T4 &rarr; T3) và giải phóng Tuần 4 để lập kế hoạch tiếp theo.</li>
+                            <li><strong>Khởi tạo tháng mới (Reset Month):</strong> Khi bắt đầu tháng thi công mới, bấm nút khởi tạo tháng để làm sạch sản lượng tháng cũ và chuẩn bị cho chu kỳ lập kế hoạch tháng tiếp theo.</li>
+                        </ul>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn-action" id="btn-roll-week" style="background-color: var(--color-ai-primary); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer;">
+                            <i class="fa-solid fa-forward-step"></i> Chuyển sang tuần mới (Shift Weeks)
+                        </button>
+                        <button class="btn-action" id="btn-roll-month" style="background-color: #ff5252; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer;">
+                            <i class="fa-solid fa-calendar-plus"></i> Khởi tạo tháng mới (Reset Month)
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Master Grid Table Container -->
