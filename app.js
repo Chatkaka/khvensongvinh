@@ -688,50 +688,95 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("kpi-total-contract").textContent = totalContract.toFixed(2) + " tỷ";
         document.getElementById("kpi-total-variations").textContent = totalVariations.toFixed(2) + " tỷ";
 
-        // Calculate dashboard system overview status counts dynamically
-        let totalMonitored = 0;
-        let redAlerts = 0;
-        let orangeAlerts = 0;
-        let yellowAlerts = 0;
-        let normalAlerts = 0;
+        // 10 new Dashboard Indicators dynamic calculation
+        const currentDate = getSystemDateGMT7();
+        let c1 = 0, c2 = 0, c3 = 0, c4 = 0, c5 = 0, c6 = 0, c7 = 0, c8 = 0, c9 = 0, c10 = 0;
 
-        db.master.forEach(row => {
-            const bsc = String(row.ma_bsc || "").trim();
-            // Count unique parent packages
-            if (bsc !== "" && row.goi_thau_pl) {
-                totalMonitored++;
-                
-                // Find delays in s05
-                const delays = db.s05.filter(d => String(d['Mã BSC']).trim() === bsc && d['TT thực hiện'] === 'Đang thực hiện');
-                const maxDelay = delays.length > 0 ? Math.max(...delays.map(d => parseInt(d['Mức chậm (ngày)'] || 0))) : 0;
+        db.master.forEach(r => {
+            const ma_bsc = String(r.ma_bsc || "").trim();
+            const isChild = ma_bsc === "";
+            if (!isChild) return; // All 10 indicators evaluate child rows
 
-                const dk = row.dieu_kien_du || 'THIẾU ĐK';
-                if (dk === 'THIẾU ĐK') {
-                    redAlerts++;
-                } else {
-                    if (maxDelay > 5) {
-                        orangeAlerts++;
-                    } else if (maxDelay > 0) {
-                        yellowAlerts++;
-                    } else {
-                        normalAlerts++;
-                    }
+            // 1 & 2: HSTKTC plan date checks
+            const hstk_date = r.kh_phat_hang_hstktc;
+            const hstk_status = String(r.tt_hstktc).trim();
+            const hstk_done = hstk_status === 'Đã phát hành' || hstk_status === 'Hoàn thiện';
+            if (hstk_date && !hstk_done) {
+                const diff = getDaysDiff(hstk_date, currentDate);
+                if (diff !== null) {
+                    if (diff <= 0) c1++;
+                    else if (diff > 0 && diff <= 3) c2++;
                 }
+            }
+
+            // 3 & 4: LCNT plan date checks
+            const lcnt_date = r.kh_lcnt;
+            const lcnt_status = String(r.tt_lcnt).trim();
+            const lcnt_done = lcnt_status === 'Đã có KQ' || lcnt_status === 'Đã ký';
+            if (lcnt_date && !lcnt_done) {
+                const diff = getDaysDiff(lcnt_date, currentDate);
+                if (diff !== null) {
+                    if (diff <= 0) c3++;
+                    else if (diff > 0 && diff <= 3) c4++;
+                }
+            }
+
+            // 5 & 6: HĐCU plan date checks
+            const hdcu_date = r.kh_ky_hdcu;
+            const hdcu_status = String(r.tt_ky_hdcu).trim();
+            const hdcu_done = hdcu_status === 'Đã CU';
+            if (hdcu_date && !hdcu_done) {
+                const diff = getDaysDiff(hdcu_date, currentDate);
+                if (diff !== null) {
+                    if (diff <= 0) c5++;
+                    else if (diff > 0 && diff <= 3) c6++;
+                }
+            }
+
+            // 7: %HĐCU/NS > 95%
+            const ns = parseFloat(r.ngan_sach || 0);
+            const hd = parseFloat(r.gia_tri_hdcu || 0);
+            const percent = ns > 0 ? (hd / ns) : 0;
+            if (percent > 0.95) {
+                c7++;
+            }
+
+            // 8: Chốt chặn khởi công - Chưa đủ ĐK
+            if (r.dieu_kien_du === 'THIẾU ĐK') {
+                c8++;
+            }
+
+            // 9 & 10: Missing weekly plan/actual in execution timeline
+            if (isRowInExecutionPeriod(r)) {
+                const hasPlan = r.t1_kh !== undefined && r.t1_kh !== null && String(r.t1_kh).trim() !== "";
+                const hasActual = r.t1_kq !== undefined && r.t1_kq !== null && String(r.t1_kq).trim() !== "";
+                if (!hasPlan) c9++;
+                if (!hasActual) c10++;
             }
         });
 
-        // Set text content
-        const elTotal = document.getElementById("dashboard-total-monitored");
-        const elRed = document.getElementById("dashboard-red-alerts");
-        const elOrange = document.getElementById("dashboard-orange-alerts");
-        const elYellow = document.getElementById("dashboard-yellow-alerts");
-        const elNormal = document.getElementById("dashboard-normal");
+        // Set UI counts
+        const elC1 = document.getElementById("count-hstk-overdue");
+        const elC2 = document.getElementById("count-hstk-upcoming");
+        const elC3 = document.getElementById("count-lcnt-overdue");
+        const elC4 = document.getElementById("count-lcnt-upcoming");
+        const elC5 = document.getElementById("count-hdcu-overdue");
+        const elC6 = document.getElementById("count-hdcu-upcoming");
+        const elC7 = document.getElementById("count-hdcu-ns-ratio");
+        const elC8 = document.getElementById("count-khoi-cong-missing");
+        const elC9 = document.getElementById("count-weekly-plan-missing");
+        const elC10 = document.getElementById("count-weekly-actual-missing");
 
-        if (elTotal) elTotal.textContent = totalMonitored;
-        if (elRed) elRed.textContent = redAlerts;
-        if (elOrange) elOrange.textContent = orangeAlerts;
-        if (elYellow) elYellow.textContent = yellowAlerts;
-        if (elNormal) elNormal.textContent = normalAlerts;
+        if (elC1) elC1.textContent = c1;
+        if (elC2) elC2.textContent = c2;
+        if (elC3) elC3.textContent = c3;
+        if (elC4) elC4.textContent = c4;
+        if (elC5) elC5.textContent = c5;
+        if (elC6) elC6.textContent = c6;
+        if (elC7) elC7.textContent = c7;
+        if (elC8) elC8.textContent = c8;
+        if (elC9) elC9.textContent = c9;
+        if (elC10) elC10.textContent = c10;
         
         const variationPct = totalBudget > 0 ? (totalVariations / totalBudget * 100) : 0;
         document.getElementById("kpi-variation-percentage").innerHTML = `<i class="fa-solid fa-calculator"></i> ${variationPct.toFixed(1)}% ngân sách gốc`;
@@ -1033,33 +1078,156 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    function getRowAlarmStatus(row) {
-        if (!row) return "normal";
-        const bsc = String(row.ma_bsc || "").trim();
-        if (bsc === "") {
-            // Child row: look up the parent package row
-            const parentTt = String(row.tt).split('.')[0];
-            const parentRow = db.master.find(r => String(r.tt) === parentTt && String(r.ma_bsc || "").trim() !== "");
-            if (parentRow) return getRowAlarmStatus(parentRow);
-            return "normal";
-        }
-        
-        // Find delays in s05
-        const delays = db.s05.filter(d => String(d['Mã BSC']).trim() === bsc && d['TT thực hiện'] === 'Đang thực hiện');
-        const maxDelay = delays.length > 0 ? Math.max(...delays.map(d => parseInt(d['Mức chậm (ngày)'] || 0))) : 0;
+    // Helper: Days difference between two YYYY-MM-DD date strings
+    function getDaysDiff(dateStr1, dateStr2) {
+        if (!dateStr1 || !dateStr2) return null;
+        const d1 = new Date(dateStr1);
+        const d2 = new Date(dateStr2);
+        const diffTime = d1 - d2;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
 
-        const dk = row.dieu_kien_du || 'THIẾU ĐK';
-        if (dk === 'THIẾU ĐK') {
-            return "red";
-        } else {
-            if (maxDelay > 5) {
-                return "orange";
-            } else if (maxDelay > 0) {
-                return "yellow";
-            } else {
-                return "normal";
+    // Helper: Determine if detailed child row is currently in its executing period
+    function isRowInExecutionPeriod(row) {
+        let bd = row.ngay_bd_yc;
+        let kt = row.ngay_kt_yc;
+        
+        // If it's a child row, inherit from its parent package
+        if (String(row.ma_bsc || "").trim() === "") {
+            const parentPrefix = String(row.tt).split(".")[0];
+            const parentRow = db.master.find(r => String(r.tt) === parentPrefix && String(r.ma_bsc || "").trim() !== "");
+            if (parentRow) {
+                bd = parentRow.ngay_bd_yc;
+                kt = parentRow.ngay_kt_yc;
             }
         }
+        
+        if (!bd || !kt) return false;
+        const currentDate = getSystemDateGMT7();
+        return currentDate >= bd && currentDate <= kt;
+    }
+
+    function checkRowMatchesAlarmFilter(item) {
+        if (dashboardAlarmFilter === "") return true;
+        
+        const currentDate = getSystemDateGMT7();
+        
+        // Internal helper to check if a single master child row matches the criteria
+        function isMatch(row) {
+            const isChild = String(row.ma_bsc || "").trim() === "";
+            if (!isChild) return false; // All 10 indicators check detailed child rows
+            
+            if (dashboardAlarmFilter === "kh_hstktc_overdue") {
+                const date = row.kh_phat_hang_hstktc;
+                if (!date) return false;
+                const status = String(row.tt_hstktc).trim();
+                const isFinished = status === 'Đã phát hành' || status === 'Hoàn thiện';
+                return currentDate >= date && !isFinished;
+            }
+            if (dashboardAlarmFilter === "kh_hstktc_upcoming") {
+                const date = row.kh_phat_hang_hstktc;
+                if (!date) return false;
+                const status = String(row.tt_hstktc).trim();
+                const isFinished = status === 'Đã phát hành' || status === 'Hoàn thiện';
+                if (isFinished) return false;
+                const diff = getDaysDiff(date, currentDate);
+                return diff !== null && diff >= 0 && diff <= 3;
+            }
+            if (dashboardAlarmFilter === "kh_lcnt_overdue") {
+                const date = row.kh_lcnt;
+                if (!date) return false;
+                const status = String(row.tt_lcnt).trim();
+                const isFinished = status === 'Đã có KQ' || status === 'Đã ký';
+                return currentDate >= date && !isFinished;
+            }
+            if (dashboardAlarmFilter === "kh_lcnt_upcoming") {
+                const date = row.kh_lcnt;
+                if (!date) return false;
+                const status = String(row.tt_lcnt).trim();
+                const isFinished = status === 'Đã có KQ' || status === 'Đã ký';
+                if (isFinished) return false;
+                const diff = getDaysDiff(date, currentDate);
+                return diff !== null && diff >= 0 && diff <= 3;
+            }
+            if (dashboardAlarmFilter === "kh_hdcu_overdue") {
+                const date = row.kh_ky_hdcu;
+                if (!date) return false;
+                const status = String(row.tt_ky_hdcu).trim();
+                const isFinished = status === 'Đã CU';
+                return currentDate >= date && !isFinished;
+            }
+            if (dashboardAlarmFilter === "kh_hdcu_upcoming") {
+                const date = row.kh_ky_hdcu;
+                if (!date) return false;
+                const status = String(row.tt_ky_hdcu).trim();
+                const isFinished = status === 'Đã CU';
+                if (isFinished) return false;
+                const diff = getDaysDiff(date, currentDate);
+                return diff !== null && diff >= 0 && diff <= 3;
+            }
+            if (dashboardAlarmFilter === "hdcu_ns_over_95") {
+                const ns = parseFloat(row.ngan_sach || 0);
+                const hd = parseFloat(row.gia_tri_hdcu || 0);
+                const percent = ns > 0 ? (hd / ns) : 0;
+                return percent > 0.95;
+            }
+            if (dashboardAlarmFilter === "commencement_missing_dk") {
+                return row.dieu_kien_du === 'THIẾU ĐK';
+            }
+            if (dashboardAlarmFilter === "missing_weekly_plan") {
+                const isExecuting = isRowInExecutionPeriod(row);
+                const hasPlan = row.t1_kh !== undefined && row.t1_kh !== null && String(row.t1_kh).trim() !== "";
+                return isExecuting && !hasPlan;
+            }
+            if (dashboardAlarmFilter === "missing_weekly_actual") {
+                const isExecuting = isRowInExecutionPeriod(row);
+                const hasActual = row.t1_kq !== undefined && row.t1_kq !== null && String(row.t1_kq).trim() !== "";
+                return isExecuting && !hasActual;
+            }
+            return false;
+        }
+
+        // Collect all matching child row TTs
+        const matchingChildTts = new Set();
+        db.master.forEach(r => {
+            if (isMatch(r)) {
+                matchingChildTts.add(String(r.tt));
+            }
+        });
+
+        // Check if this item is or contains a match
+        if (item.type === "child") {
+            return matchingChildTts.has(String(item.id));
+        }
+        if (item.type === "parent") {
+            const parentBsc = item.id;
+            return db.master.some(r => {
+                const isChild = String(r.ma_bsc || "").trim() === "";
+                if (!isChild) return false;
+                
+                const childTt = String(r.tt);
+                const pPrefix = childTt.split(".")[0];
+                const pRow = db.master.find(pr => String(pr.tt) === pPrefix && String(pr.ma_bsc || "").trim() !== "");
+                const childParentBsc = pRow ? String(pRow.ma_bsc).trim() : "";
+                
+                return childParentBsc === parentBsc && matchingChildTts.has(childTt);
+            });
+        }
+        if (item.type === "grand_parent") {
+            const gpId = item.id;
+            return db.master.some(r => {
+                const isChild = String(r.ma_bsc || "").trim() === "";
+                if (!isChild) return false;
+                
+                const childTt = String(r.tt);
+                const pPrefix = childTt.split(".")[0];
+                const pRow = db.master.find(pr => String(pr.tt) === pPrefix && String(pr.ma_bsc || "").trim() !== "");
+                const childParentGp = pRow ? String(pRow.goi_thau_pl).trim() : "";
+                
+                return childParentGp === gpId && matchingChildTts.has(childTt);
+            });
+        }
+        return false;
     }
 
     function renderMasterGrid() {
@@ -1068,12 +1236,19 @@ document.addEventListener("DOMContentLoaded", () => {
         // Auto expand matching packages if warning filter is active
         if (dashboardAlarmFilter !== "") {
             db.master.forEach(row => {
-                const bsc = String(row.ma_bsc || "").trim();
-                const goiThauPl = String(row.goi_thau_pl || "").trim();
-                if (bsc !== "") {
-                    if (getRowAlarmStatus(row) === dashboardAlarmFilter) {
-                        if (goiThauPl !== "") expandedParents.add(goiThauPl); // expand grand parent
-                        expandedParents.add(bsc); // expand parent package
+                const isChild = String(row.ma_bsc || "").trim() === "";
+                if (isChild) {
+                    const isMatch = checkRowMatchesAlarmFilter({ type: "child", id: String(row.tt), row_ref: row });
+                    if (isMatch) {
+                        const childTt = String(row.tt);
+                        const pPrefix = childTt.split(".")[0];
+                        const pRow = db.master.find(pr => String(pr.tt) === pPrefix && String(pr.ma_bsc || "").trim() !== "");
+                        if (pRow) {
+                            const parentBsc = String(pRow.ma_bsc).trim();
+                            const parentGp = String(pRow.goi_thau_pl).trim();
+                            if (parentGp !== "") expandedParents.add(parentGp);
+                            if (parentBsc !== "") expandedParents.add(parentBsc);
+                        }
                     }
                 }
             });
@@ -1265,9 +1440,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const groupMatch = groupFilter === "" || getRowGroup(item) === groupFilter;
             const plMatch = plFilter === "" || getRowPl(item) === plFilter;
             
-            // Alarm status match
-            const alarmStatus = getRowAlarmStatus(row);
-            const alarmMatch = dashboardAlarmFilter === "" || alarmStatus === dashboardAlarmFilter;
+            // Alarm status match using new robust multi-criteria drilldown check
+            const alarmMatch = checkRowMatchesAlarmFilter(item);
             
             return textMatch && groupMatch && plMatch && alarmMatch;
         });
@@ -4477,60 +4651,112 @@ function openEditModalForm(rowIdx) {
         }
     }
 
-    // Bind Dashboard KPI and Overview Cards Drilldowns
-    const cardBudget = document.getElementById("kpi-card-budget");
-    if (cardBudget) {
-        cardBudget.addEventListener("click", () => {
-            dashboardAlarmFilter = ""; // Clear alarm filter
-            const alertEl = document.getElementById("master-filter-alert");
+    // Bind Dashboard 10 Overview Cards Drilldowns
+    function applyDashboardWarningFilter(alarmType, targetSubtab = null) {
+        dashboardAlarmFilter = alarmType;
+        
+        const alertEl = document.getElementById("master-filter-alert");
+        const textEl = document.getElementById("master-filter-alert-text");
+        
+        if (alarmType !== "") {
+            if (alertEl && textEl) {
+                alertEl.style.display = "flex";
+                let label = "";
+                if (alarmType === "kh_hstktc_overdue") label = "Quá hạn KH phát hành HSTKTC";
+                if (alarmType === "kh_hstktc_upcoming") label = "Sắp đến hạn KH phát hành HSTKTC (<= 3 ngày)";
+                if (alarmType === "kh_lcnt_overdue") label = "Quá hạn KH LCNT";
+                if (alarmType === "kh_lcnt_upcoming") label = "Sắp đến hạn KH LCNT (<= 3 ngày)";
+                if (alarmType === "kh_hdcu_overdue") label = "Quá hạn KH ký HĐCU";
+                if (alarmType === "kh_hdcu_upcoming") label = "Sắp đến hạn KH ký HĐCU (<= 3 ngày)";
+                if (alarmType === "hdcu_ns_over_95") label = "%HĐCU/NS lớn hơn 95%";
+                if (alarmType === "commencement_missing_dk") label = "Thiếu điều kiện khởi công (Mục D)";
+                if (alarmType === "missing_weekly_plan") label = "Thiếu KH tuần (thời gian thực hiện tại)";
+                if (alarmType === "missing_weekly_actual") label = "Thiếu KQ tuần (thời gian thực hiện tại)";
+                
+                textEl.innerHTML = `<i class="fa-solid fa-filter" style="margin-right: 6px;"></i> Đang lọc theo tiêu chí: <strong style="color: #ffd8a8; text-transform: uppercase;">${label}</strong>`;
+            }
+            
+            // Auto switch display level to detail so matching child rows are visible
+            const btnDetail = document.getElementById("btn-level-detail");
+            if (btnDetail) {
+                btnDetail.click();
+            }
+        } else {
             if (alertEl) alertEl.style.display = "none";
-            switchMasterSubtab("ngan_sach");
-        });
+        }
+        
+        // Switch to master tab and apply target sub-tab
+        if (targetSubtab) {
+            switchMasterSubtab(targetSubtab);
+        } else {
+            const masterNav = Array.from(document.querySelectorAll(".nav-item")).find(n => n.getAttribute("data-tab") === "master");
+            if (masterNav) {
+                masterNav.click();
+            } else {
+                renderMasterGrid();
+            }
+        }
     }
 
-    const cardContract = document.getElementById("kpi-card-contract");
-    if (cardContract) {
-        cardContract.addEventListener("click", () => {
-            dashboardAlarmFilter = "";
-            const alertEl = document.getElementById("master-filter-alert");
-            if (alertEl) alertEl.style.display = "none";
-            switchMasterSubtab("ngan_sach");
-        });
+    // Card 1 Click
+    const cardHstkOverdue = document.getElementById("card-hstk-overdue");
+    if (cardHstkOverdue) {
+        cardHstkOverdue.addEventListener("click", () => applyDashboardWarningFilter("kh_hstktc_overdue", "cdt"));
+    }
+    
+    // Card 2 Click
+    const cardHstkUpcoming = document.getElementById("card-hstk-upcoming");
+    if (cardHstkUpcoming) {
+        cardHstkUpcoming.addEventListener("click", () => applyDashboardWarningFilter("kh_hstktc_upcoming", "cdt"));
     }
 
-    const cardVariations = document.getElementById("kpi-card-variations");
-    if (cardVariations) {
-        cardVariations.addEventListener("click", () => {
-            dashboardAlarmFilter = "";
-            const alertEl = document.getElementById("master-filter-alert");
-            if (alertEl) alertEl.style.display = "none";
-            switchMasterSubtab("ngan_sach");
-        });
+    // Card 3 Click
+    const cardLcntOverdue = document.getElementById("card-lcnt-overdue");
+    if (cardLcntOverdue) {
+        cardLcntOverdue.addEventListener("click", () => applyDashboardWarningFilter("kh_lcnt_overdue", "cung_ung"));
     }
 
-    const cardDelays = document.getElementById("kpi-card-delays");
-    if (cardDelays) {
-        cardDelays.addEventListener("click", () => {
-            const s05Nav = Array.from(document.querySelectorAll(".nav-item")).find(n => n.getAttribute("data-tab") === "s05");
-            if (s05Nav) s05Nav.click();
-        });
+    // Card 4 Click
+    const cardLcntUpcoming = document.getElementById("card-lcnt-upcoming");
+    if (cardLcntUpcoming) {
+        cardLcntUpcoming.addEventListener("click", () => applyDashboardWarningFilter("kh_lcnt_upcoming", "cung_ung"));
     }
 
-    // Bind warning status cards
-    const overMonitored = document.getElementById("overview-card-monitored");
-    if (overMonitored) overMonitored.addEventListener("click", () => applyDashboardWarningFilter(""));
+    // Card 5 Click
+    const cardHdcuOverdue = document.getElementById("card-hdcu-overdue");
+    if (cardHdcuOverdue) {
+        cardHdcuOverdue.addEventListener("click", () => applyDashboardWarningFilter("kh_hdcu_overdue", "cung_ung"));
+    }
 
-    const overRed = document.getElementById("overview-card-red");
-    if (overRed) overRed.addEventListener("click", () => applyDashboardWarningFilter("red"));
+    // Card 6 Click
+    const cardHdcuUpcoming = document.getElementById("card-hdcu-upcoming");
+    if (cardHdcuUpcoming) {
+        cardHdcuUpcoming.addEventListener("click", () => applyDashboardWarningFilter("kh_hdcu_upcoming", "cung_ung"));
+    }
 
-    const overOrange = document.getElementById("overview-card-orange");
-    if (overOrange) overOrange.addEventListener("click", () => applyDashboardWarningFilter("orange"));
+    // Card 7 Click
+    const cardHdcuNsRatio = document.getElementById("card-hdcu-ns-ratio");
+    if (cardHdcuNsRatio) {
+        cardHdcuNsRatio.addEventListener("click", () => applyDashboardWarningFilter("hdcu_ns_over_95", "cung_ung"));
+    }
 
-    const overYellow = document.getElementById("overview-card-yellow");
-    if (overYellow) overYellow.addEventListener("click", () => applyDashboardWarningFilter("yellow"));
+    // Card 8 Click
+    const cardKhoiCongMissing = document.getElementById("card-khoi-cong-missing");
+    if (cardKhoiCongMissing) {
+        cardKhoiCongMissing.addEventListener("click", () => applyDashboardWarningFilter("commencement_missing_dk", "khoi_cong"));
+    }
 
-    const overNormal = document.getElementById("overview-card-normal");
-    if (overNormal) overNormal.addEventListener("click", () => applyDashboardWarningFilter("normal"));
+    // Card 9 Click
+    const cardWeeklyPlanMissing = document.getElementById("card-weekly-plan-missing");
+    if (cardWeeklyPlanMissing) {
+        cardWeeklyPlanMissing.addEventListener("click", () => applyDashboardWarningFilter("missing_weekly_plan", "thi_cong"));
+    }
+
+    // Card 10 Click
+    const cardWeeklyActualMissing = document.getElementById("card-weekly-actual-missing");
+    if (cardWeeklyActualMissing) {
+        cardWeeklyActualMissing.addEventListener("click", () => applyDashboardWarningFilter("missing_weekly_actual", "thi_cong"));
+    }
 
     // Clear filter button
     const btnClearFilter = document.getElementById("btn-clear-dashboard-filter");
