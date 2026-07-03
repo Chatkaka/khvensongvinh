@@ -136,8 +136,18 @@ document.addEventListener("DOMContentLoaded", () => {
             pkg.parent.tt = parentCount;
             newMasterList.push(pkg.parent);
             
-            pkg.children.forEach((child, childIdx) => {
-                child.tt = `${parentCount}.${childIdx + 1}`;
+            pkg.children.sort(compareTt);
+            
+            pkg.children.forEach(child => {
+                const oldTtStr = String(child.tt || "").trim();
+                const firstDotIndex = oldTtStr.indexOf(".");
+                let relativeSuffix = "";
+                if (firstDotIndex !== -1) {
+                    relativeSuffix = oldTtStr.substring(firstDotIndex);
+                } else {
+                    relativeSuffix = "." + (newMasterList.length);
+                }
+                child.tt = `${parentCount}${relativeSuffix}`;
                 newMasterList.push(child);
             });
         });
@@ -154,9 +164,21 @@ document.addEventListener("DOMContentLoaded", () => {
             ];
             localStorage.setItem("migration_only_keep_chat_hn_v2", "true");
         }
-
-        if (!db.master) db.master = [];
-        else db.master = restructureMasterData(db.master);
+        if (!db.master) {
+            db.master = [];
+        } else {
+            db.master.forEach(row => {
+                const workName = String(row.hang_muc_work || "").trim();
+                if (workName === "26 căn Liền kề") {
+                    row.tt = "16.2.1";
+                } else if (workName === "30 căn SH") {
+                    row.tt = "16.2.2";
+                } else if (workName === "15 căn Biệt thự") {
+                    row.tt = "16.2.3";
+                }
+            });
+            db.master = restructureMasterData(db.master);
+        }
 
         if (!db.s01) db.s01 = [];
         if (!db.s02) db.s02 = [];
@@ -989,7 +1011,7 @@ document.addEventListener("DOMContentLoaded", () => {
             planBar.setAttribute("class", "gantt-bar-plan");
             
             const planTip = document.createElementNS("http://www.w3.org/2000/svg", "title");
-            planTip.textContent = `Kế hoạch: ${p.ngay_bd_yc} -> ${p.ngay_kt_yc}`;
+            planTip.textContent = `Kế hoạch: ${formatDateDMY(p.ngay_bd_yc)} -> ${formatDateDMY(p.ngay_kt_yc)}`;
             planBar.appendChild(planTip);
             svg.appendChild(planBar);
 
@@ -1009,7 +1031,8 @@ document.addEventListener("DOMContentLoaded", () => {
             actualBar.setAttribute("class", statusClass);
             
             const actTip = document.createElementNS("http://www.w3.org/2000/svg", "title");
-            actTip.textContent = `Thực tế: ${p.ngay_bd_khoi_cong || 'Chưa khởi công'} -> Dự kiến hoàn thành: ${new Date(actualEnd).toLocaleDateString('vi-VN')} (Chậm ${delayDays} ngày)`;
+            const actualEndStr = new Date(actualEnd - new Date().getTimezoneOffset()*60*1000).toISOString().split('T')[0];
+            actTip.textContent = `Thực tế: ${formatDateDMY(p.ngay_bd_khoi_cong) || 'Chưa khởi công'} -> Dự kiến hoàn thành: ${formatDateDMY(actualEndStr)} (Chậm ${delayDays} ngày)`;
             actualBar.appendChild(actTip);
             svg.appendChild(actualBar);
         });
@@ -1112,6 +1135,15 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
         return partsA.length - partsB.length;
+    }
+
+    function formatDateDMY(dateStr) {
+        if (!dateStr) return "";
+        const parts = String(dateStr).trim().split("-");
+        if (parts.length === 3 && parts[0].length === 4) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return dateStr;
     }
 
     function getParentIdForTt(row) {
@@ -1754,18 +1786,18 @@ document.addEventListener("DOMContentLoaded", () => {
                             })()}
                         </td>
                         <td>${row.phu_trach || ""}</td>
-                        <td>${row.ngay_bd_yc || ""}</td>
-                        <td>${row.ngay_kt_yc || ""}</td>
+                        <td>${formatDateDMY(row.ngay_bd_yc)}</td>
+                        <td>${formatDateDMY(row.ngay_kt_yc)}</td>
                         <td style="text-align:right; font-weight:600;">${nganSachVal > 0 ? nganSachVal.toFixed(2) : ""}</td>
-                        <td>${row.kh_phat_hinh_hstktc || row.kh_phat_hanh_hstktc || ""}</td>
+                        <td>${formatDateDMY(row.kh_phat_hinh_hstktc || row.kh_phat_hanh_hstktc)}</td>
                         <td>${isParent ? renderCellDropdown(masterRowIndex, 'tt_hstktc', row.tt_hstktc, 'TT HSTKTC') : (row.tt_hstktc || "")}</td>
                         <td>${isParent ? renderCellDropdown(masterRowIndex, 'tt_specs', row.tt_specs, 'TT SPECS') : (row.tt_specs || "")}</td>
                         <td>${isParent ? renderCellDropdown(masterRowIndex, 'tt_boq_kl', row.tt_boq_kl, 'TT BOQ/KL') : (row.tt_boq_kl || "")}</td>
-                        <td>${row.kh_lcnt || ""}</td>
+                        <td>${formatDateDMY(row.kh_lcnt)}</td>
                         <td>${isParent ? renderCellDropdown(masterRowIndex, 'tt_lcnt', row.tt_lcnt, 'TT LCNT') : (row.tt_lcnt || "")}</td>
-                        <td>${row.kh_ky_hdcu || ""}</td>
+                        <td>${formatDateDMY(row.kh_ky_hdcu)}</td>
                         <td>${isParent ? renderCellDropdown(masterRowIndex, 'tt_ky_hdcu', row.tt_ky_hdcu, 'TT Ký HĐCU') : (row.tt_ky_hdcu || "")}</td>
-                        <td>${row.kh_pd_khcu || ""}</td>
+                        <td>${formatDateDMY(row.kh_pd_khcu)}</td>
                         <td>${isParent ? renderCellDropdown(masterRowIndex, 'tt_khcu', row.tt_khcu, 'TT KHCU') : (row.tt_khcu || "")}</td>
                         <td style="text-align:right;">
                             ${isParent ? row.gia_tri_hdcu : `<input type="number" step="0.01" class="grid-input" value="${row.gia_tri_hdcu || ''}" data-row="${masterRowIndex}" data-field="gia_tri_hdcu" style="width:70px; text-align:right;">`}
@@ -1836,8 +1868,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderCellDropdown(rowIdx, field, currentVal, category) {
         const options = getDanhMucList(category);
-        const isEditable = currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor'));
-        let html = `<select class="grid-select" data-row="${rowIdx}" data-field="${field}" ${!isEditable ? 'disabled title="Khóa: Chỉ Admin/TVGS có quyền sửa mới được chỉnh sửa!"' : ''}>`;
+        let isEditable = false;
+        let lockTitle = "";
+        
+        if (field === 'tt_hstktc' || field === 'tt_specs' || field === 'tt_boq_kl') {
+            isEditable = currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && (currentUser.quyen === 'QLTK' || currentUser.quyen === 'Supervisor')));
+            lockTitle = "Chỉ phòng QLTK, TVGS hoặc Admin mới có quyền sửa!";
+        } else {
+            isEditable = currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor'));
+            lockTitle = "Chỉ TVGS hoặc Admin mới có quyền sửa!";
+        }
+        
+        let html = `<select class="grid-select" data-row="${rowIdx}" data-field="${field}" ${!isEditable ? `disabled title="${lockTitle}"` : ''}>`;
         html += `<option value=""></option>`;
         options.forEach(opt => {
             html += `<option value="${opt}" ${opt === currentVal ? 'selected' : ''}>${opt}</option>`;
@@ -1867,8 +1909,11 @@ document.addEventListener("DOMContentLoaded", () => {
             ` : "";
             td.innerHTML = `<span ${indentStyle} class="hang-muc-cell-container">${html} ${row.hang_muc_work || ""} ${addButton}</span>`;
         } 
-        else if (field === 'nhom_ct' || field === 'goi_thau_pl' || field === 'phu_trach' || field === 'ngay_bd_yc' || field === 'ngay_kt_yc' || field === 'kh_phat_hang_hstktc' || field === 'kh_lcnt' || field === 'kh_ky_hdcu' || field === 'kh_pd_khcu' || field === 'kh_ky_plhd_cdt' || field === 'kh_pd_khtk') {
+        else if (field === 'nhom_ct' || field === 'goi_thau_pl' || field === 'phu_trach') {
             td.textContent = row[field] || "";
+        }
+        else if (field === 'ngay_bd_yc' || field === 'ngay_kt_yc' || field === 'kh_phat_hang_hstktc' || field === 'kh_phat_hinh_hstktc' || field === 'kh_lcnt' || field === 'kh_ky_hdcu' || field === 'kh_pd_khcu' || field === 'kh_ky_plhd_cdt' || field === 'kh_pd_khtk') {
+            td.textContent = formatDateDMY(row[field]);
         }
         else if (field === 'ngan_sach') {
             const val = parseFloat(row.ngan_sach || 0);
@@ -2244,6 +2289,12 @@ function openEditModalForm(rowIdx) {
             }
             return;
         }
+        
+        if (currentUser && currentUser.quyen === 'QLTK' && activeSubtab !== 'cdt') {
+            showToast("Bảo Mật", "Quyền phòng QLTK chỉ được phép chỉnh sửa ở phân hệ A. Đầu vào CĐT!", "danger");
+            return;
+        }
+        
         editRowIndex = rowIdx;
         currentFormTarget = "master_edit";
         
@@ -2254,6 +2305,7 @@ function openEditModalForm(rowIdx) {
         titleEl.textContent = `Chỉnh Sửa Gói Thầu / Hạng Mục (Dòng ${row.tt})`;
         
         const isContractor = currentUser && currentUser.quyen === 'Contractor';
+        const qltkOtherFieldsDisabled = currentUser && currentUser.quyen === 'QLTK' ? 'disabled style="background: rgba(255,255,255,0.03); cursor: not-allowed;" title="Quyền phòng QLTK không được phép sửa trường này!"' : '';
         
         // Build custom fields based on activeSubtab
         let fieldsHtml = "";
@@ -2263,16 +2315,16 @@ function openEditModalForm(rowIdx) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
                 <div class="form-group">
                     <label>TT (Thứ tự dòng)</label>
-                    <input type="text" id="edit-form-tt" class="form-control" value="${row.tt || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''}>
+                    <input type="text" id="edit-form-tt" class="form-control" value="${row.tt || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''} ${qltkOtherFieldsDisabled}>
                 </div>
                 <div class="form-group">
                     <label>Mã BSC</label>
-                    <input type="text" id="edit-form-ma-bsc" class="form-control" value="${row.ma_bsc || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''} placeholder="Để trống nếu là hạng mục con">
+                    <input type="text" id="edit-form-ma-bsc" class="form-control" value="${row.ma_bsc || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''} ${qltkOtherFieldsDisabled} placeholder="Để trống nếu là hạng mục con">
                 </div>
                 <div class="form-group">
                     <label>Nhóm CT / Hạng mục cha</label>
                     ${activeSubtab === 'cdt' ? `
-                        <select id="edit-form-nhom-ct" class="form-control">
+                        <select id="edit-form-nhom-ct" class="form-control" ${qltkOtherFieldsDisabled}>
                             <option value=""></option>
                             ${renderOptionsWithSelect(getDanhMucList('Nhóm CT') || [], row.nhom_ct)}
                         </select>
@@ -2282,11 +2334,11 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Gói thầu (PL)</label>
-                    <input type="text" id="edit-form-goi-thau-pl" class="form-control" value="${row.goi_thau_pl || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''}>
+                    <input type="text" id="edit-form-goi-thau-pl" class="form-control" value="${row.goi_thau_pl || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''} ${qltkOtherFieldsDisabled}>
                 </div>
                 <div class="form-group" style="grid-column: span 2;">
                     <label>Hạng mục / Công việc</label>
-                    <input type="text" id="edit-form-work-name" class="form-control" value="${row.hang_muc_work || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''} required>
+                    <input type="text" id="edit-form-work-name" class="form-control" value="${row.hang_muc_work || ''}" ${activeSubtab !== 'cdt' ? 'disabled' : ''} ${qltkOtherFieldsDisabled} required>
                 </div>
             </div>
         `;
@@ -2299,19 +2351,19 @@ function openEditModalForm(rowIdx) {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                     <div class="form-group">
                         <label>Phụ trách</label>
-                        <input type="text" id="edit-form-phu-trach" class="form-control" value="${row.phu_trach || ''}">
+                        <input type="text" id="edit-form-phu-trach" class="form-control" value="${row.phu_trach || ''}" ${qltkOtherFieldsDisabled}>
                     </div>
                     <div class="form-group">
                         <label>Ngân sách (tỷ)</label>
-                        <input type="number" step="0.01" id="edit-form-ngan-sach" class="form-control" value="${row.ngan_sach || 0}" ${getPlanLockAttr(row.ngan_sach)}>
+                        <input type="number" step="0.01" id="edit-form-ngan-sach" class="form-control" value="${row.ngan_sach || 0}" ${getPlanLockAttr(row.ngan_sach)} ${qltkOtherFieldsDisabled}>
                     </div>
                     <div class="form-group">
                         <label>Ngày bắt đầu (Yêu cầu)</label>
-                        <input type="date" id="edit-form-start-date" class="form-control" value="${row.ngay_bd_yc || ''}" ${getPlanLockAttr(row.ngay_bd_yc)}>
+                        <input type="date" id="edit-form-start-date" class="form-control" value="${row.ngay_bd_yc || ''}" ${getPlanLockAttr(row.ngay_bd_yc)} ${qltkOtherFieldsDisabled}>
                     </div>
                     <div class="form-group">
                         <label>Ngày kết thúc (Yêu cầu)</label>
-                        <input type="date" id="edit-form-end-date" class="form-control" value="${row.ngay_kt_yc || ''}" ${getPlanLockAttr(row.ngay_kt_yc)}>
+                        <input type="date" id="edit-form-end-date" class="form-control" value="${row.ngay_kt_yc || ''}" ${getPlanLockAttr(row.ngay_kt_yc)} ${qltkOtherFieldsDisabled}>
                     </div>
                 </div>
                 
@@ -2846,7 +2898,7 @@ function openEditModalForm(rowIdx) {
                 <td><span class="badge info">${row['Loại hồ sơ'] || ""}</span></td>
                 <td>${row['Tên sản phẩm / Số hiệu'] || ""}</td>
                 <td>${renderLinkHtml(row['LINK lưu trữ'])}</td>
-                <td>${row['Ngày HT'] || ""}</td>
+                <td>${formatDateDMY(row['Ngày HT'])}</td>
                 <td>${row['Người lập'] || ""}</td>
                 <td>${row['Người duyệt'] || ""}</td>
                 <td>
@@ -3069,7 +3121,7 @@ function openEditModalForm(rowIdx) {
                 <td style="font-weight:600;">${row['Mã PS']}</td>
                 <td style="font-weight:700;">${bsc}</td>
                 <td>${row['Hạng mục'] || ""}</td>
-                <td>${row['Ngày PS'] || ""}</td>
+                <td>${formatDateDMY(row['Ngày PS'])}</td>
                 <td><span class="badge info">${row['Loại'] || ""}</span></td>
                 <td>${row['Mô tả'] || ""}</td>
                 <td>${row['Nguyên nhân'] || ""}</td>
@@ -3084,7 +3136,7 @@ function openEditModalForm(rowIdx) {
                     </span>
                     ${row['TT duyệt'] === 'Từ chối' && row['Lý do từ chối'] ? `<br><small style="color:#ff5252; font-style:italic; display:block; margin-top:4px; max-width:150px; word-wrap:break-word;">Lý do: ${row['Lý do từ chối']}</small>` : ""}
                 </td>
-                <td>${row['Người duyệt'] || ""}<br><small>${row['Ngày duyệt'] || ""}</small></td>
+                <td>${row['Người duyệt'] || ""}<br><small>${formatDateDMY(row['Ngày duyệt'])}</small></td>
                 <td>
                     <div style="display:flex; gap:4px; justify-content:center;">
                         ${canApprove ? `
@@ -3197,7 +3249,7 @@ function openEditModalForm(rowIdx) {
                 <td style="font-weight:600;">${row['Mã YC']}</td>
                 <td style="font-weight:700;">${bsc}</td>
                 <td>${row['Hạng mục'] || ""}</td>
-                <td>${row['Ngày YC'] || ""}</td>
+                <td>${formatDateDMY(row['Ngày YC'])}</td>
                 <td><span class="badge info">${row['Loại YC'] || ""}</span></td>
                 <td>${row['Vật tư/Thiết bị'] || ""}</td>
                 <td>${row['Đặc tả KT / Lý do'] || ""}</td>
@@ -3340,7 +3392,7 @@ function openEditModalForm(rowIdx) {
                 <td>${index + 1}</td>
                 <td style="font-weight:700;">${bsc}</td>
                 <td>${row['Hạng mục'] || ""}</td>
-                <td>${row['Ngày phát hiện'] || ""}</td>
+                <td>${formatDateDMY(row['Ngày phát hiện'])}</td>
                 <td style="text-align:center;">
                     <span class="badge ${delayDays > 7 ? 'danger' : 'warning'}" style="font-weight:700; font-size:0.8rem;">
                         Chậm ${delayDays} ngày
@@ -3349,7 +3401,7 @@ function openEditModalForm(rowIdx) {
                 <td>${row['Nguyên nhân'] || ""}</td>
                 <td><span class="badge info">${row['Giải pháp bù'] || ""}</span></td>
                 <td>${row['Chi tiết giải pháp'] || row['Chi tiết phương án'] || ""}</td>
-                <td>${row['Mốc cam kết HT'] || ""}</td>
+                <td>${formatDateDMY(row['Mốc cam kết HT'])}</td>
                 <td>${renderLinkHtml(row['LINK phương án'] || row['LINK phương án chi tiết'])}</td>
                 <td>
                     <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : (row['TT duyệt'] === 'Từ chối' ? 'danger' : 'warning')}">
