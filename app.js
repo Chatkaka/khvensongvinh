@@ -14,6 +14,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const expandedParents = new Set(); // Set of expanded parent IDs (Mã BSC / goi_thau_pl)
     let currentRole = "Admin";   // Active role: "Admin", "Supervisor", "Contractor", "Supply"
     let dashboardAlarmFilter = ""; // Active warning filter: "red", "orange", "yellow", "normal", or ""
+    
+    // Helper to lock plan fields for non-admin users
+    function getPlanLockAttr(val) {
+        const isUserAdmin = currentUser && currentUser.quyen === 'Admin';
+        if (isUserAdmin) return "";
+        if (val !== undefined && val !== null && String(val).trim() !== "" && String(val).trim() !== "0") {
+            return 'disabled style="background: rgba(255,255,255,0.03); cursor: not-allowed;" title="Kế hoạch đã lưu ghi, chỉ tài khoản Admin mới được sửa!"';
+        }
+        return "";
+    }
 
     // Helper to get system date formatted in GMT+7 (browser local time)
     function getSystemDateGMT7() {
@@ -137,6 +147,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Ensure all numeric values are clean and sub-tables have proper structure
     function sanitizeInitialData() {
+        // Force migration to only keep "Hồ Nghĩa Chất" as Admin and clear all other users
+        if (!localStorage.getItem("migration_only_keep_chat_hn_v2")) {
+            db.nhan_su = [
+                { stt: 1, ho_ten: "Hồ Nghĩa Chất", email: "chat.hn@tdggroup.vn", quyen: "Admin", vai_tro: "Phó Ban Quản lý Dự án (Admin)", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456", quyen_them: true, quyen_sua: true, quyen_xoa: true, goi_thau: "Tất cả các gói" }
+            ];
+            localStorage.setItem("migration_only_keep_chat_hn_v2", "true");
+        }
+
         if (!db.master) db.master = [];
         else db.master = restructureMasterData(db.master);
 
@@ -146,12 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!db.s04) db.s04 = [];
         if (!db.s05) db.s05 = [];
         const fallbackNhanSu = [
-            { ho_ten: "Phan Văn Khánh", email: "khanh.pv@tdggroup.vn", quyen: "Admin", vai_tro: "Giám đốc Dự án", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456" },
-            { ho_ten: "Nguyễn Đình Hùng", email: "hung.nd@tdggroup.vn", quyen: "Admin", vai_tro: "Cán bộ quản lý (Admin)", phong_ban: "QLTK", mat_khau: "123456" },
-            { ho_ten: "Nguyễn Hoàng Long", email: "long.nh@tvgs.vn", quyen: "Supervisor", vai_tro: "Trưởng đoàn TVGS", phong_ban: "Đoàn Tư vấn Giám sát", mat_khau: "123456" },
-            { ho_ten: "Trần Quốc Huy", email: "huy.tq@anphong.vn", quyen: "Contractor", vai_tro: "Chỉ huy trưởng Tổng thầu", phong_ban: "Tổng thầu An Phong", mat_khau: "123456" },
-            { ho_ten: "Lê Minh Tú", email: "tu.lm@supply.tdg.vn", quyen: "Supply", vai_tro: "Trưởng nhóm Cung ứng", phong_ban: "Phòng Kế hoạch Cung ứng", mat_khau: "123456" },
-            { ho_ten: "Hồ Nghĩa Chất", email: "chat.hn@tdggroup.vn", quyen: "Admin", vai_tro: "Phó Ban Quản lý Dự án (Admin)", phong_ban: "KTKH", mat_khau: "123456" }
+            { ho_ten: "Hồ Nghĩa Chất", email: "chat.hn@tdggroup.vn", quyen: "Admin", vai_tro: "Phó Ban Quản lý Dự án (Admin)", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456" }
         ];
 
         if (!db.nhan_su || db.nhan_su.length === 0) {
@@ -1899,6 +1912,51 @@ document.addEventListener("DOMContentLoaded", () => {
         
         const getVal = (val) => val || "";
 
+        // Cumulative history calculations
+        const historyList = row.history || [];
+        const pastKh = historyList.reduce((sum, h) => sum + parseFloat(h.kh || 0), 0);
+        const pastKq = historyList.reduce((sum, h) => sum + parseFloat(h.kq || 0), 0);
+        
+        const currentKh = parseFloat(row.qa_kh_klcv_thang || 0);
+        const currentKq = parseFloat(row.qa_kq_klcv_thang || 0);
+        
+        const luyKeKh = pastKh + currentKh;
+        const luyKeKq = pastKq + currentKq;
+        const completionRate = luyKeKh > 0 ? ((luyKeKq / luyKeKh) * 100).toFixed(1) : "0.0";
+
+        let historyHtml = "";
+        if (historyList.length > 0) {
+            historyHtml = `
+                <div style="margin-top: 8px; max-height: 120px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px;">
+                    <table style="width: 100%; font-size: 0.75rem; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--border-color);">
+                                <th style="padding: 6px 8px;">Tháng lưu trữ</th>
+                                <th style="padding: 6px 8px;">KH (tỷ)</th>
+                                <th style="padding: 6px 8px;">KQ (tỷ)</th>
+                                <th style="padding: 6px 8px;">Đánh giá</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${historyList.map(h => `
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                    <td style="padding: 6px 8px; font-weight:600; color:#a5d8ff;">${h.thang}</td>
+                                    <td style="padding: 6px 8px;">${parseFloat(h.kh || 0).toFixed(2)}</td>
+                                    <td style="padding: 6px 8px; color: var(--color-green);">${parseFloat(h.kq || 0).toFixed(2)}</td>
+                                    <td style="padding: 6px 8px; color: var(--text-secondary); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${h.dg || ''}">${h.dg || ''}</td>
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            historyHtml = `<div style="text-align: center; font-size: 0.75rem; color: var(--text-muted); padding: 8px 0;">Chưa có lịch sử các tháng trước đó.</div>`;
+        }
+
+        // Lock Monthly Plan if it has value and user is not Admin
+        const khThangLockAttr = getPlanLockAttr(row.qa_kh_klcv_thang);
+
         return `
             <div style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; display: grid; gap: 12px; ${isLocked ? 'opacity: 0.7;' : ''}">
                 <div style="font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 4px;">
@@ -1907,7 +1965,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 12px;">
                     <div class="form-group">
                         <label style="font-size:0.75rem;">KH KLCV Tháng (tỷ)</label>
-                        <input type="number" step="0.01" min="0" id="form-p-kh-thang" class="form-control" value="${getBillion(source.qa_kh_klcv_thang)}" ${isLocked ? 'disabled' : ''}>
+                        <input type="number" step="0.01" min="0" id="form-p-kh-thang" class="form-control" value="${getBillion(source.qa_kh_klcv_thang)}" ${isLocked ? 'disabled' : ''} ${khThangLockAttr}>
                     </div>
                     <div class="form-group">
                         <label style="font-size:0.75rem;">KQ KLCV Tháng (tỷ)</label>
@@ -1932,7 +1990,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <h4 style="font-size:0.75rem; margin-bottom:6px; color: var(--color-ai-primary); font-weight:700;">Tuần ${w}</h4>
                                 <div class="form-group" style="margin-bottom:6px;">
                                     <label style="font-size:0.7rem; color: var(--text-secondary);">KH (tỷ)</label>
-                                    <input type="number" step="0.01" min="0" id="form-p-t${w}-kh" class="form-control" style="font-size:0.75rem; padding:4px 6px;" value="${getBillion(khVal)}" ${isLocked ? 'disabled' : ''}>
+                                    <input type="number" step="0.01" min="0" id="form-p-t${w}-kh" class="form-control" style="font-size:0.75rem; padding:4px 6px;" value="${getBillion(khVal)}" ${isLocked ? 'disabled' : ''} ${getPlanLockAttr(row['t' + w + '_kh'])}>
                                 </div>
                                 <div class="form-group" style="margin-bottom:6px;">
                                     <label style="font-size:0.7rem; color: var(--text-secondary);">KQ (tỷ)</label>
@@ -1945,6 +2003,28 @@ document.addEventListener("DOMContentLoaded", () => {
                             </div>
                         `;
                     }).join("")}
+                </div>
+                
+                <!-- Historical Months & Cumulative Evaluation Section -->
+                <div style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                    <div style="font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); padding-bottom: 6px; margin-bottom: 4px;">
+                        <i class="fa-solid fa-clock-rotate-left"></i> ĐÁNH GIÁ LŨY KẾ LỊCH SỬ HÀNG THÁNG
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                        <div style="background: rgba(255,255,255,0.01); padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border-color); text-align: center;">
+                            <div style="font-size: 0.65rem; color: var(--text-muted);">Lũy kế KH tích lũy</div>
+                            <div style="font-size: 0.95rem; font-weight: 700; color: #fff;">${luyKeKh.toFixed(2)} tỷ</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.01); padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border-color); text-align: center;">
+                            <div style="font-size: 0.65rem; color: var(--text-muted);">Lũy kế KQ thực tế</div>
+                            <div style="font-size: 0.95rem; font-weight: 700; color: var(--color-green);">${luyKeKq.toFixed(2)} tỷ</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.01); padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border-color); text-align: center;">
+                            <div style="font-size: 0.65rem; color: var(--text-muted);">Tỷ lệ hoàn thành</div>
+                            <div style="font-size: 0.95rem; font-weight: 700; color: var(--color-yellow);">${completionRate}%</div>
+                        </div>
+                    </div>
+                    ${historyHtml}
                 </div>
             </div>
         `;
@@ -2075,15 +2155,15 @@ function openEditModalForm(rowIdx) {
                     </div>
                     <div class="form-group">
                         <label>Ngân sách (tỷ)</label>
-                        <input type="number" step="0.01" id="edit-form-ngan-sach" class="form-control" value="${row.ngan_sach || 0}">
+                        <input type="number" step="0.01" id="edit-form-ngan-sach" class="form-control" value="${row.ngan_sach || 0}" ${getPlanLockAttr(row.ngan_sach)}>
                     </div>
                     <div class="form-group">
                         <label>Ngày bắt đầu (Yêu cầu)</label>
-                        <input type="date" id="edit-form-start-date" class="form-control" value="${row.ngay_bd_yc || ''}">
+                        <input type="date" id="edit-form-start-date" class="form-control" value="${row.ngay_bd_yc || ''}" ${getPlanLockAttr(row.ngay_bd_yc)}>
                     </div>
                     <div class="form-group">
                         <label>Ngày kết thúc (Yêu cầu)</label>
-                        <input type="date" id="edit-form-end-date" class="form-control" value="${row.ngay_kt_yc || ''}">
+                        <input type="date" id="edit-form-end-date" class="form-control" value="${row.ngay_kt_yc || ''}" ${getPlanLockAttr(row.ngay_kt_yc)}>
                     </div>
                 </div>
                 
@@ -2096,7 +2176,7 @@ function openEditModalForm(rowIdx) {
                     </div>
                     <div class="form-group">
                         <label>KH phát hành HSTKTC</label>
-                        <input type="date" id="edit-form-kh-hstktc" class="form-control" value="${row.kh_phat_hang_hstktc || ''}" ${qltkDisabled}>
+                        <input type="date" id="edit-form-kh-hstktc" class="form-control" value="${row.kh_phat_hang_hstktc || ''}" ${getPlanLockAttr(row.kh_phat_hang_hstktc)} ${qltkDisabled}>
                     </div>
                     <div class="form-group">
                         <label>TT HSTKTC</label>
@@ -2152,7 +2232,7 @@ function openEditModalForm(rowIdx) {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                     <div class="form-group">
                         <label>KH LCNT</label>
-                        <input type="date" id="edit-form-kh-lcnt" class="form-control" value="${row.kh_lcnt || ''}">
+                        <input type="date" id="edit-form-kh-lcnt" class="form-control" value="${row.kh_lcnt || ''}" ${getPlanLockAttr(row.kh_lcnt)}>
                     </div>
                     <div class="form-group">
                         <label>TT LCNT</label>
@@ -2163,7 +2243,7 @@ function openEditModalForm(rowIdx) {
                     </div>
                     <div class="form-group">
                         <label>KH Ký HĐCU</label>
-                        <input type="date" id="edit-form-kh-ky-hdcu" class="form-control" value="${row.kh_ky_hdcu || ''}">
+                        <input type="date" id="edit-form-kh-ky-hdcu" class="form-control" value="${row.kh_ky_hdcu || ''}" ${getPlanLockAttr(row.kh_ky_hdcu)}>
                     </div>
                     <div class="form-group">
                         <label>TT Ký HĐCU</label>
@@ -2174,7 +2254,7 @@ function openEditModalForm(rowIdx) {
                     </div>
                     <div class="form-group">
                         <label>KH PD KHCU</label>
-                        <input type="date" id="edit-form-kh-pd-khcu" class="form-control" value="${row.kh_pd_khcu || ''}">
+                        <input type="date" id="edit-form-kh-pd-khcu" class="form-control" value="${row.kh_pd_khcu || ''}" ${getPlanLockAttr(row.kh_pd_khcu)}>
                     </div>
                     <div class="form-group">
                         <label>TT KHCU</label>
@@ -2194,7 +2274,7 @@ function openEditModalForm(rowIdx) {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                     <div class="form-group">
                         <label>KH Ký PLHĐ CĐT</label>
-                        <input type="date" id="edit-form-kh-ky-plhd-cdt" class="form-control" value="${row.kh_ky_plhd_cdt || ''}">
+                        <input type="date" id="edit-form-kh-ky-plhd-cdt" class="form-control" value="${row.kh_ky_plhd_cdt || ''}" ${getPlanLockAttr(row.kh_ky_plhd_cdt)}>
                     </div>
                     <div class="form-group">
                         <label>TT Ký PLHĐ CĐT</label>
@@ -2205,7 +2285,7 @@ function openEditModalForm(rowIdx) {
                     </div>
                     <div class="form-group">
                         <label>KH PD KHTK</label>
-                        <input type="date" id="edit-form-kh-pd-khtk" class="form-control" value="${row.kh_pd_khtk || ''}">
+                        <input type="date" id="edit-form-kh-pd-khtk" class="form-control" value="${row.kh_pd_khtk || ''}" ${getPlanLockAttr(row.kh_pd_khtk)}>
                     </div>
                     <div class="form-group">
                         <label>TT KHTK</label>
@@ -2246,7 +2326,7 @@ function openEditModalForm(rowIdx) {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                     <div class="form-group">
                         <label>Ngân Sách (tỷ)</label>
-                        <input type="number" step="0.01" id="edit-form-ngan-sach" class="form-control" value="${row.ngan_sach || 0}">
+                        <input type="number" step="0.01" id="edit-form-ngan-sach" class="form-control" value="${row.ngan_sach || 0}" ${getPlanLockAttr(row.ngan_sach)}>
                     </div>
                     <div class="form-group">
                         <label>Lũy Kế HĐ A-B (tỷ - từ Giá trị HĐCU)</label>
@@ -2329,15 +2409,17 @@ function openEditModalForm(rowIdx) {
 
     function isUserQltk() {
         if (!currentUser) return false;
-        if (currentUser.quyen === 'Admin') return true;
+        if (currentUser.quyen === 'Admin' || currentUser.quyen === 'BanQLDA') return true;
         const dept = String(currentUser.phong_ban || "").toUpperCase();
+        if (currentUser.quyen === "QLTK") return true;
         return dept.includes("QLTK") || dept.includes("THIẾT KẾ") || dept.includes("DESIGN");
     }
 
     function isUserKtkh() {
         if (!currentUser) return false;
-        if (currentUser.quyen === 'Admin') return true;
+        if (currentUser.quyen === 'Admin' || currentUser.quyen === 'BanQLDA') return true;
         const dept = String(currentUser.phong_ban || "").toUpperCase();
+        if (currentUser.quyen === "KTKH") return true;
         return dept.includes("KTKH") || dept.includes("KẾ HOẠCH") || dept.includes("KINH TẾ");
     }
 
@@ -4821,13 +4903,35 @@ function openEditModalForm(rowIdx) {
 
     // Reset Month Action (Khởi tạo tháng mới)
     function rollMonthlyProgress() {
-        const confirmMsg = "XÁC NHẬN KHỞI TẠO CHU KỲ THÁNG MỚI:\n\nLưu ý: Hành động này sẽ:\n1. Xóa toàn bộ kế hoạch, kết quả & đánh giá tháng cũ (KH KLCV Tháng, KQ KLCV Tháng, Đánh giá Tháng).\n2. Giải phóng toàn bộ dữ liệu tuần T1-T4 về trống để chuẩn bị lập kế hoạch tháng thi công mới.\n\nBạn có chắc chắn muốn thực hiện?";
-        if (!confirm(confirmMsg)) return;
+        const d = new Date();
+        d.setMonth(d.getMonth() - 1);
+        const prevMonthLabel = `Tháng ${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        const archiveMonthName = prompt("XÁC NHẬN KHỞI TẠO THÁNG MỚI\n\nVui lòng nhập tên tháng cũ để lưu trữ lịch sử đánh giá sản lượng:", prevMonthLabel);
+        if (archiveMonthName === null) return;
+        const finalMonthName = archiveMonthName.trim() || prevMonthLabel;
 
         let resetCount = 0;
         db.master.forEach(row => {
             const isChild = String(row.ma_bsc || "").trim() === "";
             if (isChild) {
+                // Save current monthly plan & actual to history before clearing
+                row.history = row.history || [];
+                
+                // Add or update entry in history
+                const histEntry = {
+                    thang: finalMonthName,
+                    kh: row.qa_kh_klcv_thang !== undefined ? row.qa_kh_klcv_thang : "",
+                    kq: row.qa_kq_klcv_thang !== undefined ? row.qa_kq_klcv_thang : "",
+                    dg: row.qa_danh_gia_thang || ""
+                };
+                
+                const existingIdx = row.history.findIndex(h => h.thang === finalMonthName);
+                if (existingIdx !== -1) {
+                    row.history[existingIdx] = histEntry;
+                } else {
+                    row.history.push(histEntry);
+                }
+
                 // Reset monthly columns
                 row.qa_kh_klcv_thang = "";
                 row.qa_kq_klcv_thang = "";
@@ -5646,10 +5750,13 @@ dropzone.addEventListener("click", () => fileInput.click());
             
             // Format Access Level badges
             let accessBadge = "";
-            if (row.quyen === 'Admin') accessBadge = `<span class="badge danger" style="box-shadow: 0 0 6px var(--color-red); font-weight:700;">Giám đốc / C-Level</span>`;
-            else if (row.quyen === 'Supervisor') accessBadge = `<span class="badge success" style="font-weight:700;">Supervisor / TVGS</span>`;
-            else if (row.quyen === 'Contractor') accessBadge = `<span class="badge info" style="font-weight:700;">Contractor / Thầu</span>`;
-            else if (row.quyen === 'Supply') accessBadge = `<span class="badge warning" style="font-weight:700;">Supply / Cung ứng</span>`;
+            if (row.quyen === 'Admin') accessBadge = `<span class="badge danger" style="box-shadow: 0 0 6px var(--color-red); font-weight:700;">Toàn quyền (Admin)</span>`;
+            else if (row.quyen === 'BanQLDA') accessBadge = `<span class="badge danger" style="font-weight:700; background-color: #f43f5e; color: #fff;">Quyền Ban QLDA</span>`;
+            else if (row.quyen === 'Contractor') accessBadge = `<span class="badge info" style="font-weight:700; background-color: #06b6d4; color: #fff;">Quyền Tổng thầu</span>`;
+            else if (row.quyen === 'Supervisor') accessBadge = `<span class="badge success" style="font-weight:700; background-color: #10b981; color: #fff;">Quyền TVGS</span>`;
+            else if (row.quyen === 'KTKH') accessBadge = `<span class="badge warning" style="font-weight:700; background-color: #d97706; color: #fff;">Quyền phòng KTKH</span>`;
+            else if (row.quyen === 'QLTK') accessBadge = `<span class="badge primary" style="font-weight:700; background-color: #6366f1; color: #fff;">Quyền phòng QLTK</span>`;
+            else if (row.quyen === 'Supply') accessBadge = `<span class="badge warning" style="font-weight:700; background-color: #f59e0b; color: #fff;">Quyền Cung ứng</span>`;
 
             // Format CRUD checkmarks
             const canAdd = row.quyen_them ? '<span style="color:var(--color-green); font-weight:bold; margin:0 4px;" title="Thêm: Đạt">➕</span>' : '<span style="color:var(--text-muted); margin:0 4px;" title="Thêm: Khóa">➖</span>';
@@ -5742,10 +5849,13 @@ dropzone.addEventListener("click", () => fileInput.click());
                 <div class="form-group">
                     <label>Quyền Truy Cập Hệ Thống (Mức Phân Quyền)</label>
                     <select id="p-auth" class="form-control" onchange="window.syncDefaultCrudCheckboxes()">
-                        <option value="Admin">Admin / C-Level (Toàn quyền quản trị)</option>
-                        <option value="Supervisor">Supervisor / TVGS (Phê duyệt kỹ thuật)</option>
-                        <option value="Contractor">Contractor / Tổng Thầu (Nộp hồ sơ)</option>
-                        <option value="Supply">Supply / Cung Ứng (Cấp vật tư)</option>
+                        <option value="Admin">Toàn quyền ( Admin)</option>
+                        <option value="BanQLDA">Quyền Ban QLDA</option>
+                        <option value="Contractor">Quyền Tổng thầu</option>
+                        <option value="Supervisor">Quyền TVGS</option>
+                        <option value="KTKH">Quyền phòng KTKH</option>
+                        <option value="QLTK">Quyền phòng QLTK</option>
+                        <option value="Supply">Quyền Cung ứng</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -5780,14 +5890,12 @@ dropzone.addEventListener("click", () => fileInput.click());
             const deleteCb = document.getElementById("p-can-delete");
             if (!addCb || !editCb || !deleteCb) return;
             
-            if (auth === 'Admin') {
+            if (auth === 'Admin' || auth === 'BanQLDA') {
                 addCb.checked = true; editCb.checked = true; deleteCb.checked = true;
-            } else if (auth === 'Supervisor') {
+            } else if (auth === 'Supervisor' || auth === 'KTKH' || auth === 'QLTK' || auth === 'Supply') {
                 addCb.checked = false; editCb.checked = true; deleteCb.checked = false;
             } else if (auth === 'Contractor') {
                 addCb.checked = true; editCb.checked = true; deleteCb.checked = true;
-            } else if (auth === 'Supply') {
-                addCb.checked = false; editCb.checked = true; deleteCb.checked = false;
             }
         };
 
@@ -5827,10 +5935,13 @@ dropzone.addEventListener("click", () => fileInput.click());
                 <div class="form-group">
                     <label>Quyền Truy Cập Hệ Thống (Mức Phân Quyền)</label>
                     <select id="p-auth" class="form-control" onchange="window.syncDefaultCrudCheckboxes()" ${disabledAttr}>
-                        <option value="Admin" ${row.quyen === 'Admin' ? 'selected' : ''}>Admin / C-Level (Toàn quyền quản trị)</option>
-                        <option value="Supervisor" ${row.quyen === 'Supervisor' ? 'selected' : ''}>Supervisor / TVGS (Phê duyệt kỹ thuật)</option>
-                        <option value="Contractor" ${row.quyen === 'Contractor' ? 'selected' : ''}>Contractor / Tổng Thầu (Nộp hồ sơ)</option>
-                        <option value="Supply" ${row.quyen === 'Supply' ? 'selected' : ''}>Supply / Cung Ứng (Cấp vật tư)</option>
+                        <option value="Admin" ${row.quyen === 'Admin' ? 'selected' : ''}>Toàn quyền ( Admin)</option>
+                        <option value="BanQLDA" ${row.quyen === 'BanQLDA' ? 'selected' : ''}>Quyền Ban QLDA</option>
+                        <option value="Contractor" ${row.quyen === 'Contractor' ? 'selected' : ''}>Quyền Tổng thầu</option>
+                        <option value="Supervisor" ${row.quyen === 'Supervisor' ? 'selected' : ''}>Quyền TVGS</option>
+                        <option value="KTKH" ${row.quyen === 'KTKH' ? 'selected' : ''}>Quyền phòng KTKH</option>
+                        <option value="QLTK" ${row.quyen === 'QLTK' ? 'selected' : ''}>Quyền phòng QLTK</option>
+                        <option value="Supply" ${row.quyen === 'Supply' ? 'selected' : ''}>Quyền Cung ứng</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -5865,14 +5976,12 @@ dropzone.addEventListener("click", () => fileInput.click());
             const deleteCb = document.getElementById("p-can-delete");
             if (!addCb || !editCb || !deleteCb) return;
             
-            if (auth === 'Admin') {
+            if (auth === 'Admin' || auth === 'BanQLDA') {
                 addCb.checked = true; editCb.checked = true; deleteCb.checked = true;
-            } else if (auth === 'Supervisor') {
+            } else if (auth === 'Supervisor' || auth === 'KTKH' || auth === 'QLTK' || auth === 'Supply') {
                 addCb.checked = false; editCb.checked = true; deleteCb.checked = false;
             } else if (auth === 'Contractor') {
                 addCb.checked = true; editCb.checked = true; deleteCb.checked = true;
-            } else if (auth === 'Supply') {
-                addCb.checked = false; editCb.checked = true; deleteCb.checked = false;
             }
         };
 
