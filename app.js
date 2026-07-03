@@ -251,31 +251,33 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // Step A: Calculate parent package rollups from their sub-items (hierarchical rollup)
-        // Group sub-rows by their parent TT prefix. e.g. "2.1", "2.2" -> parent "2"
-        const subItemsGrouped = {};
+        // Step A: Calculate parent package rollups from their sub-items (hierarchical recursive rollup)
+        const childrenMap = {};
         db.master.forEach(row => {
-            const tt = String(row.tt || "");
-            if (tt.includes(".")) {
-                const parentPrefix = tt.split(".")[0];
-                if (!subItemsGrouped[parentPrefix]) subItemsGrouped[parentPrefix] = [];
-                subItemsGrouped[parentPrefix].push(row);
+            const ttStr = String(row.tt || "").trim();
+            if (ttStr.includes(".")) {
+                const lastDot = ttStr.lastIndexOf(".");
+                const parentTt = ttStr.substring(0, lastDot);
+                if (!childrenMap[parentTt]) childrenMap[parentTt] = [];
+                childrenMap[parentTt].push(row);
             }
         });
 
-        // Rollup sub-items budget and contract values to parent row
-        db.master.forEach(row => {
-            const tt = String(row.tt || "");
-            if (subItemsGrouped[tt]) {
-                // Parent row budget is sum of sub budgets
-                const sumBudget = subItemsGrouped[tt].reduce((sum, sub) => sum + parseFloat(sub.ngan_sach || 0), 0);
+        function rollupAndEvaluateRow(row) {
+            const ttStr = String(row.tt || "").trim();
+            const children = childrenMap[ttStr] || [];
+            const bsc = String(row.ma_bsc || "").trim();
+            const isParent = bsc !== "";
+
+            if (children.length > 0) {
+                children.forEach(rollupAndEvaluateRow);
+
+                const sumBudget = children.reduce((sum, sub) => sum + parseFloat(sub.ngan_sach || 0), 0);
                 row.ngan_sach = sumBudget > 0 ? sumBudget : "";
 
-                // Parent row contract value is sum of sub contract values
-                const sumContract = subItemsGrouped[tt].reduce((sum, sub) => sum + parseFloat(sub.gia_tri_hdcu || 0), 0);
+                const sumContract = children.reduce((sum, sub) => sum + parseFloat(sub.gia_tri_hdcu || 0), 0);
                 row.gia_tri_hdcu = sumContract > 0 ? sumContract : "";
 
-                // Rollup monthly & weekly plan/actual monetary values to parent row
                 const fieldsToRollup = [
                     "qa_kh_klcv_thang", "qa_kq_klcv_thang",
                     "t1_kh", "t1_kq",
@@ -284,9 +286,44 @@ document.addEventListener("DOMContentLoaded", () => {
                     "t4_kh", "t4_kq"
                 ];
                 fieldsToRollup.forEach(field => {
-                    const sum = subItemsGrouped[tt].reduce((s, sub) => s + parseFloat(sub[field] || 0), 0);
+                    const sum = children.reduce((s, sub) => s + parseFloat(sub[field] || 0), 0);
                     row[field] = sum > 0 ? sum : "";
                 });
+
+                const dk1 = children.every(sub => sub.dk1_hskt === '✔');
+                const dk2 = children.every(sub => sub.dk2_hdcu === '✔');
+                const dk3 = children.every(sub => sub.dk3_khtk === '✔');
+
+                row.dk1_hskt = dk1 ? '✔' : '✘';
+                row.dk2_hdcu = dk2 ? '✔' : '✘';
+                row.dk3_khtk = dk3 ? '✔' : '✘';
+            } else {
+                // Leaf row
+                const hstktc = String(row.tt_hstktc).trim();
+                const boq = String(row.tt_boq_kl).trim();
+                const dk1 = (hstktc === 'Hoàn thiện' || hstktc === 'Đã phát hành') && boq === 'Đã bàn giao';
+                row.dk1_hskt = dk1 ? '✔' : '✘';
+
+                const hdcu = String(row.tt_ky_hdcu).trim();
+                const dk2 = hdcu === 'Đã CU';
+                row.dk2_hdcu = dk2 ? '✔' : '✘';
+
+                const khtk = String(row.tt_khtk).trim();
+                const dk3 = khtk === 'Đã duyệt';
+                row.dk3_khtk = dk3 ? '✔' : '✘';
+            }
+
+            if (row.dk1_hskt === '✔' && row.dk2_hdcu === '✔' && row.dk3_khtk === '✔') {
+                row.dieu_kien_du = 'ĐỦ ĐK KHỞI CÔNG';
+            } else {
+                row.dieu_kien_du = 'THIẾU ĐK';
+            }
+        }
+
+        db.master.forEach(row => {
+            const ttStr = String(row.tt || "").trim();
+            if (!ttStr.includes(".")) {
+                rollupAndEvaluateRow(row);
             }
         });
 
@@ -297,7 +334,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (bsc === "") {
                 // If it is a sub-item, we clean its fields
                 row.luy_ke_ab = "";
-                row.luy_ke_bb = "";
+                row.luy_ke_bb_hd = "";
+                row.luy_ke_bb_th = "";
                 row.luy_ke_tong_chi_phi = "";
                 
                 // Keep percentage calculations for sub-items
@@ -331,14 +369,20 @@ document.addEventListener("DOMContentLoaded", () => {
             const contractVal = parseFloat(row.gia_tri_hdcu || 0);
             row.luy_ke_ab = contractVal;
 
-            // 2. Lũy kế Phát sinh B-B' = sum of approved Sổ 03 variations matching this BSC
-            const variations = db.s03
+            // 2a. Lũy kế HĐ B-B' = sum of approved Sổ 03 contracted variations matching this BSC
+            const variationsHd = db.s03
                 .filter(v => String(v['Mã BSC']).trim() === bsc && v['TT duyệt'] === 'Đã duyệt')
                 .reduce((sum, v) => sum + parseFloat(v['Giá trị (tỷ)'] || 0), 0);
-            row.luy_ke_bb = variations;
+            row.luy_ke_bb_hd = variationsHd;
 
-            // 3. Lũy kế Tổng chi phí = Lũy kế A-B + Lũy kế Phát sinh B-B'
-            row.luy_ke_tong_chi_phi = row.luy_ke_ab + row.luy_ke_bb;
+            // 2b. Lũy kế TH B-B' = sum of approved Sổ 03 executed variations matching this BSC
+            const variationsTh = db.s03
+                .filter(v => String(v['Mã BSC']).trim() === bsc && v['TT duyệt'] === 'Đã duyệt')
+                .reduce((sum, v) => sum + parseFloat(v['Giá trị thực hiện (tỷ)'] || 0), 0);
+            row.luy_ke_bb_th = variationsTh;
+
+            // 3. Lũy kế Tổng chi phí = Lũy kế A-B + Lũy kế TH B-B'
+            row.luy_ke_tong_chi_phi = row.luy_ke_ab + row.luy_ke_bb_th;
 
             // 4. Percentage of budget used
             const budgetVal = parseFloat(row.ngan_sach || 0);
@@ -366,50 +410,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const s05Active = db.s05.filter(s => String(s['Mã BSC']).trim() === bsc && s['TT thực hiện'] === 'Đang thực hiện').length;
             row.bu_tien_do_dang_chay = s05Active;
 
-            // 6. Automatically calculate Chốt chặn Điều kiện Khởi công (Hierarchy Rollup Enabled)
-            const parentHstktc = String(row.tt_hstktc).trim();
-            const parentBoq = String(row.tt_boq_kl).trim();
-            const parentDk1 = (parentHstktc === 'Hoàn thiện' || parentHstktc === 'Đã phát hành') && parentBoq === 'Đã bàn giao';
-            
-            const parentHdcu = String(row.tt_ky_hdcu).trim();
-            const parentDk2 = parentHdcu === 'Đã CU';
-            
-            const parentKhtk = String(row.tt_khtk).trim();
-            const parentDk3 = parentKhtk === 'Đã duyệt';
-
-            let dk1 = parentDk1;
-            let dk2 = parentDk2;
-            let dk3 = parentDk3;
-
-            // Rollup child rows evaluations if present
-            if (subItemsGrouped[tt] && subItemsGrouped[tt].length > 0) {
-                const childrenDk1 = subItemsGrouped[tt].every(sub => {
-                    const hstktc = String(sub.tt_hstktc).trim();
-                    const boq = String(sub.tt_boq_kl).trim();
-                    return (hstktc === 'Hoàn thiện' || hstktc === 'Đã phát hành') && boq === 'Đã bàn giao';
-                });
-                const childrenDk2 = subItemsGrouped[tt].every(sub => {
-                    return String(sub.tt_ky_hdcu).trim() === 'Đã CU';
-                });
-                const childrenDk3 = subItemsGrouped[tt].every(sub => {
-                    return String(sub.tt_khtk).trim() === 'Đã duyệt';
-                });
-
-                dk1 = dk1 || childrenDk1;
-                dk2 = dk2 || childrenDk2;
-                dk3 = dk3 || childrenDk3;
-            }
-
-            row.dk1_hskt = dk1 ? '✔' : '✘';
-            row.dk2_hdcu = dk2 ? '✔' : '✘';
-            row.dk3_khtk = dk3 ? '✔' : '✘';
-
-            // ĐIỀU KIỆN ĐỦ = AND(DK1, DK2, DK3)
-            if (dk1 && dk2 && dk3) {
-                row.dieu_kien_du = 'ĐỦ ĐK KHỞI CÔNG';
-            } else {
-                row.dieu_kien_du = 'THIẾU ĐK';
-            }
+            // 6. Automatically calculate Chốt chặn Điều kiện Khởi công (Handled recursively by Step A)
+            // No action needed here
         });
 
         // Trigger alarms for budget alerts
@@ -1076,8 +1078,8 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         ngan_sach: {
             title: "E. Ngân sách & Chi phí",
-            headers: ["TT", "Mã BSC", "Hạng Mục / Công Việc", "Ngân Sách (tỷ)", "Lũy Kế HĐ A-B (tỷ)", "Lũy Kế Phát Sinh B-B' (tỷ)", "Lũy Kế Tổng Chi Phí (tỷ)", "Thao Tác"],
-            fields: ["tt", "ma_bsc", "hang_muc_work", "ngan_sach", "luy_ke_ab", "luy_ke_bb", "luy_ke_tong_chi_phi"]
+            headers: ["TT", "Mã BSC", "Hạng Mục / Công Việc", "Ngân Sách (tỷ)", "Lũy Kế HĐ A-B (tỷ)", "Lũy Kế HĐ B-B' (tỷ)", "Lũy Kế TH B-B' (tỷ)", "Lũy Kế Tổng Chi Phí (tỷ)", "Thao Tác"],
+            fields: ["tt", "ma_bsc", "hang_muc_work", "ngan_sach", "luy_ke_ab", "luy_ke_bb_hd", "luy_ke_bb_th", "luy_ke_tong_chi_phi"]
         },
         thi_cong: {
             title: "G. Quản lý Thi công",
@@ -1098,6 +1100,102 @@ document.addEventListener("DOMContentLoaded", () => {
         const d2 = new Date(dateStr2);
         const diffTime = d1 - d2;
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    function compareTt(a, b) {
+        const partsA = String(a.tt || "").split(".").map(Number);
+        const partsB = String(b.tt || "").split(".").map(Number);
+        const len = Math.min(partsA.length, partsB.length);
+        for (let i = 0; i < len; i++) {
+            if (partsA[i] !== partsB[i]) {
+                return partsA[i] - partsB[i];
+            }
+        }
+        return partsA.length - partsB.length;
+    }
+
+    function getParentIdForTt(row) {
+        const ttStr = String(row.tt || "").trim();
+        if (!ttStr.includes(".")) {
+            return String(row.goi_thau_pl || "").trim();
+        }
+        const lastDotIndex = ttStr.lastIndexOf(".");
+        const parentTt = ttStr.substring(0, lastDotIndex);
+        const parentRow = db.master.find(r => String(r.tt).trim() === parentTt);
+        if (parentRow && String(parentRow.ma_bsc || "").trim() !== "") {
+            return String(parentRow.ma_bsc).trim();
+        }
+        return parentTt;
+    }
+
+    function calculateNextChildTt(parentTt) {
+        const parentPrefix = String(parentTt) + ".";
+        const siblings = db.master.filter(r => String(r.tt).startsWith(parentPrefix));
+        if (siblings.length === 0) {
+            return parentPrefix + "1";
+        }
+        const suffixNumbers = [];
+        siblings.forEach(s => {
+            const childTt = String(s.tt);
+            const remaining = childTt.substring(parentPrefix.length);
+            if (!remaining.includes(".")) {
+                const num = parseInt(remaining) || 0;
+                suffixNumbers.push(num);
+            }
+        });
+        const maxSuffix = suffixNumbers.length > 0 ? Math.max(...suffixNumbers) : 0;
+        return parentPrefix + (maxSuffix + 1);
+    }
+
+    function openAddChildModal(parentTt) {
+        const canAdd = currentUser ? (currentUser.quyen === 'Admin' || currentUser.quyen_them) : false;
+        if (!canAdd) {
+            showToast("Bảo Mật", "Quyền hạn hạn chế: Tài khoản của bạn không có quyền THÊM dữ liệu mới!", "danger");
+            return;
+        }
+        
+        const parentRow = db.master.find(r => String(r.tt).trim() === String(parentTt).trim());
+        if (!parentRow) return;
+        
+        currentFormTarget = "add_child_row";
+        editRegistrationIndex = -1;
+        
+        const titleEl = document.getElementById("modal-form-title");
+        const bodyEl = document.getElementById("modal-form-body");
+        bodyEl.innerHTML = "";
+        
+        titleEl.textContent = `Thêm Công Việc Con Dưới Hạng Mục: ${parentRow.hang_muc_work}`;
+        const nextTt = calculateNextChildTt(parentTt);
+        
+        bodyEl.innerHTML = `
+            <div class="form-group">
+                <label>Mã TT (Hệ thống tự động tính)</label>
+                <input type="text" id="form-child-tt" class="form-control" value="${nextTt}" disabled style="background: rgba(255,255,255,0.03);">
+            </div>
+            <div class="form-group">
+                <label>Tên Hạng mục / Công việc con</label>
+                <input type="text" id="form-child-work-name" class="form-control" placeholder="Nhập tên hạng mục/công việc..." required>
+            </div>
+            <div class="form-group">
+                <label>Ngân sách điều hành (Tỷ)</label>
+                <input type="number" step="0.01" id="form-child-ngan-sach" class="form-control" value="0.00">
+            </div>
+            <div class="form-group">
+                <label>Phụ trách</label>
+                <input type="text" id="form-child-phu-trach" class="form-control" value="${parentRow.phu_trach || 'An Dương'}">
+            </div>
+            <div class="form-group">
+                <label>Ngày bắt đầu (Yêu cầu)</label>
+                <input type="date" id="form-child-start-date" class="form-control" value="${parentRow.ngay_bd_yc || '2026-07-01'}">
+            </div>
+            <div class="form-group">
+                <label>Ngày kết thúc (Yêu cầu)</label>
+                <input type="date" id="form-child-end-date" class="form-control" value="${parentRow.ngay_kt_yc || '2026-12-31'}">
+            </div>
+            <input type="hidden" id="form-child-parent-tt" value="${parentTt}">
+        `;
+        
+        formModal.style.display = "block";
     }
 
     // Helper: Determine if detailed child row is currently in its executing period
@@ -1334,7 +1432,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <th colspan="7" style="text-align: center; background-color: rgba(59, 130, 246, 0.1);">A. Đầu vào CĐT (Tiến độ - Ngân sách - HSKT)</th>
                 <th colspan="7" style="text-align: center; background-color: rgba(16, 185, 129, 0.1);">B. Kế hoạch Cung ứng & Triển khai</th>
                 <th colspan="5" style="text-align: center; background-color: rgba(245, 158, 11, 0.1);">D. Chốt Chặn Khởi Công</th>
-                <th colspan="3" style="text-align: center; background-color: rgba(239, 68, 68, 0.1);">E. Ngân sách & Chi phí</th>
+                <th colspan="4" style="text-align: center; background-color: rgba(239, 68, 68, 0.1);">E. Ngân sách & Chi phí</th>
                 <th colspan="4" style="text-align: center; background-color: rgba(139, 92, 246, 0.1);">F. Giám sát Biến Động Hàng Tháng / Tuần</th>
                 <th rowspan="2" style="width: 100px; text-align: center;">Thao Tác</th>
             `;
@@ -1360,7 +1458,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 <th style="background-color: rgba(245, 158, 11, 0.05);">ĐIỀU KIỆN ĐỦ</th>
                 <th style="background-color: rgba(245, 158, 11, 0.05);">NGÀY BĐ KHỞI CÔNG</th>
                 <th style="background-color: rgba(239, 68, 68, 0.05);">Lũy Kế HĐ A-B (tỷ)</th>
-                <th style="background-color: rgba(239, 68, 68, 0.05);">Lũy Kế Phát Sinh B-B' (tỷ)</th>
+                <th style="background-color: rgba(239, 68, 68, 0.05);">Lũy Kế HĐ B-B' (tỷ)</th>
+                <th style="background-color: rgba(239, 68, 68, 0.05);">Lũy Kế TH B-B' (tỷ)</th>
                 <th style="background-color: rgba(239, 68, 68, 0.05);">Lũy Kế Tổng Chi Phí (tỷ)</th>
                 <th style="background-color: rgba(139, 92, 246, 0.05);">Tài liệu KH Tháng</th>
                 <th style="background-color: rgba(139, 92, 246, 0.05);">Phát sinh chưa duyệt</th>
@@ -1465,24 +1564,43 @@ document.addEventListener("DOMContentLoaded", () => {
             return textMatch && groupMatch && plMatch && alarmMatch;
         });
 
-        // Set visibility values based on expandedParents state
-        filteredHierarchy.forEach(item => {
-            if (item.type === "grand_parent") {
-                item.visible = true;
-                item.isExpanded = expandedParents.has(item.id);
-            } else if (item.type === "parent") {
-                const gpExpanded = expandedParents.has(item.parentId);
-                item.visible = gpExpanded;
-                item.isExpanded = expandedParents.has(item.id);
-            } else if (item.type === "child") {
-                if (activeLevel === 'project') {
-                    item.visible = false; // Hide all detailed children in project level
+        function isItemVisible(item, activeLevel) {
+            if (item.type === 'grand_parent') {
+                return true;
+            }
+            if (activeLevel === 'project') {
+                const isChild = item.type === 'child' || String(item.row_ref?.tt || "").includes(".");
+                if (isChild) return false;
+            }
+            let currentId = item.type === 'parent' ? item.row_ref.goi_thau_pl : getParentIdForTt(item.row_ref);
+            while (currentId) {
+                if (!expandedParents.has(currentId)) {
+                    return false;
+                }
+                const pRow = db.master.find(r => String(r.ma_bsc).trim() === currentId);
+                if (pRow) {
+                    currentId = String(pRow.goi_thau_pl || "");
+                } else if (currentId.includes(".")) {
+                    const lastDot = currentId.lastIndexOf(".");
+                    const parentTt = currentId.substring(0, lastDot);
+                    const parentRow = db.master.find(r => String(r.tt).trim() === parentTt);
+                    if (parentRow && String(parentRow.ma_bsc || "").trim() !== "") {
+                        currentId = String(parentRow.ma_bsc).trim();
+                    } else {
+                        currentId = parentTt;
+                    }
                 } else {
-                    const gpExpanded = expandedParents.has(item.grandParentId);
-                    const pExpanded = expandedParents.has(item.parentId);
-                    item.visible = gpExpanded && pExpanded;
+                    break;
                 }
             }
+            return true;
+        }
+
+        // Set visibility values based on expandedParents state
+        filteredHierarchy.forEach(item => {
+            item.visible = isItemVisible(item, activeLevel);
+            const toggleId = item.type === "grand_parent" ? item.id : (String(item.row_ref.ma_bsc || "").trim() !== "" ? String(item.row_ref.ma_bsc).trim() : String(item.row_ref.tt).trim());
+            item.isExpanded = expandedParents.has(toggleId);
         });
 
         // Clean empty Grand Parents (those with no visible sub-rows)
@@ -1597,7 +1715,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td class="freeze-2"></td>
                         <td>${item.id}</td>
                         <td>${item.nhom_ct}</td>
-                        <td colspan="29">
+                        <td colspan="30">
                             <button class="toggle-children-btn" data-id="${item.id}"><i class="fa-solid ${item.isExpanded ? 'fa-circle-minus' : 'fa-circle-plus'}"></i></button> <b>${item.hang_muc_work}</b>
                         </td>
                         <td></td>
@@ -1616,8 +1734,24 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td>${row.goi_thau_pl || ""}</td>
                         <td>${row.nhom_ct || ""}</td>
                         <td>
-                            ${isParent && activeLevel === 'detail' ? `<button class="toggle-children-btn" data-id="${row.ma_bsc}"><i class="fa-solid ${item.isExpanded ? 'fa-circle-minus' : 'fa-circle-plus'}"></i></button>` : ""}
-                            ${row.hang_muc_work || ""}
+                            ${(() => {
+                                const hasChildren = db.master.some(r => r !== row && String(r.tt).startsWith(String(row.tt) + "."));
+                                let toggleHtml = "";
+                                if (hasChildren && activeLevel === 'detail') {
+                                    const toggleId = String(row.ma_bsc || "").trim() !== "" ? String(row.ma_bsc).trim() : String(row.tt).trim();
+                                    const isExpanded = expandedParents.has(toggleId);
+                                    toggleHtml = `<button class="toggle-children-btn" data-id="${toggleId}"><i class="fa-solid ${isExpanded ? 'fa-circle-minus' : 'fa-circle-plus'}"></i></button>`;
+                                }
+                                const level = String(row.tt || "").split(".").length - 1;
+                                const indentStyle = level > 0 ? `style="margin-left: ${level * 16}px;"` : "";
+                                const canAdd = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_them);
+                                const addButton = canAdd ? `
+                                    <button class="btn-add-child-inline" data-tt="${row.tt}" title="Thêm công việc con" style="background: none; border: none; padding: 2px; cursor: pointer; display: inline-flex; align-items: center; vertical-align: middle;">
+                                        <i class="fa-solid fa-circle-plus" style="color: var(--color-green); font-size: 0.95rem; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'"></i>
+                                    </button>
+                                ` : "";
+                                return `<span ${indentStyle} class="hang-muc-cell-container">${toggleHtml} ${row.hang_muc_work || ""} ${addButton}</span>`;
+                            })()}
                         </td>
                         <td>${row.phu_trach || ""}</td>
                         <td>${row.ngay_bd_yc || ""}</td>
@@ -1652,7 +1786,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             ` : ""}
                         </td>
                         <td style="text-align:right; font-weight:600; background-color: rgba(255,255,255,0.02);">${isParent ? luyKeABVal.toFixed(2) : ""}</td>
-                        <td style="text-align:right; font-weight:600; background-color: rgba(255,255,255,0.02);">${isParent ? luyKeBBVal.toFixed(2) : ""}</td>
+                        <td style="text-align:right; font-weight:600; background-color: rgba(255,255,255,0.02);">${isParent ? parseFloat(row.luy_ke_bb_hd || 0).toFixed(2) : ""}</td>
+                        <td style="text-align:right; font-weight:600; background-color: rgba(255,255,255,0.02);">${isParent ? parseFloat(row.luy_ke_bb_th || 0).toFixed(2) : ""}</td>
                         <td style="text-align:right; font-weight:700; background-color: rgba(255,255,255,0.04);">${isParent ? luyKeTongVal.toFixed(2) : ""}</td>
                         <td style="text-align:center;">${isParent ? `<span class="badge info">${row.tai_lieu_kh_thang}</span>` : ""}</td>
                         <td style="text-align:center;">${isParent && row.phat_sinh_chua_duyet > 0 ? `<span class="badge danger">${row.phat_sinh_chua_duyet}</span>` : (isParent ? '<span class="badge success">0</span>' : "")}</td>
@@ -1716,14 +1851,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (field === 'hang_muc_work') {
             let html = "";
-            if (isParent) {
-                const hasChildren = db.master.some(r => r !== row && String(r.tt).startsWith(row.tt + "."));
-                if (hasChildren && activeLevel === 'detail') {
-                    const isExpanded = expandedParents.has(row.ma_bsc);
-                    html += `<button class="toggle-children-btn" data-id="${row.ma_bsc}"><i class="fa-solid ${isExpanded ? 'fa-circle-minus' : 'fa-circle-plus'}"></i></button>`;
-                }
+            const hasChildren = db.master.some(r => r !== row && String(r.tt).startsWith(String(row.tt) + "."));
+            if (hasChildren && activeLevel === 'detail') {
+                const toggleId = String(row.ma_bsc || "").trim() !== "" ? String(row.ma_bsc).trim() : String(row.tt).trim();
+                const isExpanded = expandedParents.has(toggleId);
+                html += `<button class="toggle-children-btn" data-id="${toggleId}"><i class="fa-solid ${isExpanded ? 'fa-circle-minus' : 'fa-circle-plus'}"></i></button>`;
             }
-            td.innerHTML = html + (row.hang_muc_work || "");
+            const level = String(row.tt || "").split(".").length - 1;
+            const indentStyle = level > 0 ? `style="margin-left: ${level * 16}px;"` : "";
+            const canAdd = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_them);
+            const addButton = canAdd ? `
+                <button class="btn-add-child-inline" data-tt="${row.tt}" title="Thêm công việc con" style="background: none; border: none; padding: 2px; cursor: pointer; display: inline-flex; align-items: center; vertical-align: middle;">
+                    <i class="fa-solid fa-circle-plus" style="color: var(--color-green); font-size: 0.95rem; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'"></i>
+                </button>
+            ` : "";
+            td.innerHTML = `<span ${indentStyle} class="hang-muc-cell-container">${html} ${row.hang_muc_work || ""} ${addButton}</span>`;
         } 
         else if (field === 'nhom_ct' || field === 'goi_thau_pl' || field === 'phu_trach' || field === 'ngay_bd_yc' || field === 'ngay_kt_yc' || field === 'kh_phat_hang_hstktc' || field === 'kh_lcnt' || field === 'kh_ky_hdcu' || field === 'kh_pd_khcu' || field === 'kh_ky_plhd_cdt' || field === 'kh_pd_khtk') {
             td.textContent = row[field] || "";
@@ -1806,8 +1948,14 @@ document.addEventListener("DOMContentLoaded", () => {
             td.style.textAlign = "right";
             td.style.fontWeight = "600";
         }
-        else if (field === 'luy_ke_bb') {
-            const val = parseFloat(row.luy_ke_bb || 0);
+        else if (field === 'luy_ke_bb_hd') {
+            const val = parseFloat(row.luy_ke_bb_hd || 0);
+            td.textContent = isParent ? val.toFixed(2) : "";
+            td.style.textAlign = "right";
+            td.style.fontWeight = "600";
+        }
+        else if (field === 'luy_ke_bb_th') {
+            const val = parseFloat(row.luy_ke_bb_th || 0);
             td.textContent = isParent ? val.toFixed(2) : "";
             td.style.textAlign = "right";
             td.style.fontWeight = "600";
@@ -2333,8 +2481,12 @@ function openEditModalForm(rowIdx) {
                         <input type="number" step="0.01" id="edit-form-gia-tri-hdcu" class="form-control" value="${row.gia_tri_hdcu || 0}">
                     </div>
                     <div class="form-group">
-                        <label>Lũy Kế Phát Sinh B-B' (tỷ - từ Sổ 03)</label>
-                        <input type="text" class="form-control" value="${parseFloat(row.luy_ke_bb || 0).toFixed(2)}" disabled>
+                        <label>Lũy Kế HĐ B-B' (tỷ - từ Sổ 03)</label>
+                        <input type="text" class="form-control" value="${parseFloat(row.luy_ke_bb_hd || 0).toFixed(2)}" disabled style="background: rgba(255,255,255,0.03);">
+                    </div>
+                    <div class="form-group">
+                        <label>Lũy Kế TH B-B' (tỷ - từ Sổ 03)</label>
+                        <input type="text" class="form-control" value="${parseFloat(row.luy_ke_bb_th || 0).toFixed(2)}" disabled style="background: rgba(255,255,255,0.03);">
                     </div>
                     <div class="form-group">
                         <label>Lũy Kế Tổng Chi Phí (tỷ - Hệ thống tự tính)</label>
@@ -2459,6 +2611,15 @@ function openEditModalForm(rowIdx) {
     }
 
     function attachGridEventListeners() {
+        // Inline add child row button
+        document.querySelectorAll(".btn-add-child-inline").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const parentTt = btn.getAttribute("data-tt");
+                openAddChildModal(parentTt);
+            });
+        });
+
         // Dropdown select change
         document.querySelectorAll(".grid-select").forEach(select => {
             select.addEventListener("change", (e) => {
@@ -2898,6 +3059,7 @@ function openEditModalForm(rowIdx) {
 
             const tr = document.createElement("tr");
             const valPs = parseFloat(row['Giá trị (tỷ)'] || 0);
+            const valPsTh = parseFloat(row['Giá trị thực hiện (tỷ)'] || 0);
 
             const canApprove = row['TT duyệt'] === 'Chờ duyệt' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
             const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
@@ -2913,6 +3075,7 @@ function openEditModalForm(rowIdx) {
                 <td>${row['Nguyên nhân'] || ""}</td>
                 <td>${row['Đề xuất xử lý'] || ""}</td>
                 <td style="text-align:right; font-weight:700; color:var(--color-yellow);">${valPs.toFixed(2)} tỷ</td>
+                <td style="text-align:right; font-weight:700; color:var(--color-green);">${valPsTh.toFixed(2)} tỷ</td>
                 <td>${row['Ảnh hưởng TĐ (ngày)'] || 0} ngày</td>
                 <td>${renderLinkHtml(row['LINK hồ sơ'])}</td>
                 <td>
@@ -3488,8 +3651,12 @@ function openEditModalForm(rowIdx) {
                     <input type="text" id="form-propose" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label>Giá trị dự kiến (Tỷ)</label>
+                    <label>Giá trị HĐ phát sinh (Tỷ)</label>
                     <input type="number" step="0.01" id="form-val" class="form-control" value="0.5">
+                </div>
+                <div class="form-group">
+                    <label>Giá trị thực hiện phát sinh (Tỷ)</label>
+                    <input type="number" step="0.01" id="form-val-thuc-hien" class="form-control" value="0.00">
                 </div>
                 <div class="form-group">
                     <label>Ảnh hưởng tiến độ (Ngày chậm)</label>
@@ -3686,6 +3853,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-cause").value = doc["Nguyên nhân"] || "";
                 document.getElementById("form-propose").value = doc["Đề xuất xử lý"] || "";
                 document.getElementById("form-val").value = doc["Giá trị (tỷ)"] || 0;
+                document.getElementById("form-val-thuc-hien").value = doc["Giá trị thực hiện (tỷ)"] || 0;
                 document.getElementById("form-delay").value = doc["Ảnh hưởng TĐ (ngày)"] || 0;
                 document.getElementById("form-link").value = doc["LINK hồ sơ"] || "";
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
@@ -3698,6 +3866,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-kl").value = doc["KL"] || 100;
                 document.getElementById("form-dvt").value = doc["ĐVT"] || "m2";
                 document.getElementById("form-val").value = doc["Giá trị (tỷ)"] || 0;
+                document.getElementById("form-val-thuc-hien").value = doc["Giá trị thực hiện (tỷ)"] || 0;
                 document.getElementById("form-target").value = doc["Trong/Target Ngoài HĐCU"] || doc["Trong/Ngoài HĐCU"] || "Ngoài HĐCU";
                 document.getElementById("form-link").value = doc["LINK hồ sơ"] || "";
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
@@ -3837,7 +4006,52 @@ function openEditModalForm(rowIdx) {
 
     // Save Form Values to Local Database
     modalSaveBtn.addEventListener("click", () => {
-        if (currentFormTarget === 'master') {
+        if (currentFormTarget === 'add_child_row') {
+            const parentTt = document.getElementById("form-child-parent-tt").value;
+            const nextTt = document.getElementById("form-child-tt").value;
+            const name = document.getElementById("form-child-work-name").value.trim();
+            if (name === "") { alert("Vui lòng nhập Tên hạng mục / công việc con!"); return; }
+            
+            const parentRow = db.master.find(r => String(r.tt).trim() === String(parentTt).trim());
+            if (!parentRow) return;
+            
+            const newRow = {
+                tt: nextTt,
+                ma_bsc: "",
+                goi_thau_pl: parentRow.goi_thau_pl || "",
+                nhom_ct: parentRow.nhom_ct || "",
+                hang_muc_work: name,
+                phu_trach: document.getElementById("form-child-phu-trach").value,
+                ngay_bd_yc: document.getElementById("form-child-start-date").value,
+                ngay_kt_yc: document.getElementById("form-child-end-date").value,
+                ngan_sach: parseFloat(document.getElementById("form-child-ngan-sach").value) || 0,
+                tt_hstktc: 'Chưa có TK',
+                tt_specs: 'Chưa có',
+                tt_boq_kl: 'Chưa bàn giao',
+                tt_lcnt: 'Chưa LCNT',
+                tt_ky_hdcu: 'Chưa CU',
+                tt_khcu: 'Chưa lập',
+                tt_khtk: 'Chưa trình',
+                gia_tri_hdcu: 0,
+                percent_hdcu_ns: 0,
+                dieu_kien_du: 'THIẾU ĐK',
+                luy_ke_ab: "",
+                luy_ke_bb_hd: "",
+                luy_ke_bb_th: "",
+                luy_ke_tong_chi_phi: ""
+            };
+            
+            db.master.push(newRow);
+            db.master.sort(compareTt);
+            
+            const parentToggleId = String(parentRow.ma_bsc || "").trim() !== "" ? String(parentRow.ma_bsc).trim() : String(parentRow.tt).trim();
+            expandedParents.add(parentToggleId);
+            
+            showToast("Thêm công việc con", `Đã thêm công việc con ${nextTt} thành công.`, "success");
+            closeModal();
+            calculateRollups();
+            renderMasterGrid();
+        } else if (currentFormTarget === 'master') {
             const bsc = document.getElementById("form-ma-bsc").value.trim();
             if (bsc === "") { alert("Vui lòng nhập Mã BSC"); return; }
             
@@ -4078,6 +4292,7 @@ function openEditModalForm(rowIdx) {
                 doc["Nguyên nhân"] = document.getElementById("form-cause").value;
                 doc["Đề xuất xử lý"] = document.getElementById("form-propose").value;
                 doc["Giá trị (tỷ)"] = parseFloat(document.getElementById("form-val").value) || 0;
+                doc["Giá trị thực hiện (tỷ)"] = parseFloat(document.getElementById("form-val-thuc-hien").value) || 0;
                 doc["Ảnh hưởng TĐ (ngày)"] = parseInt(document.getElementById("form-delay").value) || 0;
                 doc["LINK hồ sơ"] = document.getElementById("form-link").value;
                 doc["TT duyệt"] = "Chờ duyệt";
@@ -4096,6 +4311,7 @@ function openEditModalForm(rowIdx) {
                     "Nguyên nhân": document.getElementById("form-cause").value,
                     "Đề xuất xử lý": document.getElementById("form-propose").value,
                     "Giá trị (tỷ)": parseFloat(document.getElementById("form-val").value) || 0,
+                    "Giá trị thực hiện (tỷ)": parseFloat(document.getElementById("form-val-thuc-hien").value) || 0,
                     "Ảnh hưởng TĐ (ngày)": parseInt(document.getElementById("form-delay").value) || 0,
                     "LINK hồ sơ": document.getElementById("form-link").value,
                     "TT duyệt": "Chờ duyệt",
@@ -4119,6 +4335,7 @@ function openEditModalForm(rowIdx) {
                 doc["KL"] = parseFloat(document.getElementById("form-kl").value) || 0;
                 doc["ĐVT"] = document.getElementById("form-dvt").value;
                 doc["Giá trị (tỷ)"] = parseFloat(document.getElementById("form-val").value) || 0;
+                doc["Giá trị thực hiện (tỷ)"] = parseFloat(document.getElementById("form-val-thuc-hien").value) || 0;
                 doc["Trong/Target Ngoài HĐCU"] = document.getElementById("form-target").value;
                 doc["LINK hồ sơ"] = document.getElementById("form-link").value;
                 doc["TT duyệt"] = "Chờ duyệt";
@@ -4138,6 +4355,7 @@ function openEditModalForm(rowIdx) {
                     "KL": parseFloat(document.getElementById("form-kl").value) || 0,
                     "ĐVT": document.getElementById("form-dvt").value,
                     "Giá trị (tỷ)": parseFloat(document.getElementById("form-val").value) || 0,
+                    "Giá trị thực hiện (tỷ)": parseFloat(document.getElementById("form-val-thuc-hien").value) || 0,
                     "Trong/Target Ngoài HĐCU": document.getElementById("form-target").value,
                     "LINK hồ sơ": document.getElementById("form-link").value,
                     "TT duyệt": "Chờ duyệt",
@@ -5101,7 +5319,7 @@ function openEditModalForm(rowIdx) {
                         "tt_ky_hdcu", "kh_pd_khcu", "tt_khcu", "gia_tri_hdcu", "percent_hdcu_ns",
                         "kh_ky_plhd_cdt", "tt_ky_plhd_cdt", "kh_pd_khtk", "tt_khtk",
                         "dk1_hskt", "dk2_hdcu", "dk3_khtk", "dieu_kien_du", "ngay_bd_khoi_cong",
-                        "hs_tien_kc_duyet", "luy_ke_ab", "luy_ke_bb", "luy_ke_tong_chi_phi",
+                        "hs_tien_kc_duyet", "luy_ke_ab", "luy_ke_bb_hd", "luy_ke_bb_th", "luy_ke_tong_chi_phi",
                         "tai_lieu_kh_thang", "phat_sinh_chua_duyet", "yc_cung_ung_cho_duyet", "bu_tien_do_dang_chay",
                         "qa_kh_klcv_thang", "qa_kq_klcv_thang", "qa_danh_gia_thang",
                         "tc_kh_klcv_thang", "tc_kq_klcv_thang", "tc_danh_gia_thang",
