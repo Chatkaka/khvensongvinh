@@ -835,6 +835,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 4. Render Budget Towers
         renderBudgetTowers();
+        
+        // Wire up Telegram report button click handler
+        const sendReportBtn = document.getElementById("btn-send-telegram-report");
+        if (sendReportBtn) {
+            // Remove any existing listeners by cloning
+            const newBtn = sendReportBtn.cloneNode(true);
+            sendReportBtn.parentNode.replaceChild(newBtn, sendReportBtn);
+            newBtn.addEventListener("click", () => {
+                newBtn.disabled = true;
+                newBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang gửi báo cáo...`;
+                sendTelegramWarningReport().finally(() => {
+                    newBtn.disabled = false;
+                    newBtn.innerHTML = `<i class="fa-brands fa-telegram"></i> Gửi Báo Cáo Cảnh Báo Telegram`;
+                });
+            });
+        }
     }
 
     function renderGanttChart() {
@@ -1144,6 +1160,180 @@ document.addEventListener("DOMContentLoaded", () => {
             return `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
         return dateStr;
+    }
+
+    async function sendTelegramMessage(message) {
+        const token = localStorage.getItem("telegram_bot_token") || "";
+        const chatId = localStorage.getItem("telegram_chat_id") || "";
+        if (!token || !chatId) {
+            console.warn("Telegram notification skipped: Bot Token or Chat ID not configured.");
+            return false;
+        }
+        
+        const url = `https://api.telegram.org/bot${token}/sendMessage`;
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: message,
+                    parse_mode: "HTML"
+                })
+            });
+            const data = await response.json();
+            if (data.ok) {
+                return true;
+            } else {
+                console.error("Telegram API error:", data.description);
+                return false;
+            }
+        } catch (e) {
+            console.error("Failed to send Telegram message:", e);
+            return false;
+        }
+    }
+
+    async function sendTelegramWarningReport() {
+        const token = localStorage.getItem("telegram_bot_token") || "";
+        const chatId = localStorage.getItem("telegram_chat_id") || "";
+        if (!token || !chatId) {
+            showToast("Telegram", "Vui lòng cấu hình Bot Token và Chat ID trong phần Cài đặt hệ thống trước!", "danger");
+            return;
+        }
+
+        const currentDate = getSystemDateGMT7();
+        
+        let overdueHstk = [];
+        let upcomingHstk = [];
+        let overdueLcnt = [];
+        let upcomingLcnt = [];
+        let overdueHdcu = [];
+        let upcomingHdcu = [];
+        let highRatio = [];
+        let missingDk = [];
+        let slowWorks = [];
+
+        db.master.forEach(r => {
+            const ma_bsc = String(r.ma_bsc || "").trim();
+            const isChild = ma_bsc === "";
+            if (isChild) {
+                // 1 & 2: HSTKTC plan date checks
+                const hstk_date = r.kh_phat_hang_hstktc;
+                const hstk_status = String(r.tt_hstktc).trim();
+                const hstk_done = hstk_status === 'Đã phát hành' || hstk_status === 'Hoàn thiện';
+                if (hstk_date && !hstk_done) {
+                    const diff = getDaysDiff(hstk_date, currentDate);
+                    if (diff !== null) {
+                        const rowName = `[${r.tt}] ${r.hang_muc_work}`;
+                        if (diff <= 0) overdueHstk.push(`- ${rowName} (Hạn: ${formatDateDMY(hstk_date)})`);
+                        else if (diff > 0 && diff <= 3) upcomingHstk.push(`- ${rowName} (Hạn: ${formatDateDMY(hstk_date)} - Còn ${diff} ngày)`);
+                    }
+                }
+
+                // 3 & 4: LCNT plan date checks
+                const lcnt_date = r.kh_lcnt;
+                const lcnt_status = String(r.tt_lcnt).trim();
+                const lcnt_done = lcnt_status === 'Đã có KQ' || lcnt_status === 'Đã ký';
+                if (lcnt_date && !lcnt_done) {
+                    const diff = getDaysDiff(lcnt_date, currentDate);
+                    if (diff !== null) {
+                        const rowName = `[${r.tt}] ${r.hang_muc_work}`;
+                        if (diff <= 0) overdueLcnt.push(`- ${rowName} (Hạn: ${formatDateDMY(lcnt_date)})`);
+                        else if (diff > 0 && diff <= 3) upcomingLcnt.push(`- ${rowName} (Hạn: ${formatDateDMY(lcnt_date)} - Còn ${diff} ngày)`);
+                    }
+                }
+
+                // 5 & 6: HĐCU plan date checks
+                const hdcu_date = r.kh_ky_hdcu;
+                const hdcu_status = String(r.tt_ky_hdcu).trim();
+                const hdcu_done = hdcu_status === 'Đã CU';
+                if (hdcu_date && !hdcu_done) {
+                    const diff = getDaysDiff(hdcu_date, currentDate);
+                    if (diff !== null) {
+                        const rowName = `[${r.tt}] ${r.hang_muc_work}`;
+                        if (diff <= 0) overdueHdcu.push(`- ${rowName} (Hạn: ${formatDateDMY(hdcu_date)})`);
+                        else if (diff > 0 && diff <= 3) upcomingHdcu.push(`- ${rowName} (Hạn: ${formatDateDMY(hdcu_date)} - Còn ${diff} ngày)`);
+                    }
+                }
+            } else {
+                // Root packages
+                // 7: %HĐCU/NS > 95%
+                const ns = parseFloat(r.ngan_sach || 0);
+                const hd = parseFloat(r.gia_tri_hdcu || 0);
+                const percent = ns > 0 ? (hd / ns) : 0;
+                if (percent > 0.95) {
+                    highRatio.push(`- [${r.ma_bsc}] ${r.hang_muc_work} (Tỷ lệ: ${(percent * 100).toFixed(1)}%)`);
+                }
+
+                // 8: Chốt chặn khởi công - Chưa đủ ĐK
+                if (r.dieu_kien_du === 'THIẾU ĐK') {
+                    missingDk.push(`- [${r.ma_bsc}] ${r.hang_muc_work}`);
+                }
+            }
+        });
+
+        // 9: Slow works from Sổ 05
+        db.s05.forEach(d => {
+            if (d['TT thực hiện'] !== 'Đã hoàn thành') {
+                slowWorks.push(`- [${d['Mã BSC']}] ${d['Hạng mục']} (Trễ: ${d['Mức chậm (ngày)']} ngày)`);
+            }
+        });
+
+        let msg = `🔔 <b>BÁO CÁO CẢNH BÁO TIẾN ĐỘ & CHI PHÍ</b>\n`;
+        msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>\n\n`;
+
+        let hasWarning = false;
+
+        if (overdueHstk.length > 0) {
+            hasWarning = true;
+            msg += `🔴 <b>QUÁ HẠN KH HSTKTC:</b>\n${overdueHstk.join("\n")}\n\n`;
+        }
+        if (upcomingHstk.length > 0) {
+            hasWarning = true;
+            msg += `🍊 <b>SẮP ĐẾN HẠN KH HSTKTC (3 ngày):</b>\n${upcomingHstk.join("\n")}\n\n`;
+        }
+        if (overdueLcnt.length > 0) {
+            hasWarning = true;
+            msg += `🔴 <b>QUÁ HẠN KH LCNT:</b>\n${overdueLcnt.join("\n")}\n\n`;
+        }
+        if (upcomingLcnt.length > 0) {
+            hasWarning = true;
+            msg += `🍊 <b>SẮP ĐẾN HẠN KH LCNT (3 ngày):</b>\n${upcomingLcnt.join("\n")}\n\n`;
+        }
+        if (overdueHdcu.length > 0) {
+            hasWarning = true;
+            msg += `🔴 <b>QUÁ HẠN KH KÝ HĐCU:</b>\n${overdueHdcu.join("\n")}\n\n`;
+        }
+        if (upcomingHdcu.length > 0) {
+            hasWarning = true;
+            msg += `🍊 <b>SẮP ĐẾN HẠN KH KÝ HĐCU (3 ngày):</b>\n${upcomingHdcu.join("\n")}\n\n`;
+        }
+        if (highRatio.length > 0) {
+            hasWarning = true;
+            msg += `💸 <b>HĐCU/NS VƯỢT 95%:</b>\n${highRatio.join("\n")}\n\n`;
+        }
+        if (missingDk.length > 0) {
+            hasWarning = true;
+            msg += `🛑 <b>THIẾU ĐK KHỞI CÔNG:</b>\n${missingDk.join("\n")}\n\n`;
+        }
+        if (slowWorks.length > 0) {
+            hasWarning = true;
+            msg += `🐢 <b>GÓI THẦU CHẬM TRỄ (Sổ 05):</b>\n${slowWorks.join("\n")}\n\n`;
+        }
+
+        if (!hasWarning) {
+            msg += `✅ <b>Hệ thống hoạt động tốt:</b> Không ghi nhận cảnh báo quá hạn hay chậm trễ nào tại thời điểm hiện tại.`;
+        }
+
+        const ok = await sendTelegramMessage(msg);
+        if (ok) {
+            showToast("Telegram", "Đã gửi báo cáo cảnh báo qua Telegram thành công!", "success");
+        } else {
+            showToast("Telegram", "Gửi báo cáo qua Telegram thất bại. Vui lòng kiểm tra lại Bot Token và Chat ID.", "danger");
+        }
     }
 
     function getParentIdForTt(row) {
@@ -6322,12 +6512,19 @@ dropzone.addEventListener("click", () => fileInput.click());
     const modelSelect = document.getElementById("gemini-model-select");
     const saveSettingsBtn = document.getElementById("btn-save-settings");
     const resetFactoryBtn = document.getElementById("btn-reset-db-factory");
+    
+    const telegramTokenInput = document.getElementById("telegram-bot-token");
+    const telegramChatIdInput = document.getElementById("telegram-chat-id");
+    const testTelegramBtn = document.getElementById("btn-test-telegram");
 
     // Load initial settings
     apiKeyInput.value = GeminiAI.apiKey;
     if (modelSelect) {
         modelSelect.value = GeminiAI.model;
     }
+    if (telegramTokenInput) telegramTokenInput.value = localStorage.getItem("telegram_bot_token") || "";
+    if (telegramChatIdInput) telegramChatIdInput.value = localStorage.getItem("telegram_chat_id") || "";
+    
     updateAiStatusIndicator();
 
     saveSettingsBtn.addEventListener("click", () => {
@@ -6335,9 +6532,42 @@ dropzone.addEventListener("click", () => fileInput.click());
         const model = modelSelect ? modelSelect.value : 'gemini-3.5-flash';
         GeminiAI.setApiKey(key);
         GeminiAI.setModel(model);
+        
+        if (telegramTokenInput) localStorage.setItem("telegram_bot_token", telegramTokenInput.value.trim());
+        if (telegramChatIdInput) localStorage.setItem("telegram_chat_id", telegramChatIdInput.value.trim());
+        
         updateAiStatusIndicator();
-        showToast("Hệ thống", "Đã lưu cài đặt và kết nối Gemini AI thành công.", "success");
+        showToast("Hệ thống", "Đã lưu cài đặt cấu hình thành công.", "success");
     });
+
+    if (testTelegramBtn) {
+        testTelegramBtn.addEventListener("click", async () => {
+            const token = telegramTokenInput.value.trim();
+            const chatId = telegramChatIdInput.value.trim();
+            if (!token || !chatId) {
+                alert("Vui lòng nhập đầy đủ Telegram Bot Token và Chat ID trước khi gửi thử!");
+                return;
+            }
+            
+            testTelegramBtn.disabled = true;
+            testTelegramBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang gửi...`;
+            
+            localStorage.setItem("telegram_bot_token", token);
+            localStorage.setItem("telegram_chat_id", chatId);
+            
+            const msg = `🔔 <b>Hệ thống ERP VSV - Thông báo thử nghiệm</b>\n\nKết nối thành công! Hệ thống của bạn đã sẵn sàng nhận các cảnh báo quá hạn tự động.`;
+            const ok = await sendTelegramMessage(msg);
+            
+            testTelegramBtn.disabled = false;
+            testTelegramBtn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Gửi thử tin nhắn test`;
+            
+            if (ok) {
+                showToast("Telegram", "Đã gửi tin nhắn test thành công! Hãy kiểm tra Telegram của bạn.", "success");
+            } else {
+                showToast("Telegram", "Gửi tin nhắn test thất bại. Vui lòng kiểm tra lại Bot Token và Chat ID.", "danger");
+            }
+        });
+    }
 
     resetFactoryBtn.addEventListener("click", () => {
         if (confirm("CẢNH BÁO: Hành động này sẽ xóa toàn bộ thay đổi và đặt lại dữ liệu gốc. Bạn có chắc chắn muốn đặt lại?")) {

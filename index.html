@@ -123,9 +123,14 @@
         <div class="tab-pane active" id="tab-dashboard">
             <!-- Dashboard Tổng quan Hệ thống -->
             <div class="dashboard-overview-header" style="margin-bottom: 24px; background-color: var(--bg-surface); padding: 18px 24px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-premium);">
-                <h2 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-family: var(--font-heading); text-transform: uppercase; letter-spacing: 0.5px;">
-                    <i class="fa-solid fa-chart-line" style="color: var(--color-ai-primary);"></i> Dashboard Tổng quan Hệ thống
-                </h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <h2 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px; font-family: var(--font-heading); text-transform: uppercase; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-chart-line" style="color: var(--color-ai-primary);"></i> Dashboard Tổng quan Hệ thống
+                    </h2>
+                    <button class="btn-action approve" id="btn-send-telegram-report" style="padding: 8px 16px; background-color: var(--color-ai-glow); color: var(--color-ai-primary); border-color: rgba(59, 130, 246, 0.3);">
+                        <i class="fa-brands fa-telegram"></i> Gửi Báo Cáo Cảnh Báo Telegram
+                    </button>
+                </div>
                 <div class="dashboard-overview-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px;">
                     <!-- Card 1: Quá hạn KH phát hành HSTKTC -->
                     <div class="overview-card" id="card-hstk-overdue" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #ff5252; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
@@ -679,6 +684,29 @@
                     <label>Trạng Thái Tích Hợp AI</label>
                     <div id="ai-status-indicator" style="display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:600; color: var(--color-yellow);">
                         <i class="fa-solid fa-circle-exclamation"></i> Đang ở chế độ Giả lập (Simulation Mode - Không cần API Key)
+                    </div>
+                </div>
+
+                <hr style="border:none; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+                <div class="settings-section" style="margin-bottom: 20px;">
+                    <h3 style="font-size: 1rem; font-weight: 700; color: var(--color-ai-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-brands fa-telegram"></i> Tích hợp Thông báo Telegram
+                    </h3>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 16px;">Nhận cảnh báo tự động về các công việc quá hạn hoặc sắp đến hạn trực tiếp trên Telegram.</p>
+                    
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label for="telegram-bot-token">Telegram Bot Token</label>
+                        <input type="password" id="telegram-bot-token" class="form-control" placeholder="Nhập Token của Bot Telegram (ví dụ: 123456789:ABCdef...)">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label for="telegram-chat-id">Telegram Chat ID (Cá nhân hoặc ID Nhóm)</label>
+                        <input type="text" id="telegram-chat-id" class="form-control" placeholder="Nhập ID cuộc trò chuyện hoặc nhóm (ví dụ: -100123456789 hoặc 987654321)">
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-action approve" id="btn-test-telegram" style="padding: 8px 16px; background-color: var(--color-green-glow); color: var(--color-green); border-color: rgba(16, 185, 129, 0.3);">
+                            <i class="fa-solid fa-paper-plane"></i> Gửi thử tin nhắn test
+                        </button>
                     </div>
                 </div>
 
