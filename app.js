@@ -1250,10 +1250,26 @@ document.addEventListener("DOMContentLoaded", () => {
         let missingDk = [];
         let slowWorks = [];
 
+        const getParentBsc = (ttStr) => {
+            if (!ttStr || !ttStr.includes(".")) return "";
+            const parts = ttStr.split(".");
+            for (let i = parts.length - 1; i > 0; i--) {
+                const parentTt = parts.slice(0, i).join(".");
+                const parentRow = db.master.find(x => String(x.tt) === parentTt);
+                if (parentRow && String(parentRow.ma_bsc || "").trim() !== "") {
+                    return String(parentRow.ma_bsc || "").trim();
+                }
+            }
+            return "";
+        };
+
         db.master.forEach(r => {
             const ma_bsc = String(r.ma_bsc || "").trim();
             const isChild = ma_bsc === "";
             if (isChild) {
+                const pBsc = getParentBsc(String(r.tt));
+                const bscPart = pBsc ? ` [${pBsc}]` : "";
+                
                 // 1 & 2: HSTKTC plan date checks
                 const hstk_date = r.kh_phat_hang_hstktc;
                 const hstk_status = String(r.tt_hstktc).trim();
@@ -1261,7 +1277,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (hstk_date && !hstk_done) {
                     const diff = getDaysDiff(hstk_date, currentDate);
                     if (diff !== null) {
-                        const rowName = `[${r.tt}] ${r.hang_muc_work}`;
+                        const rowName = `[${r.tt}]${bscPart} ${r.hang_muc_work}`;
                         if (diff <= 0) overdueHstk.push(`- ${rowName} (Hạn: ${formatDateDMY(hstk_date)})`);
                         else if (diff > 0 && diff <= 3) upcomingHstk.push(`- ${rowName} (Hạn: ${formatDateDMY(hstk_date)} - Còn ${diff} ngày)`);
                     }
@@ -1274,7 +1290,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (lcnt_date && !lcnt_done) {
                     const diff = getDaysDiff(lcnt_date, currentDate);
                     if (diff !== null) {
-                        const rowName = `[${r.tt}] ${r.hang_muc_work}`;
+                        const rowName = `[${r.tt}]${bscPart} ${r.hang_muc_work}`;
                         if (diff <= 0) overdueLcnt.push(`- ${rowName} (Hạn: ${formatDateDMY(lcnt_date)})`);
                         else if (diff > 0 && diff <= 3) upcomingLcnt.push(`- ${rowName} (Hạn: ${formatDateDMY(lcnt_date)} - Còn ${diff} ngày)`);
                     }
@@ -1287,7 +1303,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (hdcu_date && !hdcu_done) {
                     const diff = getDaysDiff(hdcu_date, currentDate);
                     if (diff !== null) {
-                        const rowName = `[${r.tt}] ${r.hang_muc_work}`;
+                        const rowName = `[${r.tt}]${bscPart} ${r.hang_muc_work}`;
                         if (diff <= 0) overdueHdcu.push(`- ${rowName} (Hạn: ${formatDateDMY(hdcu_date)})`);
                         else if (diff > 0 && diff <= 3) upcomingHdcu.push(`- ${rowName} (Hạn: ${formatDateDMY(hdcu_date)} - Còn ${diff} ngày)`);
                     }
@@ -3832,7 +3848,10 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Loại hồ sơ</label>
-                    <select id="form-loai" class="form-control">${renderOptions(getDanhMucList('Loại hồ sơ tiền KC'))}</select>
+                    <input type="text" id="form-loai" class="form-control" list="list-s01-loai" placeholder="Chọn hoặc nhập loại hồ sơ...">
+                    <datalist id="list-s01-loai">
+                        ${getDanhMucList('Loại hồ sơ tiền KC').map(opt => `<option value="${opt}"></option>`).join('')}
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Tên sản phẩm / Số hiệu bản vẽ</label>
@@ -3874,7 +3893,10 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Loại tài liệu</label>
-                    <select id="form-loai" class="form-control">${renderOptions(getDanhMucList('Loại tài liệu KH tháng'))}</select>
+                    <input type="text" id="form-loai" class="form-control" list="list-s02-loai" placeholder="Chọn hoặc nhập loại tài liệu...">
+                    <datalist id="list-s02-loai">
+                        ${getDanhMucList('Loại tài liệu KH tháng').map(opt => `<option value="${opt}"></option>`).join('')}
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Nội dung chính</label>
@@ -3882,7 +3904,10 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Đạt YCKT CĐT</label>
-                    <select id="form-dat-yckt" class="form-control">${renderOptions(getDanhMucList('Đạt YCKT CĐT'))}</select>
+                    <input type="text" id="form-dat-yckt" class="form-control" list="list-s02-dat-yckt" placeholder="Chọn hoặc nhập...">
+                    <datalist id="list-s02-dat-yckt">
+                        ${getDanhMucList('Đạt YCKT CĐT').map(opt => `<option value="${opt}"></option>`).join('')}
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Link, hồ sơ đính kèm</label>
@@ -3916,7 +3941,10 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Loại phát sinh</label>
-                    <select id="form-loai" class="form-control">${renderOptions(getDanhMucList('Loại phát sinh'))}</select>
+                    <input type="text" id="form-loai" class="form-control" list="list-s03-loai" placeholder="Chọn hoặc nhập loại phát sinh...">
+                    <datalist id="list-s03-loai">
+                        ${getDanhMucList('Loại phát sinh').map(opt => `<option value="${opt}"></option>`).join('')}
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Mô tả chi tiết</label>
@@ -3974,7 +4002,10 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Loại yêu cầu</label>
-                    <select id="form-loai" class="form-control">${renderOptions(getDanhMucList('Loại YC cung ứng'))}</select>
+                    <input type="text" id="form-loai" class="form-control" list="list-s04-loai" placeholder="Chọn hoặc nhập loại cung ứng...">
+                    <datalist id="list-s04-loai">
+                        ${getDanhMucList('Loại YC cung ứng').map(opt => `<option value="${opt}"></option>`).join('')}
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Vật tư / Thiết bị đặc thù</label>
@@ -3998,10 +4029,11 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Target cung ứng</label>
-                    <select id="form-target" class="form-control">
-                        <option value="Ngoài HĐCU">Ngoài HĐCU</option>
-                        <option value="Trong HĐCU">Trong HĐCU</option>
-                    </select>
+                    <input type="text" id="form-target" class="form-control" list="list-s04-target" placeholder="Chọn hoặc nhập target...">
+                    <datalist id="list-s04-target">
+                        <option value="Ngoài HĐCU"></option>
+                        <option value="Trong HĐCU"></option>
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Link, hồ sơ đính kèm</label>
@@ -4043,7 +4075,10 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Giải pháp bù</label>
-                    <select id="form-solution" class="form-control">${renderOptions(getDanhMucList('Giải pháp bù'))}</select>
+                    <input type="text" id="form-solution" class="form-control" list="list-s05-solution" placeholder="Chọn hoặc nhập giải pháp...">
+                    <datalist id="list-s05-solution">
+                        ${getDanhMucList('Giải pháp bù').map(opt => `<option value="${opt}"></option>`).join('')}
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Chi tiết phương án hành động</label>
