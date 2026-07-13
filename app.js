@@ -3860,7 +3860,7 @@ function openEditModalForm(rowIdx) {
                 <div class="form-group">
                     <label>Link, hồ sơ đính kèm</label>
                     <div style="display: flex; gap: 8px; flex-direction: column;">
-                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="SPECS_CT09.pdf">
+                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="">
                         <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
                             <span style="font-size: 0.8rem; color: var(--text-secondary);">Hoặc tải tệp (PDF/ảnh):</span>
                             <input type="file" id="form-file-upload" accept="image/*,application/pdf" style="display: none;">
@@ -3912,7 +3912,7 @@ function openEditModalForm(rowIdx) {
                 <div class="form-group">
                     <label>Link, hồ sơ đính kèm</label>
                     <div style="display: flex; gap: 8px; flex-direction: column;">
-                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="KH_TaiLieu.pdf">
+                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="">
                         <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
                             <span style="font-size: 0.8rem; color: var(--text-secondary);">Hoặc tải tệp (PDF/ảnh):</span>
                             <input type="file" id="form-file-upload" accept="image/*,application/pdf" style="display: none;">
@@ -3973,7 +3973,7 @@ function openEditModalForm(rowIdx) {
                 <div class="form-group">
                     <label>Link, hồ sơ đính kèm</label>
                     <div style="display: flex; gap: 8px; flex-direction: column;">
-                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="PS_TaiLieu.pdf">
+                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="">
                         <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
                             <span style="font-size: 0.8rem; color: var(--text-secondary);">Hoặc tải tệp (PDF/ảnh):</span>
                             <input type="file" id="form-file-upload" accept="image/*,application/pdf" style="display: none;">
@@ -4038,7 +4038,7 @@ function openEditModalForm(rowIdx) {
                 <div class="form-group">
                     <label>Link, hồ sơ đính kèm</label>
                     <div style="display: flex; gap: 8px; flex-direction: column;">
-                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="YC_TaiLieu.pdf">
+                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="">
                         <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
                             <span style="font-size: 0.8rem; color: var(--text-secondary);">Hoặc tải tệp (PDF/ảnh):</span>
                             <input type="file" id="form-file-upload" accept="image/*,application/pdf" style="display: none;">
@@ -4091,7 +4091,7 @@ function openEditModalForm(rowIdx) {
                 <div class="form-group">
                     <label>Link, hồ sơ đính kèm</label>
                     <div style="display: flex; gap: 8px; flex-direction: column;">
-                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="PA_BuTienDo.pdf">
+                        <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="">
                         <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
                             <span style="font-size: 0.8rem; color: var(--text-secondary);">Hoặc tải tệp (PDF/ảnh):</span>
                             <input type="file" id="form-file-upload" accept="image/*,application/pdf" style="display: none;">
