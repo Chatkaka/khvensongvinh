@@ -6703,7 +6703,7 @@ const INITIAL_DATABASE = {
     {
       "stt": 1,
       "ho_ten": "Hồ Nghĩa Chất",
-      "email": "chat.hn@tdggroup.vn",
+      "email": "hochat.tayan@gmail.com",
       "phong_ban": "Ban Quản lý Dự án (BQLDA)",
       "vai_tro": "Phó Ban Quản lý Dự án (Admin)",
       "quyen": "Admin",
