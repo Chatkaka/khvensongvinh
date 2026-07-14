@@ -6,6 +6,115 @@
 document.addEventListener("DOMContentLoaded", () => {
     // 1. STATE MANAGEMENT & INITIALIZATION
     let db = {};
+    // ==================== INDEXEDDB FILE STORAGE SYSTEM ====================
+    let idb = null;
+    const dbName = "ERP_FileStorage";
+    const storeName = "files";
+
+    function initIndexedDB() {
+        return new Promise((resolve) => {
+            const request = indexedDB.open(dbName, 1);
+            request.onerror = (e) => {
+                console.error("IndexedDB error:", e);
+                resolve(null);
+            };
+            request.onsuccess = (e) => {
+                idb = e.target.result;
+                resolve(idb);
+            };
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName);
+                }
+            };
+        });
+    }
+
+    function saveFileToIndexedDB(fileId, base64Data) {
+        if (!idb) {
+            initIndexedDB().then(db => {
+                if (db) performSave();
+            });
+            return;
+        }
+        performSave();
+
+        function performSave() {
+            try {
+                const transaction = idb.transaction([storeName], "readwrite");
+                const store = transaction.objectStore(storeName);
+                store.put(base64Data, fileId);
+            } catch (e) {
+                console.error("Error saving file to IndexedDB:", e);
+            }
+        }
+    }
+
+    function getFileFromIndexedDB(fileId) {
+        return new Promise((resolve) => {
+            if (!idb) {
+                initIndexedDB().then(db => {
+                    if (db) performGet();
+                    else resolve(null);
+                });
+                return;
+            }
+            performGet();
+
+            function performGet() {
+                try {
+                    const transaction = idb.transaction([storeName], "readonly");
+                    const store = transaction.objectStore(storeName);
+                    const request = store.get(fileId);
+                    request.onsuccess = (e) => {
+                        resolve(e.target.result || null);
+                    };
+                    request.onerror = () => {
+                        resolve(null);
+                    };
+                } catch (e) {
+                    console.error("Error reading file from IndexedDB:", e);
+                    resolve(null);
+                }
+            }
+        });
+    }
+
+    window.viewIndexedDBFile = function(fileId) {
+        getFileFromIndexedDB(fileId).then(base64Data => {
+            if (!base64Data) {
+                alert("Không tìm thấy tệp tin đính kèm trong cơ sở dữ liệu IndexedDB của trình duyệt!");
+                return;
+            }
+            
+            // Open a new window and render the file
+            const newWindow = window.open();
+            if (!newWindow) {
+                alert("Trình duyệt đã chặn cửa sổ bật lên (popup). Vui lòng cấp quyền cho trang web để hiển thị tệp tin!");
+                return;
+            }
+            
+            const parts = fileId.split("_");
+            const filename = parts.slice(1).join("_") || "attachment";
+            
+            newWindow.document.title = filename;
+            
+            const mimeType = (base64Data.split(';')[0].split(':')[1] || "").toLowerCase();
+            if (mimeType.includes("pdf")) {
+                newWindow.document.body.innerHTML = `
+                    <embed src="${base64Data}" type="application/pdf" width="100%" height="100%" style="border: none; position: fixed; top: 0; left: 0; bottom: 0; right: 0;">
+                `;
+            } else {
+                newWindow.document.body.innerHTML = `
+                    <div style="display:flex; justify-content:center; align-items:center; min-height:100vh; background:#121212;">
+                        <img src="${base64Data}" style="max-width:100%; max-height:100vh; object-fit:contain; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                    </div>
+                `;
+            }
+        });
+    };
+
     const defaultDb = (typeof INITIAL_DATABASE !== 'undefined' ? INITIAL_DATABASE : (window.INITIAL_DATABASE || { master: [], s01: [], s02: [], s03: [], s04: [], s05: [], danh_muc: {} }));
     
     // View level and column sub-tabs state variables
@@ -1251,7 +1360,14 @@ document.addEventListener("DOMContentLoaded", () => {
             linkInput.parentNode.appendChild(base64Input);
         }
         
-        if (linkVal.startsWith("data:")) {
+        if (linkVal.startsWith("dbfile:")) {
+            base64Input.value = linkVal;
+            const parts = linkVal.split("_");
+            const filename = parts.slice(1).join("_") || "Tệp đính kèm";
+            linkInput.value = `[Tệp đính kèm: ${filename}]`;
+            linkInput.style.fontWeight = "bold";
+            linkInput.style.color = "var(--color-green)";
+        } else if (linkVal.startsWith("data:")) {
             base64Input.value = linkVal;
             linkInput.value = "[Tệp đính kèm đã lưu]";
             linkInput.style.fontWeight = "bold";
@@ -1273,6 +1389,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const base64Val = base64Input ? base64Input.value : "";
         
         if (linkVal.startsWith("data:")) {
+            return linkVal;
+        }
+        if (linkVal.startsWith("dbfile:")) {
             return linkVal;
         }
         if (base64Val && linkVal.startsWith("[Tệp đính kèm")) {
@@ -3204,8 +3323,18 @@ function openEditModalForm(rowIdx) {
     function renderLinkHtml(val) {
         if (!val) return `<span style="color:var(--text-muted); font-size:0.8rem;">(Không có)</span>`;
         const valStr = String(val).trim();
+        const isDbFile = valStr.startsWith("dbfile:");
         const isBase64 = valStr.startsWith("data:");
         const isUrl = valStr.startsWith("http://") || valStr.startsWith("https://");
+        
+        if (isDbFile) {
+            const parts = valStr.split("_");
+            const filename = parts.slice(1).join("_") || "Tệp đính kèm";
+            const fileExt = filename.split('.').pop().toLowerCase();
+            const icon = fileExt === 'pdf' ? '<i class="fa-solid fa-file-pdf" style="color: #ff5252; margin-right:4px;"></i>' : '<i class="fa-solid fa-image" style="color: #3b82f6; margin-right:4px;"></i>';
+            const label = fileExt === 'pdf' ? 'Xem PDF đính kèm' : 'Xem ảnh đính kèm';
+            return `<a href="#" onclick="viewIndexedDBFile('${valStr}'); return false;" class="btn-action" style="color:var(--color-green); font-weight:600;">${icon} ${label}</a>`;
+        }
         
         if (isBase64) {
             const mimeType = (valStr.split(';')[0].split(':')[1] || "").toLowerCase();
@@ -4530,7 +4659,7 @@ function openEditModalForm(rowIdx) {
             linkCheckInterval = setInterval(checkAndFormatLinkValue, 100);
         }
 
-        // Bind Base64 File Ingestion reader to form-file-upload
+        // Bind Base64 File Ingestion reader to form-file-upload with Google Drive and IndexedDB hybrid offloading
         const fileUploadEl = document.getElementById("form-file-upload");
         if (fileUploadEl) {
             fileUploadEl.addEventListener("change", (e) => {
@@ -4539,16 +4668,80 @@ function openEditModalForm(rowIdx) {
                 
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    const base64Input = document.getElementById("form-link-base64");
-                    const linkInput = document.getElementById("form-link");
-                    if (base64Input) base64Input.value = event.target.result;
-                    if (linkInput) {
-                        linkInput.value = `[Tệp đính kèm: ${file.name}]`;
-                        linkInput.style.fontWeight = "bold";
-                        linkInput.style.color = "var(--color-green)";
+                    const base64Data = event.target.result;
+                    const gdriveUrl = localStorage.getItem("gdrive_upload_url");
+                    
+                    if (gdriveUrl) {
+                        // Display uploading status
+                        document.getElementById("form-file-status").innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang tải lên Google Drive...`;
+                        
+                        const base64Parts = base64Data.split(',');
+                        const rawBase64 = base64Parts[1] || base64Parts[0];
+                        const mimeType = base64Parts[0].split(';')[0].split(':')[1] || file.type;
+                        
+                        fetch(gdriveUrl, {
+                            method: "POST",
+                            mode: "cors",
+                            headers: {
+                                "Content-Type": "text/plain"
+                            },
+                            body: JSON.stringify({
+                                filename: file.name,
+                                mimeType: mimeType,
+                                base64Data: rawBase64
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(res => {
+                            if (res.status === "success") {
+                                const fileLink = res.url;
+                                
+                                const base64Input = document.getElementById("form-link-base64");
+                                const linkInput = document.getElementById("form-link");
+                                if (base64Input) base64Input.value = fileLink;
+                                if (linkInput) {
+                                    linkInput.value = fileLink;
+                                    linkInput.style.fontWeight = "bold";
+                                    linkInput.style.color = "var(--color-ai-primary)";
+                                }
+                                document.getElementById("form-file-status").innerHTML = `✔ Đã lưu trên Google Drive: <a href="${fileLink}" target="_blank" style="color:var(--color-ai-primary); text-decoration:underline;">Mở link</a>`;
+                                showToast("Google Drive", `Đã tải tệp ${file.name} lên Google Drive thành công.`, "success");
+                            } else {
+                                throw new Error(res.message || "Lỗi lưu file");
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Google Drive Upload Error, falling back to IndexedDB:", err);
+                            const fileId = "dbfile:" + Date.now() + "_" + file.name;
+                            saveFileToIndexedDB(fileId, base64Data);
+                            
+                            const base64Input = document.getElementById("form-link-base64");
+                            const linkInput = document.getElementById("form-link");
+                            if (base64Input) base64Input.value = fileId;
+                            if (linkInput) {
+                                linkInput.value = `[Tệp đính kèm: ${file.name}]`;
+                                linkInput.style.fontWeight = "bold";
+                                linkInput.style.color = "var(--color-green)";
+                            }
+                            document.getElementById("form-file-status").textContent = `✔ Đã chọn (Lưu trữ cục bộ): ${file.name}`;
+                            showToast("Lưu trữ cục bộ", "Không thể kết nối Google Drive. Đã tự động chuyển sang lưu cục bộ IndexedDB.", "warning");
+                        });
+                    } else {
+                        // Save locally using IndexedDB (default fallback)
+                        const fileId = "dbfile:" + Date.now() + "_" + file.name;
+                        saveFileToIndexedDB(fileId, base64Data);
+                        
+                        const base64Input = document.getElementById("form-link-base64");
+                        const linkInput = document.getElementById("form-link");
+                        if (base64Input) base64Input.value = fileId;
+                        if (linkInput) {
+                            linkInput.value = `[Tệp đính kèm: ${file.name}]`;
+                            linkInput.style.fontWeight = "bold";
+                            linkInput.style.color = "var(--color-green)";
+                        }
+                        document.getElementById("form-file-status").textContent = `✔ Đã chọn: ${file.name}`;
+                        showToast("Tải file", `Đã trích xuất và đính kèm tệp ${file.name} thành công.`, "success");
                     }
-                    document.getElementById("form-file-status").textContent = `✔ Đã chọn: ${file.name}`;
-                    showToast("Tải file", `Đã trích xuất và đính kèm tệp ${file.name} thành công.`, "success");
                 };
                 reader.readAsDataURL(file);
             });
@@ -7117,6 +7310,15 @@ dropzone.addEventListener("click", () => fileInput.click());
     if (telegramTokenInput) telegramTokenInput.value = localStorage.getItem("telegram_bot_token") || "";
     if (telegramChatIdInput) telegramChatIdInput.value = localStorage.getItem("telegram_chat_id") || "";
     
+    // Load Google Drive setting
+    let gdriveUrlInput = document.getElementById("gdrive-upload-url");
+    if (!gdriveUrlInput) {
+        gdriveUrlInput = document.createElement("input");
+        gdriveUrlInput.type = "password";
+        gdriveUrlInput.id = "gdrive-upload-url";
+    }
+    gdriveUrlInput.value = localStorage.getItem("gdrive_upload_url") || "";
+    
     updateAiStatusIndicator();
 
     saveSettingsBtn.addEventListener("click", () => {
@@ -7127,6 +7329,10 @@ dropzone.addEventListener("click", () => fileInput.click());
         
         if (telegramTokenInput) localStorage.setItem("telegram_bot_token", telegramTokenInput.value.trim());
         if (telegramChatIdInput) localStorage.setItem("telegram_chat_id", telegramChatIdInput.value.trim());
+        
+        // Save Google Drive setting
+        const gdriveUrlInput = document.getElementById("gdrive-upload-url");
+        if (gdriveUrlInput) localStorage.setItem("gdrive_upload_url", gdriveUrlInput.value.trim());
         
         updateAiStatusIndicator();
         showToast("Hệ thống", "Đã lưu cài đặt cấu hình thành công.", "success");
@@ -7198,6 +7404,7 @@ dropzone.addEventListener("click", () => fileInput.click());
     }
 
     function initApp() {
+        initIndexedDB();
         loadDatabase();
         calculateRollups();
         renderDashboard();
