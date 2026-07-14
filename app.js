@@ -68,6 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let currentPackage = null;
         
         masterArray.forEach(row => {
+            if (!row) return;
             const bsc = String(row.ma_bsc || "").trim();
             const isParent = bsc !== "";
             
@@ -168,6 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
             db.master = [];
         } else {
             db.master.forEach(row => {
+                if (!row) return;
                 const workName = String(row.hang_muc_work || "").trim();
                 if (workName === "26 căn Liền kề") {
                     row.tt = "16.2.1";
@@ -185,6 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
             db.s02 = [];
         } else {
             db.s02.forEach(row => {
+                if (!row) return;
                 if (row.yc_tvgs === undefined) row.yc_tvgs = true;
                 if (row.yc_banqlda === undefined) row.yc_banqlda = true;
                 if (row.yc_cdt === undefined) row.yc_cdt = true;
@@ -250,6 +253,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // Ensure every personnel member has a password and Proper CRUD flags
         db.nhan_su.forEach(ns => {
+            if (!ns) return;
             const nameLower = String(ns.ho_ten || "").toLowerCase().trim();
             if (nameLower.includes("nguyễn đình hùng") || nameLower.includes("nguyen dinh hung")) {
                 ns.quyen = "Admin";
@@ -298,6 +302,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Map to quickly find parent packages by index/Mã BSC
         const parents = {};
         db.master.forEach(row => {
+            if (!row) return;
             const bsc = String(row.ma_bsc || "").trim();
             if (bsc !== "") {
                 parents[bsc] = row;
@@ -307,6 +312,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Step A: Calculate parent package rollups from their sub-items (hierarchical recursive rollup)
         const childrenMap = {};
         db.master.forEach(row => {
+            if (!row) return;
             const ttStr = String(row.tt || "").trim();
             if (ttStr.includes(".")) {
                 const lastDot = ttStr.lastIndexOf(".");
@@ -397,6 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         db.master.forEach(row => {
+            if (!row) return;
             const ttStr = String(row.tt || "").trim();
             if (!ttStr.includes(".")) {
                 rollupAndEvaluateRow(row);
@@ -405,6 +412,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Step B: Calculate rollups from Sổ nghiệp vụ (01-05) referencing Mã BSC
         db.master.forEach(row => {
+            if (!row) return;
             const bsc = String(row.ma_bsc || "").trim();
             const tt = String(row.tt || "").trim();
             if (bsc === "") {
@@ -476,24 +484,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 5. Rollup count fields for display columns in Master Grid:
             // Sổ 01: HS tiền KC (duyệt)
-            const s01Duyet = db.s01.filter(s => String(s['Mã BSC']).trim() === bsc && s['TT duyệt'] === 'Đã duyệt').length;
+            const s01Duyet = db.s01.filter(s => s && String(s['Mã BSC']).trim() === bsc && s['TT duyệt'] === 'Đã duyệt').length;
             row.hs_tien_kc_duyet = s01Duyet;
 
             // Sổ 02: Tài liệu KH tháng (duyệt/tổng)
-            const s02Total = db.s02.filter(s => String(s['Mã BSC']).trim() === bsc).length;
-            const s02Duyet = db.s02.filter(s => String(s['Mã BSC']).trim() === bsc && s['TT duyệt'] === 'Đã duyệt').length;
+            const s02Total = db.s02.filter(s => s && String(s['Mã BSC']).trim() === bsc).length;
+            const s02Duyet = db.s02.filter(s => s && String(s['Mã BSC']).trim() === bsc && s['TT duyệt'] === 'Đã duyệt').length;
             row.tai_lieu_kh_thang = `${s02Duyet}/${s02Total}`;
 
             // Sổ 03: Phát sinh chưa duyệt
-            const s03Pending = db.s03.filter(s => String(s['Mã BSC']).trim() === bsc && s['TT duyệt'] === 'Chờ duyệt').length;
+            const s03Pending = db.s03.filter(s => s && String(s['Mã BSC']).trim() === bsc && s['TT duyệt'] === 'Chờ duyệt').length;
             row.phat_sinh_chua_duyet = s03Pending;
 
             // Sổ 04: YC cung ứng chờ duyệt
-            const s04Pending = db.s04.filter(s => String(s['Mã BSC']).trim() === bsc && s['TT duyệt'] === 'Chờ duyệt').length;
+            const s04Pending = db.s04.filter(s => s && String(s['Mã BSC']).trim() === bsc && s['TT duyệt'] === 'Chờ duyệt').length;
             row.yc_cung_ung_cho_duyet = s04Pending;
 
             // Sổ 05: Bù tiến độ đang chạy
-            const s05Active = db.s05.filter(s => String(s['Mã BSC']).trim() === bsc && s['TT thực hiện'] === 'Đang thực hiện').length;
+            const s05Active = db.s05.filter(s => s && String(s['Mã BSC']).trim() === bsc && s['TT thực hiện'] === 'Đang thực hiện').length;
             row.bu_tien_do_dang_chay = s05Active;
 
             // 6. Automatically calculate Chốt chặn Điều kiện Khởi công (Handled recursively by Step A)
@@ -509,6 +517,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     function checkFinancialHardGates() {
         db.master.forEach(row => {
+            if (!row) return;
             const bsc = String(row.ma_bsc || "").trim();
             if (bsc === "") return;
 
@@ -770,6 +779,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let delayedPackagesCount = 0;
 
         db.master.forEach(row => {
+            if (!row) return;
             // Only count parent packages (non-empty ma_bsc) to avoid double counting
             if (String(row.ma_bsc || "").trim() !== "") {
                 totalBudget += parseFloat(row.ngan_sach || 0);
@@ -794,6 +804,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let c1 = 0, c2 = 0, c3 = 0, c4 = 0, c5 = 0, c6 = 0, c7 = 0, c8 = 0, c9 = 0, c10 = 0;
 
         db.master.forEach(r => {
+            if (!r) return;
             const ma_bsc = String(r.ma_bsc || "").trim();
             const isChild = ma_bsc === "";
             if (!isChild) return; // All 10 indicators evaluate child rows
@@ -1285,7 +1296,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const parts = ttStr.split(".");
             for (let i = parts.length - 1; i > 0; i--) {
                 const parentTt = parts.slice(0, i).join(".");
-                const parentRow = db.master.find(x => String(x.tt) === parentTt);
+                const parentRow = db.master.find(x => x && String(x.tt) === parentTt);
                 if (parentRow && String(parentRow.ma_bsc || "").trim() !== "") {
                     return String(parentRow.ma_bsc || "").trim();
                 }
@@ -1294,6 +1305,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         db.master.forEach(r => {
+            if (!r) return;
             const ma_bsc = String(r.ma_bsc || "").trim();
             const isChild = ma_bsc === "";
             if (isChild) {
@@ -1527,6 +1539,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // Internal helper to check if a single master child row matches the criteria
         function isMatch(row) {
+            if (!row) return false;
             const isChild = String(row.ma_bsc || "").trim() === "";
             if (!isChild) return false; // All 10 indicators check detailed child rows
             
@@ -1603,6 +1616,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Collect all matching child row TTs
         const matchingChildTts = new Set();
         db.master.forEach(r => {
+            if (!r) return;
             if (isMatch(r)) {
                 matchingChildTts.add(String(r.tt));
             }
@@ -1615,6 +1629,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (item.type === "parent") {
             const parentBsc = item.id;
             return db.master.some(r => {
+                if (!r) return false;
                 const isChild = String(r.ma_bsc || "").trim() === "";
                 if (!isChild) return false;
                 
@@ -1629,6 +1644,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (item.type === "grand_parent") {
             const gpId = item.id;
             return db.master.some(r => {
+                if (!r) return false;
                 const isChild = String(r.ma_bsc || "").trim() === "";
                 if (!isChild) return false;
                 
@@ -3156,13 +3172,18 @@ function openEditModalForm(rowIdx) {
         }
 
         db.s01.forEach((row, index) => {
+            if (!row) return;
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
 
             const tr = document.createElement("tr");
             
             const canApprove = row['TT duyệt'] !== 'Đã duyệt' && row['TT duyệt'] !== 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
-            const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
+            const canEdit = currentUser && (
+                currentUser.quyen === 'Admin' ||
+                currentUser.quyen_sua ||
+                (currentUser.quyen === 'Contractor' && row['TT duyệt'] !== 'Đã duyệt')
+            );
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
@@ -3187,7 +3208,7 @@ function openEditModalForm(rowIdx) {
                             <button class="btn-action approve btn-approve-s01" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>
                             <button class="btn-action reject btn-reject-s01" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
                         ` : ""}
-                        ${canResubmit ? `<button class="btn-action approve btn-resubmit-s01" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Trình lại hồ sơ"><i class="fa-solid fa-paper-plane"></i> Trình lại</button>` : ""}
+                        ${canEdit ? `<button class="btn-action approve btn-edit-s01" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Sửa hồ sơ"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
                         ${canDelete ? `<button class="btn-action reject btn-delete-s01" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                     </div>
                 </td>
@@ -3231,7 +3252,7 @@ function openEditModalForm(rowIdx) {
             });
         });
 
-        document.querySelectorAll(".btn-resubmit-s01").forEach(btn => {
+        document.querySelectorAll(".btn-edit-s01").forEach(btn => {
             btn.addEventListener("click", () => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 editRegistrationIndex = idx;
@@ -3397,6 +3418,7 @@ function openEditModalForm(rowIdx) {
         }
 
         db.s02.forEach((row, index) => {
+            if (!row) return;
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
 
@@ -3408,7 +3430,11 @@ function openEditModalForm(rowIdx) {
                 (row.yc_banqlda && ['BanQLDA', 'KTKH', 'QLTK', 'Supply'].includes(currentUser.quyen))
             ) && row['TT duyệt'] !== 'Đã duyệt';
 
-            const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
+            const canEdit = currentUser && (
+                currentUser.quyen === 'Admin' ||
+                currentUser.quyen_sua ||
+                (currentUser.quyen === 'Contractor' && row['TT duyệt'] !== 'Đã duyệt')
+            );
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             let deptStatusesHtml = "";
@@ -3466,7 +3492,7 @@ function openEditModalForm(rowIdx) {
                         ${userCanGiveOpinion ? `
                             <button class="btn-action approve btn-opinion-s02" data-idx="${index}" style="background-color: #3b82f6; border-color: #2563eb; color: #fff;"><i class="fa-solid fa-pen-to-square"></i> Ý kiến</button>
                         ` : ""}
-                        ${canResubmit ? `<button class="btn-action approve btn-resubmit-s02" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Trình lại kế hoạch"><i class="fa-solid fa-paper-plane"></i> Trình lại</button>` : ""}
+                        ${canEdit ? `<button class="btn-action approve btn-edit-s02" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Sửa kế hoạch"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
                         ${canDelete ? `<button class="btn-action reject btn-delete-s02" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                     </div>
                 </td>
@@ -3482,7 +3508,7 @@ function openEditModalForm(rowIdx) {
             });
         });
 
-        document.querySelectorAll(".btn-resubmit-s02").forEach(btn => {
+        document.querySelectorAll(".btn-edit-s02").forEach(btn => {
             btn.addEventListener("click", () => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 editRegistrationIndex = idx;
@@ -3518,6 +3544,7 @@ function openEditModalForm(rowIdx) {
         }
 
         db.s03.forEach((row, index) => {
+            if (!row) return;
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
 
@@ -3526,7 +3553,11 @@ function openEditModalForm(rowIdx) {
             const valPsTh = parseFloat(row['Giá trị thực hiện (tỷ)'] || 0);
 
             const canApprove = row['TT duyệt'] === 'Chờ duyệt' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
-            const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
+            const canEdit = currentUser && (
+                currentUser.quyen === 'Admin' ||
+                currentUser.quyen_sua ||
+                (currentUser.quyen === 'Contractor' && row['TT duyệt'] !== 'Đã duyệt')
+            );
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
@@ -3555,7 +3586,7 @@ function openEditModalForm(rowIdx) {
                             <button class="btn-action approve btn-approve-s03" data-idx="${index}" data-bsc="${bsc}"><i class="fa-solid fa-check"></i> Duyệt</button>
                             <button class="btn-action reject btn-reject-s03" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
                         ` : ""}
-                        ${canResubmit ? `<button class="btn-action approve btn-resubmit-s03" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Trình lại phát sinh"><i class="fa-solid fa-paper-plane"></i> Trình lại</button>` : ""}
+                        ${canEdit ? `<button class="btn-action approve btn-edit-s03" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Sửa phát sinh"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
                         ${canDelete ? `<button class="btn-action reject btn-delete-s03" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                     </div>
                 </td>
@@ -3610,7 +3641,7 @@ function openEditModalForm(rowIdx) {
             });
         });
 
-        document.querySelectorAll(".btn-resubmit-s03").forEach(btn => {
+        document.querySelectorAll(".btn-edit-s03").forEach(btn => {
             btn.addEventListener("click", () => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 editRegistrationIndex = idx;
@@ -3646,6 +3677,7 @@ function openEditModalForm(rowIdx) {
         }
 
         db.s04.forEach((row, index) => {
+            if (!row) return;
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
 
@@ -3654,7 +3686,11 @@ function openEditModalForm(rowIdx) {
 
             const canApprove = row['TT duyệt'] === 'Chờ duyệt' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
             const canSupply = row['TT duyệt'] === 'Đã duyệt' && row['TT cung ứng'] !== 'Đã cung ứng' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supply')));
-            const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
+            const canEdit = currentUser && (
+                currentUser.quyen === 'Admin' ||
+                currentUser.quyen_sua ||
+                (currentUser.quyen === 'Contractor' && row['TT duyệt'] !== 'Đã duyệt')
+            );
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
@@ -3688,7 +3724,7 @@ function openEditModalForm(rowIdx) {
                             <button class="btn-action reject btn-reject-s04" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
                         ` : ""}
                         ${canSupply ? `<button class="btn-action approve btn-supply-s04" data-idx="${index}" style="color:var(--color-yellow); border-color:var(--color-yellow);"><i class="fa-solid fa-truck"></i> Cấp vật tư</button>` : ""}
-                        ${canResubmit ? `<button class="btn-action approve btn-resubmit-s04" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Trình lại cung ứng"><i class="fa-solid fa-paper-plane"></i> Trình lại</button>` : ""}
+                        ${canEdit ? `<button class="btn-action approve btn-edit-s04" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Sửa yêu cầu"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
                         ${canDelete ? `<button class="btn-action reject btn-delete-s04" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                     </div>
                 </td>
@@ -3742,7 +3778,7 @@ function openEditModalForm(rowIdx) {
             });
         });
 
-        document.querySelectorAll(".btn-resubmit-s04").forEach(btn => {
+        document.querySelectorAll(".btn-edit-s04").forEach(btn => {
             btn.addEventListener("click", () => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 editRegistrationIndex = idx;
@@ -3789,6 +3825,7 @@ function openEditModalForm(rowIdx) {
         }
 
         db.s05.forEach((row, index) => {
+            if (!row) return;
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
 
@@ -3797,7 +3834,11 @@ function openEditModalForm(rowIdx) {
 
             const canApprove = row['TT duyệt'] === 'Chờ duyệt' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
             const canComplete = row['TT thực hiện'] !== 'Đã hoàn thành' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
-            const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
+            const canEdit = currentUser && (
+                currentUser.quyen === 'Admin' ||
+                currentUser.quyen_sua ||
+                (currentUser.quyen === 'Contractor' && row['TT duyệt'] !== 'Đã duyệt')
+            );
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
             tr.innerHTML = `
@@ -3834,7 +3875,7 @@ function openEditModalForm(rowIdx) {
                             <button class="btn-action reject btn-reject-s05" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
                         ` : ""}
                         ${canComplete ? `<button class="btn-action approve btn-complete-s05" data-idx="${index}" style="color:var(--color-green); border-color:var(--color-green);"><i class="fa-solid fa-circle-check"></i> Hoàn thành bù</button>` : ""}
-                        ${canResubmit ? `<button class="btn-action approve btn-resubmit-s05" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Trình lại phương án"><i class="fa-solid fa-paper-plane"></i> Trình lại</button>` : ""}
+                        ${canEdit ? `<button class="btn-action approve btn-edit-s05" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Sửa phương án"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
                         ${canDelete ? `<button class="btn-action reject btn-delete-s05" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                     </div>
                 </td>
@@ -3876,7 +3917,7 @@ function openEditModalForm(rowIdx) {
             });
         });
 
-        document.querySelectorAll(".btn-resubmit-s05").forEach(btn => {
+        document.querySelectorAll(".btn-edit-s05").forEach(btn => {
             btn.addEventListener("click", () => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 editRegistrationIndex = idx;
@@ -5200,6 +5241,7 @@ function openEditModalForm(rowIdx) {
             const seenGrandParents = new Set();
 
             db.master.forEach(row => {
+                if (!row) return;
                 const bsc = String(row.ma_bsc || "").trim();
                 const goiThauPl = String(row.goi_thau_pl || "").trim();
                 const isParentPackage = bsc !== "";
@@ -5719,6 +5761,7 @@ function openEditModalForm(rowIdx) {
 
         let shiftedCount = 0;
         db.master.forEach(row => {
+            if (!row) return;
             const isChild = String(row.ma_bsc || "").trim() === "";
             if (isChild) {
                 // 1. Add T1 KQ to Month Actual (qa_kq_klcv_thang)
@@ -5766,6 +5809,7 @@ function openEditModalForm(rowIdx) {
 
         let resetCount = 0;
         db.master.forEach(row => {
+            if (!row) return;
             const isChild = String(row.ma_bsc || "").trim() === "";
             if (isChild) {
                 // Save current monthly plan & actual to history before clearing
@@ -6600,6 +6644,7 @@ dropzone.addEventListener("click", () => fileInput.click());
 
         const list = db.nhan_su || [];
         list.forEach((row, index) => {
+            if (!row) return;
             const tr = document.createElement("tr");
             
             // Format Access Level badges
