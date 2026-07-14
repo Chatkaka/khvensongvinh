@@ -1216,6 +1216,48 @@ document.addEventListener("DOMContentLoaded", () => {
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
+    function setupFormLinkValue(linkVal) {
+        const linkInput = document.getElementById("form-link");
+        let base64Input = document.getElementById("form-link-base64");
+        if (!linkInput) return;
+        if (!base64Input) {
+            base64Input = document.createElement("input");
+            base64Input.type = "hidden";
+            base64Input.id = "form-link-base64";
+            base64Input.value = "";
+            linkInput.parentNode.appendChild(base64Input);
+        }
+        
+        if (linkVal.startsWith("data:")) {
+            base64Input.value = linkVal;
+            linkInput.value = "[Tệp đính kèm đã lưu]";
+            linkInput.style.fontWeight = "bold";
+            linkInput.style.color = "var(--color-green)";
+        } else {
+            base64Input.value = "";
+            linkInput.value = linkVal;
+            linkInput.style.fontWeight = "normal";
+            linkInput.style.color = "";
+        }
+    }
+
+    function getFormLinkValue() {
+        const linkInput = document.getElementById("form-link");
+        const base64Input = document.getElementById("form-link-base64");
+        if (!linkInput) return "";
+        
+        const linkVal = linkInput.value;
+        const base64Val = base64Input ? base64Input.value : "";
+        
+        if (linkVal.startsWith("data:")) {
+            return linkVal;
+        }
+        if (base64Val && linkVal.startsWith("[Tệp đính kèm")) {
+            return base64Val;
+        }
+        return linkVal;
+    }
+
     function compareTt(a, b) {
         const partsA = String(a.tt || "").split(".").map(Number);
         const partsB = String(b.tt || "").split(".").map(Number);
@@ -4390,6 +4432,51 @@ function openEditModalForm(rowIdx) {
 
         formModal.style.display = "flex";
 
+        // Inject hidden input and event listener for form-link
+        const linkInput = document.getElementById("form-link");
+        if (linkInput) {
+            if (!document.getElementById("form-link-base64")) {
+                const hiddenInput = document.createElement("input");
+                hiddenInput.type = "hidden";
+                hiddenInput.id = "form-link-base64";
+                hiddenInput.value = "";
+                linkInput.parentNode.appendChild(hiddenInput);
+            }
+            
+            // Intercept programmatic value changes to prevent displaying raw base64 string
+            const originalDescriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+            Object.defineProperty(linkInput, 'value', {
+                get() {
+                    return originalDescriptor.get.call(this);
+                },
+                set(val) {
+                    const base64Input = document.getElementById("form-link-base64");
+                    if (base64Input && val && val.startsWith("data:")) {
+                        base64Input.value = val;
+                        originalDescriptor.set.call(this, "[Tệp đính kèm đã nhúng]");
+                        this.style.fontWeight = "bold";
+                        this.style.color = "var(--color-green)";
+                    } else {
+                        originalDescriptor.set.call(this, val);
+                        if (base64Input && (!val || !val.startsWith("[Tệp đính kèm"))) {
+                            base64Input.value = "";
+                            this.style.fontWeight = "normal";
+                            this.style.color = "";
+                        }
+                    }
+                }
+            });
+            
+            linkInput.addEventListener("input", () => {
+                const base64Input = document.getElementById("form-link-base64");
+                if (base64Input && (!linkInput.value || !linkInput.value.startsWith("[Tệp đính kèm"))) {
+                    base64Input.value = "";
+                    linkInput.style.fontWeight = "normal";
+                    linkInput.style.color = "";
+                }
+            });
+        }
+
         // Bind Base64 File Ingestion reader to form-file-upload
         const fileUploadEl = document.getElementById("form-file-upload");
         if (fileUploadEl) {
@@ -4399,8 +4486,14 @@ function openEditModalForm(rowIdx) {
                 
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    // Update target input value to the Base64 Data URL
-                    document.getElementById("form-link").value = event.target.result;
+                    const base64Input = document.getElementById("form-link-base64");
+                    const linkInput = document.getElementById("form-link");
+                    if (base64Input) base64Input.value = event.target.result;
+                    if (linkInput) {
+                        linkInput.value = `[Tệp đính kèm: ${file.name}]`;
+                        linkInput.style.fontWeight = "bold";
+                        linkInput.style.color = "var(--color-green)";
+                    }
                     document.getElementById("form-file-status").textContent = `✔ Đã chọn: ${file.name}`;
                     showToast("Tải file", `Đã trích xuất và đính kèm tệp ${file.name} thành công.`, "success");
                 };
@@ -4428,7 +4521,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-hang-muc").value = doc["Hạng mục"] || "";
                 document.getElementById("form-loai").value = doc["Loại hồ sơ"] || "";
                 document.getElementById("form-name").value = doc["Tên sản phẩm / Số hiệu"] || "";
-                document.getElementById("form-link").value = doc["LINK lưu trữ"] || "";
+                setupFormLinkValue(doc["LINK lưu trữ"] || "");
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
             } else if (target === 's02') {
                 const doc = db.s02[editRegistrationIndex];
@@ -4437,7 +4530,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-loai").value = doc["Loại tài liệu"] || "";
                 document.getElementById("form-noi-dung").value = doc["Nội dung chính"] || "";
                 document.getElementById("form-dat-yckt").value = doc["Đạt YCKT CĐT"] || "Có";
-                document.getElementById("form-link").value = doc["LINK tài liệu"] || "";
+                setupFormLinkValue(doc["LINK tài liệu"] || "");
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
                 document.getElementById("form-yc-tvgs").checked = doc["yc_tvgs"] !== false;
                 document.getElementById("form-yc-banqlda").checked = doc["yc_banqlda"] !== false;
@@ -4452,7 +4545,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-val").value = doc["Giá trị (tỷ)"] || 0;
                 document.getElementById("form-val-thuc-hien").value = doc["Giá trị thực hiện (tỷ)"] || 0;
                 document.getElementById("form-delay").value = doc["Ảnh hưởng TĐ (ngày)"] || 0;
-                document.getElementById("form-link").value = doc["LINK hồ sơ"] || "";
+                setupFormLinkValue(doc["LINK hồ sơ"] || "");
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
             } else if (target === 's04') {
                 const doc = db.s04[editRegistrationIndex];
@@ -4465,7 +4558,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-val").value = doc["Giá trị (tỷ)"] || 0;
                 document.getElementById("form-val-thuc-hien").value = doc["Giá trị thực hiện (tỷ)"] || 0;
                 document.getElementById("form-target").value = doc["Trong/Target Ngoài HĐCU"] || doc["Trong/Ngoài HĐCU"] || "Ngoài HĐCU";
-                document.getElementById("form-link").value = doc["LINK hồ sơ"] || "";
+                setupFormLinkValue(doc["LINK hồ sơ"] || "");
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
             } else if (target === 's05') {
                 const doc = db.s05[editRegistrationIndex];
@@ -4476,7 +4569,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-detail").value = doc["Chi tiết giải pháp"] || doc["Chi tiết phương án"] || "";
                 document.getElementById("form-moc").value = doc["Mốc cam kết HT"] || "";
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
-                document.getElementById("form-link").value = doc["LINK phương án"] || "";
+                setupFormLinkValue(doc["LINK phương án"] || "");
             }
         }
     }
@@ -4817,7 +4910,7 @@ function openEditModalForm(rowIdx) {
                 doc["Hạng mục"] = document.getElementById("form-hang-muc").value;
                 doc["Loại hồ sơ"] = document.getElementById("form-loai").value;
                 doc["Tên sản phẩm / Số hiệu"] = document.getElementById("form-name").value;
-                doc["LINK lưu trữ"] = document.getElementById("form-link").value;
+                doc["LINK lưu trữ"] = getFormLinkValue();
                 doc["Ngày HT"] = getSystemDateGMT7();
                 doc["Người lập"] = document.getElementById("form-maker").value;
                 doc["TT duyệt"] = "Chờ duyệt";
@@ -4831,7 +4924,7 @@ function openEditModalForm(rowIdx) {
                     "Hạng mục": document.getElementById("form-hang-muc").value,
                     "Loại hồ sơ": document.getElementById("form-loai").value,
                     "Tên sản phẩm / Số hiệu": document.getElementById("form-name").value,
-                    "LINK lưu trữ": document.getElementById("form-link").value,
+                    "LINK lưu trữ": getFormLinkValue(),
                     "Ngày HT": getSystemDateGMT7(),
                     "Người lập": document.getElementById("form-maker").value,
                     "Người duyệt": "CĐT",
@@ -4850,7 +4943,7 @@ function openEditModalForm(rowIdx) {
                 doc["Loại tài liệu"] = document.getElementById("form-loai").value;
                 doc["Nội dung chính"] = document.getElementById("form-noi-dung").value;
                 doc["Đạt YCKT CĐT"] = document.getElementById("form-dat-yckt").value;
-                doc["LINK tài liệu"] = document.getElementById("form-link").value;
+                doc["LINK tài liệu"] = getFormLinkValue();
                 doc["Người lập"] = document.getElementById("form-maker").value;
                 
                 doc["yc_tvgs"] = document.getElementById("form-yc-tvgs").checked;
@@ -4881,7 +4974,7 @@ function openEditModalForm(rowIdx) {
                     "Loại tài liệu": document.getElementById("form-loai").value,
                     "Nội dung chính": document.getElementById("form-noi-dung").value,
                     "Đạt YCKT CĐT": document.getElementById("form-dat-yckt").value,
-                    "LINK tài liệu": document.getElementById("form-link").value,
+                    "LINK tài liệu": getFormLinkValue(),
                     "TT lập": "Tổng thầu",
                     "TT duyệt": "Chờ duyệt",
                     "Người lập": document.getElementById("form-maker").value,
@@ -4957,7 +5050,7 @@ function openEditModalForm(rowIdx) {
                 doc["Giá trị (tỷ)"] = parseFloat(document.getElementById("form-val").value) || 0;
                 doc["Giá trị thực hiện (tỷ)"] = parseFloat(document.getElementById("form-val-thuc-hien").value) || 0;
                 doc["Ảnh hưởng TĐ (ngày)"] = parseInt(document.getElementById("form-delay").value) || 0;
-                doc["LINK hồ sơ"] = document.getElementById("form-link").value;
+                doc["LINK hồ sơ"] = getFormLinkValue();
                 doc["TT duyệt"] = "Chờ duyệt";
                 doc["Lý do từ chối"] = "";
                 doc["Người lập"] = document.getElementById("form-maker").value;
@@ -4976,7 +5069,7 @@ function openEditModalForm(rowIdx) {
                     "Giá trị (tỷ)": parseFloat(document.getElementById("form-val").value) || 0,
                     "Giá trị thực hiện (tỷ)": parseFloat(document.getElementById("form-val-thuc-hien").value) || 0,
                     "Ảnh hưởng TĐ (ngày)": parseInt(document.getElementById("form-delay").value) || 0,
-                    "LINK hồ sơ": document.getElementById("form-link").value,
+                    "LINK hồ sơ": getFormLinkValue(),
                     "TT duyệt": "Chờ duyệt",
                     "Người duyệt": "",
                     "Ngày duyệt": "",
@@ -5000,7 +5093,7 @@ function openEditModalForm(rowIdx) {
                 doc["Giá trị (tỷ)"] = parseFloat(document.getElementById("form-val").value) || 0;
                 doc["Giá trị thực hiện (tỷ)"] = parseFloat(document.getElementById("form-val-thuc-hien").value) || 0;
                 doc["Trong/Target Ngoài HĐCU"] = document.getElementById("form-target").value;
-                doc["LINK hồ sơ"] = document.getElementById("form-link").value;
+                doc["LINK hồ sơ"] = getFormLinkValue();
                 doc["TT duyệt"] = "Chờ duyệt";
                 doc["Lý do từ chối"] = "";
                 doc["Người lập"] = document.getElementById("form-maker").value;
@@ -5020,7 +5113,7 @@ function openEditModalForm(rowIdx) {
                     "Giá trị (tỷ)": parseFloat(document.getElementById("form-val").value) || 0,
                     "Giá trị thực hiện (tỷ)": parseFloat(document.getElementById("form-val-thuc-hien").value) || 0,
                     "Trong/Target Ngoài HĐCU": document.getElementById("form-target").value,
-                    "LINK hồ sơ": document.getElementById("form-link").value,
+                    "LINK hồ sơ": getFormLinkValue(),
                     "TT duyệt": "Chờ duyệt",
                     "TT cung ứng": "Chưa cung ứng",
                     "Người lập": document.getElementById("form-maker").value
@@ -5042,7 +5135,7 @@ function openEditModalForm(rowIdx) {
                 doc["Giải pháp bù"] = document.getElementById("form-solution").value;
                 doc["Chi tiết giải pháp"] = document.getElementById("form-detail").value;
                 doc["Mốc cam kết HT"] = document.getElementById("form-moc").value;
-                doc["LINK phương án"] = document.getElementById("form-link").value;
+                doc["LINK phương án"] = getFormLinkValue();
                 doc["TT duyệt"] = "Chờ duyệt";
                 doc["Lý do từ chối"] = "";
                 doc["Người lập"] = document.getElementById("form-maker").value;
@@ -5059,7 +5152,7 @@ function openEditModalForm(rowIdx) {
                     "Giải pháp bù": document.getElementById("form-solution").value,
                     "Chi tiết giải pháp": document.getElementById("form-detail").value,
                     "Mốc cam kết HT": document.getElementById("form-moc").value,
-                    "LINK phương án": document.getElementById("form-link").value,
+                    "LINK phương án": getFormLinkValue(),
                     "TT duyệt": "Chờ duyệt",
                     "KQ thực hiện bù": "Tổng thầu cam kết bù tiến độ",
                     "TT thực hiện": "Đang thực hiện",
