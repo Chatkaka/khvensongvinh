@@ -191,6 +191,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (row.yc_tvgs === undefined) row.yc_tvgs = true;
                 if (row.yc_banqlda === undefined) row.yc_banqlda = true;
                 if (row.yc_cdt === undefined) row.yc_cdt = true;
+                if (row.tvgs_user === undefined) row.tvgs_user = "";
+                if (row.banqlda_user === undefined) row.banqlda_user = "";
+                if (row.cdt_user === undefined) row.cdt_user = "";
 
                 const currentStatus = String(row["TT duyệt"] || "Chờ duyệt").trim();
                 
@@ -3356,6 +3359,20 @@ function openEditModalForm(rowIdx) {
             return '<span class="badge" style="background:#475569; color:#fff;">N/A (Không yêu cầu)</span>';
         };
 
+        // Automatically determine user's default department selection
+        let userDeptId = "";
+        if (currentUser) {
+            const pb = String(currentUser.phong_ban || "").toLowerCase();
+            const q = String(currentUser.quyen || "").toLowerCase();
+            if (q === 'supervisor' || pb.includes("tvgs") || pb.includes("tư vấn")) {
+                userDeptId = 'tvgs';
+            } else if (q === 'cdt' || pb.includes("cdt") || pb.includes("chủ đầu tư")) {
+                userDeptId = 'cdt';
+            } else if (['banqlda', 'ktkh', 'qltk', 'supply'].includes(currentUser.quyen) || pb.includes("bqlda") || pb.includes("ban quản lý")) {
+                userDeptId = 'banqlda';
+            }
+        }
+
         let availableDepts = [];
         if (currentUser) {
             if (currentUser.quyen === 'Admin') {
@@ -3363,16 +3380,25 @@ function openEditModalForm(rowIdx) {
                 if (row.yc_banqlda) availableDepts.push({ id: 'banqlda', label: 'Ban Quản lý Dự án' });
                 if (row.yc_cdt) availableDepts.push({ id: 'cdt', label: 'Chủ đầu tư (CĐT)' });
             } else {
-                if (row.yc_tvgs && currentUser.quyen === 'Supervisor') {
+                if (row.yc_tvgs && (currentUser.quyen === 'Supervisor' || userDeptId === 'tvgs')) {
                     availableDepts.push({ id: 'tvgs', label: 'Tư vấn giám sát (TVGS)' });
                 }
-                if (row.yc_banqlda && ['BanQLDA', 'KTKH', 'QLTK', 'Supply'].includes(currentUser.quyen)) {
+                if (row.yc_banqlda && (['BanQLDA', 'KTKH', 'QLTK', 'Supply'].includes(currentUser.quyen) || userDeptId === 'banqlda')) {
                     availableDepts.push({ id: 'banqlda', label: 'Ban Quản lý Dự án' });
+                }
+                if (row.yc_cdt && (['CDT', 'CĐT', 'Investor'].includes(currentUser.quyen) || userDeptId === 'cdt')) {
+                    availableDepts.push({ id: 'cdt', label: 'Chủ đầu tư (CĐT)' });
                 }
             }
         }
 
-        let deptOptionsHtml = availableDepts.map(d => `<option value="${d.id}">${d.label}</option>`).join('');
+        // Generate department dropdown options and auto-select user's department
+        let deptOptionsHtml = availableDepts.map(d => {
+            const isSelected = d.id === userDeptId ? "selected" : "";
+            return `<option value="${d.id}" ${isSelected}>${d.label}</option>`;
+        }).join('');
+
+        const isSelectDisabled = currentUser && currentUser.quyen !== 'Admin' ? 'disabled style="background: rgba(255,255,255,0.05); color: var(--text-primary);"' : '';
 
         bodyEl.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -3390,6 +3416,7 @@ function openEditModalForm(rowIdx) {
                         <span style="font-size: 0.85rem; color: var(--text-primary);">Tư vấn giám sát (TVGS):</span>
                         <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                             ${getStatusBadge(row.yc_tvgs ? row.tvgs_status : 'N/A')}
+                            ${row.tvgs_user ? `<small style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;">Duyệt bởi: ${row.tvgs_user}</small>` : ''}
                             ${row.tvgs_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.tvgs_comment}</small>` : ''}
                         </div>
                     </div>
@@ -3398,6 +3425,7 @@ function openEditModalForm(rowIdx) {
                         <span style="font-size: 0.85rem; color: var(--text-primary);">Ban Quản lý Dự án (BQLDA):</span>
                         <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                             ${getStatusBadge(row.yc_banqlda ? row.banqlda_status : 'N/A')}
+                            ${row.banqlda_user ? `<small style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;">Duyệt bởi: ${row.banqlda_user}</small>` : ''}
                             ${row.banqlda_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.banqlda_comment}</small>` : ''}
                         </div>
                     </div>
@@ -3406,6 +3434,7 @@ function openEditModalForm(rowIdx) {
                         <span style="font-size: 0.85rem; color: var(--text-primary);">Chủ đầu tư (CĐT):</span>
                         <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                             ${getStatusBadge(row.yc_cdt ? row.cdt_status : 'N/A')}
+                            ${row.cdt_user ? `<small style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;">Duyệt bởi: ${row.cdt_user}</small>` : ''}
                             ${row.cdt_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.cdt_comment}</small>` : ''}
                         </div>
                     </div>
@@ -3416,8 +3445,13 @@ function openEditModalForm(rowIdx) {
                         <div style="font-weight: 600; font-size: 0.9rem; color: var(--color-ai-primary);"><i class="fa-solid fa-file-signature"></i> Nhập Ý Kiến Của Bạn:</div>
                         
                         <div class="form-group">
+                            <label>Họ tên người duyệt</label>
+                            <input type="text" class="form-control" value="${currentUser ? currentUser.ho_ten : ''}" disabled style="background: rgba(255,255,255,0.05); color: var(--text-primary); font-weight: bold;">
+                        </div>
+
+                        <div class="form-group">
                             <label>Bộ phận cho ý kiến</label>
-                            <select id="form-opinion-dept" class="form-control">
+                            <select id="form-opinion-dept" class="form-control" ${isSelectDisabled}>
                                 ${deptOptionsHtml}
                             </select>
                         </div>
@@ -3469,7 +3503,8 @@ function openEditModalForm(rowIdx) {
             const userCanGiveOpinion = currentUser && (
                 currentUser.quyen === 'Admin' ||
                 (row.yc_tvgs && currentUser.quyen === 'Supervisor') ||
-                (row.yc_banqlda && ['BanQLDA', 'KTKH', 'QLTK', 'Supply'].includes(currentUser.quyen))
+                (row.yc_banqlda && ['BanQLDA', 'KTKH', 'QLTK', 'Supply'].includes(currentUser.quyen)) ||
+                (row.yc_cdt && ['CDT', 'CĐT', 'Investor'].includes(currentUser.quyen))
             ) && row['TT duyệt'] !== 'Đã duyệt';
 
             const canEdit = currentUser && (
@@ -3487,9 +3522,9 @@ function openEditModalForm(rowIdx) {
                     if (status === 'Chờ ý kiến') return '<span style="color:#f59e0b;" title="Chờ ý kiến">⏳</span>';
                     return '<span style="color:var(--text-muted);" title="N/A">-</span>';
                 };
-                const tvgsPart = row.yc_tvgs ? `TVGS:${getStatusSymbol(row.tvgs_status)}` : "";
-                const qldaPart = row.yc_banqlda ? `QLDA:${getStatusSymbol(row.banqlda_status)}` : "";
-                const cdtPart = row.yc_cdt ? `CĐT:${getStatusSymbol(row.cdt_status)}` : "";
+                const tvgsPart = row.yc_tvgs ? `<span title="TVGS: ${row.tvgs_status}${row.tvgs_user ? ` (Bởi: ${row.tvgs_user})` : ''}">TVGS:${getStatusSymbol(row.tvgs_status)}</span>` : "";
+                const qldaPart = row.yc_banqlda ? `<span title="QLDA: ${row.banqlda_status}${row.banqlda_user ? ` (Bởi: ${row.banqlda_user})` : ''}">QLDA:${getStatusSymbol(row.banqlda_status)}</span>` : "";
+                const cdtPart = row.yc_cdt ? `<span title="CĐT: ${row.cdt_status}${row.cdt_user ? ` (Bởi: ${row.cdt_user})` : ''}">CĐT:${getStatusSymbol(row.cdt_status)}</span>` : "";
                 deptStatusesHtml = `<div style="font-size:0.7rem; color:var(--text-secondary); margin-top:4px; display:flex; gap:6px; justify-content:center;">
                     ${[tvgsPart, qldaPart, cdtPart].filter(Boolean).join(" | ")}
                 </div>`;
@@ -3510,6 +3545,12 @@ function openEditModalForm(rowIdx) {
                 </small>`;
             }
 
+            const approversList = [];
+            if (row.tvgs_user) approversList.push(`${row.tvgs_user} (TVGS)`);
+            if (row.banqlda_user) approversList.push(`${row.banqlda_user} (QLDA)`);
+            if (row.cdt_user) approversList.push(`${row.cdt_user} (CĐT)`);
+            const approversStr = approversList.join(", ") || row['Người duyệt'] || "";
+
             tr.innerHTML = `
                 <td>${index + 1}</td>
                 <td style="font-weight:700;">${bsc}</td>
@@ -3527,7 +3568,7 @@ function openEditModalForm(rowIdx) {
                     ${deptStatusesHtml}
                     ${commentsHtml}
                 </td>
-                <td>${row['Người lập'] || ""}/${row['Người duyệt'] || ""}</td>
+                <td>${row['Người lập'] || ""}/${approversStr}</td>
                 <td>${row['Ngày duyệt'] || ""}</td>
                 <td>
                     <div style="display:flex; gap:4px; justify-content:center;">
@@ -4008,6 +4049,7 @@ function openEditModalForm(rowIdx) {
     const modalSaveBtn = document.getElementById("modal-save-btn");
     let currentFormTarget = "";
     let editRegistrationIndex = -1;
+    let linkCheckInterval = null;
 
     function openModalForm(target) {
         // Enforce Create permission - Allow if they have quyen_them OR if they are resubmitting/editing an existing rejected document
@@ -4443,38 +4485,29 @@ function openEditModalForm(rowIdx) {
                 linkInput.parentNode.appendChild(hiddenInput);
             }
             
-            // Intercept programmatic value changes to prevent displaying raw base64 string
-            const originalDescriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-            Object.defineProperty(linkInput, 'value', {
-                get() {
-                    return originalDescriptor.get.call(this);
-                },
-                set(val) {
-                    const base64Input = document.getElementById("form-link-base64");
-                    if (base64Input && val && val.startsWith("data:")) {
-                        base64Input.value = val;
-                        originalDescriptor.set.call(this, "[Tệp đính kèm đã nhúng]");
-                        this.style.fontWeight = "bold";
-                        this.style.color = "var(--color-green)";
-                    } else {
-                        originalDescriptor.set.call(this, val);
-                        if (base64Input && (!val || !val.startsWith("[Tệp đính kèm"))) {
-                            base64Input.value = "";
-                            this.style.fontWeight = "normal";
-                            this.style.color = "";
-                        }
-                    }
-                }
-            });
-            
-            linkInput.addEventListener("input", () => {
+            // Monitor changes to form-link to format Base64 if programmatically written
+            // and clear hidden base64 value if user types a normal URL/clears it
+            const checkAndFormatLinkValue = () => {
+                const val = linkInput.value;
                 const base64Input = document.getElementById("form-link-base64");
-                if (base64Input && (!linkInput.value || !linkInput.value.startsWith("[Tệp đính kèm"))) {
+                if (val.startsWith("data:")) {
+                    if (base64Input) base64Input.value = val;
+                    linkInput.value = "[Tệp đính kèm đã nhúng]";
+                    linkInput.style.fontWeight = "bold";
+                    linkInput.style.color = "var(--color-green)";
+                } else if (base64Input && (!val || !val.startsWith("[Tệp đính kèm"))) {
                     base64Input.value = "";
                     linkInput.style.fontWeight = "normal";
                     linkInput.style.color = "";
                 }
-            });
+            };
+
+            linkInput.addEventListener("input", checkAndFormatLinkValue);
+            linkInput.addEventListener("change", checkAndFormatLinkValue);
+            
+            // Periodically check (every 100ms) while modal is open, to handle programmatic writes (e.g. from AI OCR filler)
+            if (linkCheckInterval) clearInterval(linkCheckInterval);
+            linkCheckInterval = setInterval(checkAndFormatLinkValue, 100);
         }
 
         // Bind Base64 File Ingestion reader to form-file-upload
@@ -4689,6 +4722,10 @@ function openEditModalForm(rowIdx) {
     function closeModal() {
         formModal.style.display = "none";
         editRegistrationIndex = -1;
+        if (linkCheckInterval) {
+            clearInterval(linkCheckInterval);
+            linkCheckInterval = null;
+        }
     }
 
     modalCloseBtn.addEventListener("click", closeModal);
@@ -5016,12 +5053,15 @@ function openEditModalForm(rowIdx) {
                     if (dept === 'tvgs') {
                         doc.tvgs_status = status;
                         doc.tvgs_comment = comment;
+                        doc.tvgs_user = currentUser ? currentUser.ho_ten : "Hệ thống";
                     } else if (dept === 'banqlda') {
                         doc.banqlda_status = status;
                         doc.banqlda_comment = comment;
+                        doc.banqlda_user = currentUser ? currentUser.ho_ten : "Hệ thống";
                     } else if (dept === 'cdt') {
                         doc.cdt_status = status;
                         doc.cdt_comment = comment;
+                        doc.cdt_user = currentUser ? currentUser.ho_ten : "Hệ thống";
                     }
                     
                     doc["Người duyệt"] = currentUser ? currentUser.ho_ten : "Hệ thống";
