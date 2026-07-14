@@ -158,12 +158,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Ensure all numeric values are clean and sub-tables have proper structure
     function sanitizeInitialData() {
-        // Force migration to only keep "Hồ Nghĩa Chất" as Admin and clear all other users
-        if (!localStorage.getItem("migration_only_keep_chat_hn_v2")) {
-            db.nhan_su = [
-                { stt: 1, ho_ten: "Hồ Nghĩa Chất", email: "chat.hn@tdggroup.vn", quyen: "Admin", vai_tro: "Phó Ban Quản lý Dự án (Admin)", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456", quyen_them: true, quyen_sua: true, quyen_xoa: true, goi_thau: "Tất cả các gói" }
-            ];
-            localStorage.setItem("migration_only_keep_chat_hn_v2", "true");
+        // Smart migration to update "Hồ Nghĩa Chất" email to hochat.tayan@gmail.com
+        if (!localStorage.getItem("migration_only_keep_chat_hn_v3")) {
+            if (!db.nhan_su) db.nhan_su = [];
+            let admin = db.nhan_su.find(ns => ns && ns.ho_ten === "Hồ Nghĩa Chất");
+            if (admin) {
+                admin.email = "hochat.tayan@gmail.com";
+                admin.quyen = "Admin";
+                admin.mat_khau = admin.mat_khau || "123456";
+            } else {
+                db.nhan_su.push({
+                    stt: db.nhan_su.length + 1,
+                    ho_ten: "Hồ Nghĩa Chất",
+                    email: "hochat.tayan@gmail.com",
+                    quyen: "Admin",
+                    vai_tro: "Phó Ban Quản lý Dự án (Admin)",
+                    phong_ban: "Ban Quản lý Dự án (BQLDA)",
+                    mat_khau: "123456",
+                    quyen_them: true,
+                    quyen_sua: true,
+                    quyen_xoa: true,
+                    goi_thau: "Tất cả các gói"
+                });
+            }
+            localStorage.setItem("migration_only_keep_chat_hn_v3", "true");
         }
         if (!db.master) {
             db.master = [];
@@ -222,7 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!db.s04) db.s04 = [];
         if (!db.s05) db.s05 = [];
         const fallbackNhanSu = [
-            { ho_ten: "Hồ Nghĩa Chất", email: "chat.hn@tdggroup.vn", quyen: "Admin", vai_tro: "Phó Ban Quản lý Dự án (Admin)", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456" }
+            { ho_ten: "Hồ Nghĩa Chất", email: "hochat.tayan@gmail.com", quyen: "Admin", vai_tro: "Phó Ban Quản lý Dự án (Admin)", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456" }
         ];
 
         if (!db.nhan_su || db.nhan_su.length === 0) {
@@ -291,9 +309,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Add unique ID counters if not present
         db.s03.forEach((item, index) => {
+            if (!item) return;
             if (!item['Mã PS']) item['Mã PS'] = `PS.CT01.${String(index + 1).padStart(2, '0')}`;
         });
         db.s04.forEach((item, index) => {
+            if (!item) return;
             if (!item['Mã YC']) item['Mã YC'] = `YC.CT01.${String(index + 1).padStart(2, '0')}`;
         });
     }
@@ -468,13 +488,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 2a. Lũy kế HĐ B-B' = sum of approved Sổ 03 contracted variations matching this BSC
             const variationsHd = db.s03
-                .filter(v => String(v['Mã BSC']).trim() === bsc && v['TT duyệt'] === 'Đã duyệt')
+                .filter(v => v && String(v['Mã BSC']).trim() === bsc && v['TT duyệt'] === 'Đã duyệt')
                 .reduce((sum, v) => sum + parseFloat(v['Giá trị (tỷ)'] || 0), 0);
             row.luy_ke_bb_hd = variationsHd;
 
             // 2b. Lũy kế TH B-B' = sum of approved Sổ 03 executed variations matching this BSC
             const variationsTh = db.s03
-                .filter(v => String(v['Mã BSC']).trim() === bsc && v['TT duyệt'] === 'Đã duyệt')
+                .filter(v => v && String(v['Mã BSC']).trim() === bsc && v['TT duyệt'] === 'Đã duyệt')
                 .reduce((sum, v) => sum + parseFloat(v['Giá trị thực hiện (tỷ)'] || 0), 0);
             row.luy_ke_bb_th = variationsTh;
 
@@ -546,7 +566,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Checking if a package is locked due to budget overrun
     function isPackageLocked(bsc) {
         bsc = String(bsc).trim();
-        const pRow = db.master.find(r => String(r.ma_bsc).trim() === bsc);
+        const pRow = db.master.find(r => r && String(r.ma_bsc).trim() === bsc);
         if (!pRow) return false;
         
         const totalCost = parseFloat(pRow.luy_ke_tong_chi_phi || 0);
@@ -561,7 +581,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return val === 'Đã nhận bàn giao' || val === 'Đã nhận';
         }
         if (item.type === 'child') {
-            const parentRow = db.master.find(r => String(r.ma_bsc).trim() === item.parentId);
+            const parentRow = db.master.find(r => r && String(r.ma_bsc).trim() === item.parentId);
             if (parentRow) {
                 const val = parentRow.xac_nhan_ktkh || "";
                 return val === 'Đã nhận bàn giao' || val === 'Đã nhận';
@@ -936,7 +956,7 @@ document.addEventListener("DOMContentLoaded", () => {
         container.innerHTML = ""; // Clear
 
         // Extract parent packages that have schedule dates
-        const schedulePackages = db.master.filter(r => 
+        const schedulePackages = db.master.filter(r => r && 
             String(r.ma_bsc || "").trim() !== "" && r.ngay_bd_yc && r.ngay_kt_yc
         );
 
@@ -1138,7 +1158,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const list = document.getElementById("budget-tower-list-container");
         list.innerHTML = ""; // Clear
 
-        const packages = db.master.filter(r => String(r.ma_bsc || "").trim() !== "");
+        const packages = db.master.filter(r => r && String(r.ma_bsc || "").trim() !== "");
         
         packages.forEach(p => {
             const total = parseFloat(p.luy_ke_tong_chi_phi || 0);
@@ -1480,7 +1500,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         const lastDotIndex = ttStr.lastIndexOf(".");
         const parentTt = ttStr.substring(0, lastDotIndex);
-        const parentRow = db.master.find(r => String(r.tt).trim() === parentTt);
+        const parentRow = db.master.find(r => r && String(r.tt).trim() === parentTt);
         if (parentRow && String(parentRow.ma_bsc || "").trim() !== "") {
             return String(parentRow.ma_bsc).trim();
         }
@@ -1489,7 +1509,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function calculateNextChildTt(parentTt) {
         const parentPrefix = String(parentTt) + ".";
-        const siblings = db.master.filter(r => String(r.tt).startsWith(parentPrefix));
+        const siblings = db.master.filter(r => r && String(r.tt).startsWith(parentPrefix));
         if (siblings.length === 0) {
             return parentPrefix + "1";
         }
@@ -1513,7 +1533,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
         
-        const parentRow = db.master.find(r => String(r.tt).trim() === String(parentTt).trim());
+        const parentRow = db.master.find(r => r && String(r.tt).trim() === String(parentTt).trim());
         if (!parentRow) return;
         
         currentFormTarget = "add_child_row";
@@ -1565,7 +1585,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // If it's a child row, inherit from its parent package
         if (String(row.ma_bsc || "").trim() === "") {
             const parentPrefix = String(row.tt).split(".")[0];
-            const parentRow = db.master.find(r => String(r.tt) === parentPrefix && String(r.ma_bsc || "").trim() !== "");
+            const parentRow = db.master.find(r => r && String(r.tt) === parentPrefix && String(r.ma_bsc || "").trim() !== "");
             if (parentRow) {
                 bd = parentRow.ngay_bd_yc;
                 kt = parentRow.ngay_kt_yc;
@@ -1680,7 +1700,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 const childTt = String(r.tt);
                 const pPrefix = childTt.split(".")[0];
-                const pRow = db.master.find(pr => String(pr.tt) === pPrefix && String(pr.ma_bsc || "").trim() !== "");
+                const pRow = db.master.find(pr => pr && String(pr.tt) === pPrefix && String(pr.ma_bsc || "").trim() !== "");
                 const childParentBsc = pRow ? String(pRow.ma_bsc).trim() : "";
                 
                 return childParentBsc === parentBsc && matchingChildTts.has(childTt);
@@ -1695,7 +1715,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 const childTt = String(r.tt);
                 const pPrefix = childTt.split(".")[0];
-                const pRow = db.master.find(pr => String(pr.tt) === pPrefix && String(pr.ma_bsc || "").trim() !== "");
+                const pRow = db.master.find(pr => pr && String(pr.tt) === pPrefix && String(pr.ma_bsc || "").trim() !== "");
                 const childParentGp = pRow ? String(pRow.goi_thau_pl).trim() : "";
                 
                 return childParentGp === gpId && matchingChildTts.has(childTt);
@@ -1722,7 +1742,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (isMatch) {
                         const childTt = String(row.tt);
                         const pPrefix = childTt.split(".")[0];
-                        const pRow = db.master.find(pr => String(pr.tt) === pPrefix && String(pr.ma_bsc || "").trim() !== "");
+                        const pRow = db.master.find(pr => pr && String(pr.tt) === pPrefix && String(pr.ma_bsc || "").trim() !== "");
                         if (pRow) {
                             const parentBsc = String(pRow.ma_bsc).trim();
                             const parentGp = String(pRow.goi_thau_pl).trim();
@@ -1889,7 +1909,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (item.type === 'grand_parent') return item.id;
             if (item.type === 'parent') return String(item.row_ref.goi_thau_pl || "");
             if (item.type === 'child') {
-                const parentRow = db.master.find(r => String(r.ma_bsc).trim() === item.parentId);
+                const parentRow = db.master.find(r => r && String(r.ma_bsc).trim() === item.parentId);
                 return parentRow ? String(parentRow.goi_thau_pl || "") : "";
             }
             return "";
@@ -1900,7 +1920,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (item.type === 'parent') return String(item.row_ref.nhom_ct || "");
             if (item.type === 'child') {
                 if (item.row_ref.nhom_ct) return String(item.row_ref.nhom_ct);
-                const parentRow = db.master.find(r => String(r.ma_bsc).trim() === item.parentId);
+                const parentRow = db.master.find(r => r && String(r.ma_bsc).trim() === item.parentId);
                 return parentRow ? String(parentRow.nhom_ct || "") : "";
             }
             return "";
@@ -1940,13 +1960,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!expandedParents.has(currentId)) {
                     return false;
                 }
-                const pRow = db.master.find(r => String(r.ma_bsc).trim() === currentId);
+                const pRow = db.master.find(r => r && String(r.ma_bsc).trim() === currentId);
                 if (pRow) {
                     currentId = String(pRow.goi_thau_pl || "");
                 } else if (currentId.includes(".")) {
                     const lastDot = currentId.lastIndexOf(".");
                     const parentTt = currentId.substring(0, lastDot);
-                    const parentRow = db.master.find(r => String(r.tt).trim() === parentTt);
+                    const parentRow = db.master.find(r => r && String(r.tt).trim() === parentTt);
                     if (parentRow && String(parentRow.ma_bsc || "").trim() !== "") {
                         currentId = String(parentRow.ma_bsc).trim();
                     } else {
@@ -2098,7 +2118,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td>${row.nhom_ct || ""}</td>
                         <td>
                             ${(() => {
-                                const hasChildren = db.master.some(r => r !== row && String(r.tt).startsWith(String(row.tt) + "."));
+                                const hasChildren = db.master.some(r => r && r !== row && String(r.tt).startsWith(String(row.tt) + "."));
                                 let toggleHtml = "";
                                 if (hasChildren && activeLevel === 'detail') {
                                     const toggleId = String(row.ma_bsc || "").trim() !== "" ? String(row.ma_bsc).trim() : String(row.tt).trim();
@@ -2224,7 +2244,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (field === 'hang_muc_work') {
             let html = "";
-            const hasChildren = db.master.some(r => r !== row && String(r.tt).startsWith(String(row.tt) + "."));
+            const hasChildren = db.master.some(r => r && r !== row && String(r.tt).startsWith(String(row.tt) + "."));
             if (hasChildren && activeLevel === 'detail') {
                 const toggleId = String(row.ma_bsc || "").trim() !== "" ? String(row.ma_bsc).trim() : String(row.tt).trim();
                 const isExpanded = expandedParents.has(toggleId);
@@ -2607,7 +2627,7 @@ function openEditModalForm(rowIdx) {
             isHandedOver = val === 'Đã nhận bàn giao' || val === 'Đã nhận';
         } else {
             const parentTt = String(row.tt).split('.')[0];
-            const parentRow = db.master.find(r => String(r.tt) === parentTt && String(r.ma_bsc || "").trim() !== "");
+            const parentRow = db.master.find(r => r && String(r.tt) === parentTt && String(r.ma_bsc || "").trim() !== "");
             if (parentRow) {
                 const val = parentRow.xac_nhan_ktkh || "";
                 isHandedOver = val === 'Đã nhận bàn giao' || val === 'Đã nhận';
@@ -4676,7 +4696,7 @@ function openEditModalForm(rowIdx) {
                     hiddenInput.dispatchEvent(new Event("change"));
                     
                     // Auto fill Hạng mục for Sổ 01-05
-                    const matchedPackage = db.master.find(r => String(r.ma_bsc).trim() === selectedValue);
+                    const matchedPackage = db.master.find(r => r && String(r.ma_bsc).trim() === selectedValue);
                     const hangMucInput = document.getElementById("form-hang-muc");
                     if (matchedPackage && hangMucInput) {
                         hangMucInput.value = matchedPackage.hang_muc_work;
@@ -4739,7 +4759,7 @@ function openEditModalForm(rowIdx) {
             const name = document.getElementById("form-child-work-name").value.trim();
             if (name === "") { alert("Vui lòng nhập Tên hạng mục / công việc con!"); return; }
             
-            const parentRow = db.master.find(r => String(r.tt).trim() === String(parentTt).trim());
+            const parentRow = db.master.find(r => r && String(r.tt).trim() === String(parentTt).trim());
             if (!parentRow) return;
             
             const newRow = {
@@ -4783,7 +4803,7 @@ function openEditModalForm(rowIdx) {
             if (bsc === "") { alert("Vui lòng nhập Mã BSC"); return; }
             
             // Check uniqueness
-            const exist = db.master.find(r => String(r.ma_bsc).trim() === bsc);
+            const exist = db.master.find(r => r && String(r.ma_bsc).trim() === bsc);
             if (exist) { alert("Mã BSC này đã tồn tại!"); return; }
 
             const newRow = {
@@ -4819,7 +4839,7 @@ function openEditModalForm(rowIdx) {
             const bsc = elBsc ? elBsc.value.trim() : (row.ma_bsc || "");
             
             if (bsc !== "" && bsc !== row.ma_bsc) {
-                const exist = db.master.find((r, idx) => idx !== editRowIndex && String(r.ma_bsc).trim() === bsc);
+                const exist = db.master.find((r, idx) => r && idx !== editRowIndex && String(r.ma_bsc).trim() === bsc);
                 if (exist) { alert("Mã BSC này đã tồn tại!"); return; }
             }
             
@@ -5204,7 +5224,7 @@ function openEditModalForm(rowIdx) {
 
             // PREDICTIVE AI TRIGGER: If delay days > 7 days
             if (delayDays > 7) {
-                const packageRow = db.master.find(r => String(r.ma_bsc).trim() === bsc);
+                const packageRow = db.master.find(r => r && String(r.ma_bsc).trim() === bsc);
                 const plannedEnd = packageRow ? packageRow.ngay_kt_yc : "2026-09-30";
                 
                 // Fetch prescriptive recommendations
