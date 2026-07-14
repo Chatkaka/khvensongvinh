@@ -181,7 +181,37 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (!db.s01) db.s01 = [];
-        if (!db.s02) db.s02 = [];
+        if (!db.s02) {
+            db.s02 = [];
+        } else {
+            db.s02.forEach(row => {
+                if (row.yc_tvgs === undefined) row.yc_tvgs = true;
+                if (row.yc_banqlda === undefined) row.yc_banqlda = true;
+                if (row.yc_cdt === undefined) row.yc_cdt = true;
+
+                const currentStatus = String(row["TT duyệt"] || "Chờ duyệt").trim();
+                
+                if (row.tvgs_status === undefined) {
+                    if (currentStatus === 'Đã duyệt') row.tvgs_status = 'Đồng ý';
+                    else if (currentStatus === 'Từ chối') row.tvgs_status = 'Không đồng ý';
+                    else row.tvgs_status = 'Chờ ý kiến';
+                }
+                if (row.banqlda_status === undefined) {
+                    if (currentStatus === 'Đã duyệt') row.banqlda_status = 'Đồng ý';
+                    else if (currentStatus === 'Từ chối') row.banqlda_status = 'Không đồng ý';
+                    else row.banqlda_status = 'Chờ ý kiến';
+                }
+                if (row.cdt_status === undefined) {
+                    if (currentStatus === 'Đã duyệt') row.cdt_status = 'Đồng ý';
+                    else if (currentStatus === 'Từ chối') row.cdt_status = 'Không đồng ý';
+                    else row.cdt_status = 'Chờ ý kiến';
+                }
+
+                if (row.tvgs_comment === undefined) row.tvgs_comment = currentStatus === 'Từ chối' ? (row["Lý do từ chối"] || "") : "";
+                if (row.banqlda_comment === undefined) row.banqlda_comment = currentStatus === 'Từ chối' ? (row["Lý do từ chối"] || "") : "";
+                if (row.cdt_comment === undefined) row.cdt_comment = currentStatus === 'Từ chối' ? (row["Lý do từ chối"] || "") : "";
+            });
+        }
         if (!db.s03) db.s03 = [];
         if (!db.s04) db.s04 = [];
         if (!db.s05) db.s05 = [];
@@ -3223,6 +3253,136 @@ function openEditModalForm(rowIdx) {
         });
     }
 
+    function updateOverallS02Status(doc) {
+        let hasRejected = false;
+        let hasPending = false;
+        
+        if (doc.yc_tvgs && doc.tvgs_status === 'Không đồng ý') hasRejected = true;
+        if (doc.yc_banqlda && doc.banqlda_status === 'Không đồng ý') hasRejected = true;
+        if (doc.yc_cdt && doc.cdt_status === 'Không đồng ý') hasRejected = true;
+        
+        if (!hasRejected) {
+            if (doc.yc_tvgs && doc.tvgs_status === 'Chờ ý kiến') hasPending = true;
+            if (doc.yc_banqlda && doc.banqlda_status === 'Chờ ý kiến') hasPending = true;
+            if (doc.yc_cdt && doc.cdt_status === 'Chờ ý kiến') hasPending = true;
+        }
+        
+        if (hasRejected) {
+            doc['TT duyệt'] = 'Từ chối';
+        } else if (hasPending) {
+            doc['TT duyệt'] = 'Đang lấy ý kiến';
+        } else {
+            doc['TT duyệt'] = 'Đã duyệt';
+        }
+    }
+
+    function openS02OpinionModal(idx) {
+        currentFormTarget = "s02_opinion";
+        editRegistrationIndex = idx;
+        
+        const row = db.s02[idx];
+        const titleEl = document.getElementById("modal-form-title");
+        const bodyEl = document.getElementById("modal-form-body");
+        
+        titleEl.textContent = "Ý Kiến Phê Duyệt Kế Hoạch";
+        
+        const getStatusBadge = (status) => {
+            if (status === 'Đồng ý') return '<span class="badge success">Đồng ý</span>';
+            if (status === 'Không đồng ý') return '<span class="badge danger">Không đồng ý</span>';
+            if (status === 'Chờ ý kiến') return '<span class="badge warning">Chờ ý kiến</span>';
+            return '<span class="badge" style="background:#475569; color:#fff;">N/A (Không yêu cầu)</span>';
+        };
+
+        let availableDepts = [];
+        if (currentUser) {
+            if (currentUser.quyen === 'Admin') {
+                if (row.yc_tvgs) availableDepts.push({ id: 'tvgs', label: 'Tư vấn giám sát (TVGS)' });
+                if (row.yc_banqlda) availableDepts.push({ id: 'banqlda', label: 'Ban Quản lý Dự án' });
+                if (row.yc_cdt) availableDepts.push({ id: 'cdt', label: 'Chủ đầu tư (CĐT)' });
+            } else {
+                if (row.yc_tvgs && currentUser.quyen === 'Supervisor') {
+                    availableDepts.push({ id: 'tvgs', label: 'Tư vấn giám sát (TVGS)' });
+                }
+                if (row.yc_banqlda && ['BanQLDA', 'KTKH', 'QLTK', 'Supply'].includes(currentUser.quyen)) {
+                    availableDepts.push({ id: 'banqlda', label: 'Ban Quản lý Dự án' });
+                }
+            }
+        }
+
+        let deptOptionsHtml = availableDepts.map(d => `<option value="${d.id}">${d.label}</option>`).join('');
+
+        bodyEl.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px; border-radius: 8px;">
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px;">Thông tin kế hoạch:</div>
+                    <div style="font-weight: 700; color: var(--text-primary); font-size: 1rem;">[${row['Mã BSC']}] ${row['Hạng mục']}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"><b>Tháng/Tuần:</b> ${row['Tháng']} | <b>Loại tài liệu:</b> ${row['Loại tài liệu']}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"><b>Nội dung chính:</b> ${row['Nội dung chính'] || "Không có"}</div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Trạng thái ý kiến các bên:</div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px;">
+                        <span style="font-size: 0.85rem; color: var(--text-primary);">Tư vấn giám sát (TVGS):</span>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                            ${getStatusBadge(row.yc_tvgs ? row.tvgs_status : 'N/A')}
+                            ${row.tvgs_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.tvgs_comment}</small>` : ''}
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px;">
+                        <span style="font-size: 0.85rem; color: var(--text-primary);">Ban Quản lý Dự án (BQLDA):</span>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                            ${getStatusBadge(row.yc_banqlda ? row.banqlda_status : 'N/A')}
+                            ${row.banqlda_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.banqlda_comment}</small>` : ''}
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px;">
+                        <span style="font-size: 0.85rem; color: var(--text-primary);">Chủ đầu tư (CĐT):</span>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                            ${getStatusBadge(row.yc_cdt ? row.cdt_status : 'N/A')}
+                            ${row.cdt_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.cdt_comment}</small>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                ${deptOptionsHtml ? `
+                    <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; display: flex; flex-direction: column; gap: 12px;">
+                        <div style="font-weight: 600; font-size: 0.9rem; color: var(--color-ai-primary);"><i class="fa-solid fa-file-signature"></i> Nhập Ý Kiến Của Bạn:</div>
+                        
+                        <div class="form-group">
+                            <label>Bộ phận cho ý kiến</label>
+                            <select id="form-opinion-dept" class="form-control">
+                                ${deptOptionsHtml}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Ý kiến phê duyệt</label>
+                            <select id="form-opinion-status" class="form-control">
+                                <option value="Đồng ý">Đồng ý</option>
+                                <option value="Không đồng ý">Không đồng ý</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Nội dung ý kiến đóng góp</label>
+                            <textarea id="form-opinion-comment" class="form-control" style="height: 60px;" placeholder="Nhập lý do nếu không đồng ý hoặc góp ý chuyên môn..."></textarea>
+                        </div>
+                    </div>
+                ` : `
+                    <div style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px dashed rgba(255,255,255,0.08);">
+                        <i class="fa-solid fa-lock"></i> Bạn không có vai trò phù hợp hoặc hồ sơ đã được duyệt hoàn toàn.
+                    </div>
+                `}
+            </div>
+        `;
+        
+        formModal.style.display = "flex";
+    }
+
     // SO 02: Kế hoạch Tháng/Tuần
     function renderS02() {
         const tbody = document.getElementById("s02-tbody");
@@ -3242,9 +3402,45 @@ function openEditModalForm(rowIdx) {
 
             const tr = document.createElement("tr");
             
-            const canApprove = row['TT duyệt'] !== 'Đã duyệt' && row['TT duyệt'] !== 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || (currentUser.quyen_sua && currentUser.quyen === 'Supervisor')));
+            const userCanGiveOpinion = currentUser && (
+                currentUser.quyen === 'Admin' ||
+                (row.yc_tvgs && currentUser.quyen === 'Supervisor') ||
+                (row.yc_banqlda && ['BanQLDA', 'KTKH', 'QLTK', 'Supply'].includes(currentUser.quyen))
+            ) && row['TT duyệt'] !== 'Đã duyệt';
+
             const canResubmit = row['TT duyệt'] === 'Từ chối' && (currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua));
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
+
+            let deptStatusesHtml = "";
+            if (row.yc_tvgs || row.yc_banqlda || row.yc_cdt) {
+                const getStatusSymbol = (status) => {
+                    if (status === 'Đồng ý') return '<span style="color:var(--color-green); font-weight:bold;" title="Đồng ý">✔</span>';
+                    if (status === 'Không đồng ý') return '<span style="color:#ff5252; font-weight:bold;" title="Không đồng ý">✘</span>';
+                    if (status === 'Chờ ý kiến') return '<span style="color:#f59e0b;" title="Chờ ý kiến">⏳</span>';
+                    return '<span style="color:var(--text-muted);" title="N/A">-</span>';
+                };
+                const tvgsPart = row.yc_tvgs ? `TVGS:${getStatusSymbol(row.tvgs_status)}` : "";
+                const qldaPart = row.yc_banqlda ? `QLDA:${getStatusSymbol(row.banqlda_status)}` : "";
+                const cdtPart = row.yc_cdt ? `CĐT:${getStatusSymbol(row.cdt_status)}` : "";
+                deptStatusesHtml = `<div style="font-size:0.7rem; color:var(--text-secondary); margin-top:4px; display:flex; gap:6px; justify-content:center;">
+                    ${[tvgsPart, qldaPart, cdtPart].filter(Boolean).join(" | ")}
+                </div>`;
+            }
+
+            let overallBadgeClass = "warning";
+            if (row['TT duyệt'] === 'Đã duyệt') overallBadgeClass = "success";
+            else if (row['TT duyệt'] === 'Từ chối') overallBadgeClass = "danger";
+
+            let commentsHtml = "";
+            const commentsList = [];
+            if (row.yc_tvgs && row.tvgs_comment) commentsList.push(`TVGS: ${row.tvgs_comment}`);
+            if (row.yc_banqlda && row.banqlda_comment) commentsList.push(`QLDA: ${row.banqlda_comment}`);
+            if (row.yc_cdt && row.cdt_comment) commentsList.push(`CĐT: ${row.cdt_comment}`);
+            if (commentsList.length > 0) {
+                commentsHtml = `<br><small style="color:#ff5252; font-style:italic; display:block; margin-top:4px; max-width:180px; word-wrap:break-word; text-align:left; line-height:1.2;">
+                    ${commentsList.map(c => `• ${c}`).join("<br>")}
+                </small>`;
+            }
 
             tr.innerHTML = `
                 <td>${index + 1}</td>
@@ -3257,18 +3453,18 @@ function openEditModalForm(rowIdx) {
                 <td>${renderLinkHtml(row['LINK tài liệu'])}</td>
                 <td>${row['TT lập'] || ""}</td>
                 <td>
-                    <span class="badge ${row['TT duyệt'] === 'Đã duyệt' ? 'success' : 'warning'}">
+                    <span class="badge ${overallBadgeClass}">
                         ${row['TT duyệt'] || "Chờ duyệt"}
                     </span>
-                    ${row['TT duyệt'] === 'Từ chối' && row['Lý do từ chối'] ? `<br><small style="color:#ff5252; font-style:italic; display:block; margin-top:4px; max-width:150px; word-wrap:break-word;">Lý do: ${row['Lý do từ chối']}</small>` : ""}
+                    ${deptStatusesHtml}
+                    ${commentsHtml}
                 </td>
                 <td>${row['Người lập'] || ""}/${row['Người duyệt'] || ""}</td>
                 <td>${row['Ngày duyệt'] || ""}</td>
                 <td>
                     <div style="display:flex; gap:4px; justify-content:center;">
-                        ${canApprove ? `
-                            <button class="btn-action approve btn-approve-s02" data-idx="${index}"><i class="fa-solid fa-check"></i> Duyệt</button>
-                            <button class="btn-action reject btn-reject-s02" data-idx="${index}"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                        ${userCanGiveOpinion ? `
+                            <button class="btn-action approve btn-opinion-s02" data-idx="${index}" style="background-color: #3b82f6; border-color: #2563eb; color: #fff;"><i class="fa-solid fa-pen-to-square"></i> Ý kiến</button>
                         ` : ""}
                         ${canResubmit ? `<button class="btn-action approve btn-resubmit-s02" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Trình lại kế hoạch"><i class="fa-solid fa-paper-plane"></i> Trình lại</button>` : ""}
                         ${canDelete ? `<button class="btn-action reject btn-delete-s02" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
@@ -3279,38 +3475,10 @@ function openEditModalForm(rowIdx) {
         });
 
         // Attach events
-        document.querySelectorAll(".btn-approve-s02").forEach(btn => {
-            btn.addEventListener("click", (e) => {
+        document.querySelectorAll(".btn-opinion-s02").forEach(btn => {
+            btn.addEventListener("click", () => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
-                db.s02[idx]['TT duyệt'] = 'Đã duyệt';
-                db.s02[idx]['Lý do từ chối'] = '';
-                db.s02[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'TVGS';
-                db.s02[idx]['Ngày duyệt'] = getSystemDateGMT7();
-                db.s02[idx]['Ngày duyệt'] = new Date().toISOString().substring(0, 10);
-                
-                calculateRollups();
-                saveDatabase();
-                renderS02();
-                showToast("Duyệt Kế Hoạch", "Kế hoạch tuần/tháng đã được TVGS phê duyệt.", "success");
-            });
-        });
-
-        document.querySelectorAll(".btn-reject-s02").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                const idx = parseInt(btn.getAttribute("data-idx"));
-                const reason = prompt("Nhập lý do từ chối phê duyệt kế hoạch tuần/tháng:");
-                if (reason === null) return;
-                if (!reason.trim()) { alert("Lý do từ chối không được để trống!"); return; }
-                
-                db.s02[idx]['TT duyệt'] = 'Từ chối';
-                db.s02[idx]['Lý do từ chối'] = reason.trim();
-                db.s02[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'TVGS';
-                db.s02[idx]['Ngày duyệt'] = getSystemDateGMT7();
-                
-                calculateRollups();
-                saveDatabase();
-                renderS02();
-                showToast("Từ Chối Duyệt", "Đã từ chối kế hoạch tuần/tháng.", "info");
+                openS02OpinionModal(idx);
             });
         });
 
@@ -3872,6 +4040,20 @@ function openEditModalForm(rowIdx) {
                     </div>
                 </div>
                 <div class="form-group">
+                    <label>Các bộ phận cần lấy ý kiến (OE Workflow)</label>
+                    <div style="display: flex; gap: 16px; align-items: center; margin-top: 6px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-tvgs" checked> TVGS
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-banqlda" checked> Ban QLDA
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-cdt" checked> CĐT
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>Người lập</label>
                     <input type="text" id="form-maker" class="form-control" value="Tổng thầu">
                 </div>
@@ -3921,6 +4103,20 @@ function openEditModalForm(rowIdx) {
                             </button>
                             <span id="form-file-status" style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;"></span>
                         </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Các bộ phận cần lấy ý kiến (OE Workflow)</label>
+                    <div style="display: flex; gap: 16px; align-items: center; margin-top: 6px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-tvgs" checked> TVGS
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-banqlda" checked> Ban QLDA
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-cdt" checked> CĐT
+                        </label>
                     </div>
                 </div>
                 <div class="form-group">
@@ -3982,6 +4178,20 @@ function openEditModalForm(rowIdx) {
                             </button>
                             <span id="form-file-status" style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;"></span>
                         </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Các bộ phận cần lấy ý kiến (OE Workflow)</label>
+                    <div style="display: flex; gap: 16px; align-items: center; margin-top: 6px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-tvgs" checked> TVGS
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-banqlda" checked> Ban QLDA
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-cdt" checked> CĐT
+                        </label>
                     </div>
                 </div>
                 <div class="form-group">
@@ -4050,6 +4260,20 @@ function openEditModalForm(rowIdx) {
                     </div>
                 </div>
                 <div class="form-group">
+                    <label>Các bộ phận cần lấy ý kiến (OE Workflow)</label>
+                    <div style="display: flex; gap: 16px; align-items: center; margin-top: 6px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-tvgs" checked> TVGS
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-banqlda" checked> Ban QLDA
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-cdt" checked> CĐT
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>Người lập</label>
                     <input type="text" id="form-maker" class="form-control" value="Tổng thầu">
                 </div>
@@ -4100,6 +4324,20 @@ function openEditModalForm(rowIdx) {
                             </button>
                             <span id="form-file-status" style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;"></span>
                         </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Các bộ phận cần lấy ý kiến (OE Workflow)</label>
+                    <div style="display: flex; gap: 16px; align-items: center; margin-top: 6px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-tvgs" checked> TVGS
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-banqlda" checked> Ban QLDA
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
+                            <input type="checkbox" id="form-yc-cdt" checked> CĐT
+                        </label>
                     </div>
                 </div>
                 <div class="form-group">
@@ -4160,6 +4398,9 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-dat-yckt").value = doc["Đạt YCKT CĐT"] || "Có";
                 document.getElementById("form-link").value = doc["LINK tài liệu"] || "";
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
+                document.getElementById("form-yc-tvgs").checked = doc["yc_tvgs"] !== false;
+                document.getElementById("form-yc-banqlda").checked = doc["yc_banqlda"] !== false;
+                document.getElementById("form-yc-cdt").checked = doc["yc_cdt"] !== false;
             } else if (target === 's03') {
                 const doc = db.s03[editRegistrationIndex];
                 document.getElementById("form-hang-muc").value = doc["Hạng mục"] || "";
@@ -4570,9 +4811,24 @@ function openEditModalForm(rowIdx) {
                 doc["Đạt YCKT CĐT"] = document.getElementById("form-dat-yckt").value;
                 doc["LINK tài liệu"] = document.getElementById("form-link").value;
                 doc["Người lập"] = document.getElementById("form-maker").value;
+                
+                doc["yc_tvgs"] = document.getElementById("form-yc-tvgs").checked;
+                doc["yc_banqlda"] = document.getElementById("form-yc-banqlda").checked;
+                doc["yc_cdt"] = document.getElementById("form-yc-cdt").checked;
+                
+                doc["tvgs_status"] = doc["yc_tvgs"] ? "Chờ ý kiến" : "N/A";
+                doc["banqlda_status"] = doc["yc_banqlda"] ? "Chờ ý kiến" : "N/A";
+                doc["cdt_status"] = doc["yc_cdt"] ? "Chờ ý kiến" : "N/A";
+                
+                doc["tvgs_comment"] = "";
+                doc["banqlda_comment"] = "";
+                doc["cdt_comment"] = "";
+                
                 doc["TT lập"] = "Tổng thầu";
-                doc["TT duyệt"] = "Chờ duyệt";
                 doc["Lý do từ chối"] = "";
+                
+                updateOverallS02Status(doc);
+                
                 showToast("Sổ 02", "Đã cập nhật và trình lại kế hoạch tuần/tháng thành công.", "success");
                 editRegistrationIndex = -1;
             } else {
@@ -4588,13 +4844,64 @@ function openEditModalForm(rowIdx) {
                     "TT lập": "Tổng thầu",
                     "TT duyệt": "Chờ duyệt",
                     "Người lập": document.getElementById("form-maker").value,
-                    "Người duyệt": "TVGS",
-                    "Ngày duyệt": ""
+                    "Người duyệt": "",
+                    "Ngày duyệt": "",
+                    
+                    "yc_tvgs": document.getElementById("form-yc-tvgs").checked,
+                    "yc_banqlda": document.getElementById("form-yc-banqlda").checked,
+                    "yc_cdt": document.getElementById("form-yc-cdt").checked,
+                    
+                    "tvgs_status": document.getElementById("form-yc-tvgs").checked ? "Chờ ý kiến" : "N/A",
+                    "banqlda_status": document.getElementById("form-yc-banqlda").checked ? "Chờ ý kiến" : "N/A",
+                    "cdt_status": document.getElementById("form-yc-cdt").checked ? "Chờ ý kiến" : "N/A",
+                    
+                    "tvgs_comment": "",
+                    "banqlda_comment": "",
+                    "cdt_comment": ""
                 };
+                
+                updateOverallS02Status(newDoc);
                 db.s02.push(newDoc);
                 showToast("Sổ 02", "Đã đăng ký kế hoạch tuần/tháng thành công.", "success");
             }
             renderS02();
+        } else if (currentFormTarget === 's02_opinion') {
+            const idx = editRegistrationIndex;
+            if (idx !== -1) {
+                const doc = db.s02[idx];
+                const dept = document.getElementById("form-opinion-dept") ? document.getElementById("form-opinion-dept").value : null;
+                if (dept) {
+                    const status = document.getElementById("form-opinion-status").value;
+                    const comment = document.getElementById("form-opinion-comment").value.trim();
+                    
+                    if (status === 'Không đồng ý' && !comment) {
+                        alert("Vui lòng nhập nội dung ý kiến đóng góp / lý do không đồng ý!");
+                        return; // early return stops closeModal
+                    }
+                    
+                    if (dept === 'tvgs') {
+                        doc.tvgs_status = status;
+                        doc.tvgs_comment = comment;
+                    } else if (dept === 'banqlda') {
+                        doc.banqlda_status = status;
+                        doc.banqlda_comment = comment;
+                    } else if (dept === 'cdt') {
+                        doc.cdt_status = status;
+                        doc.cdt_comment = comment;
+                    }
+                    
+                    doc["Người duyệt"] = currentUser ? currentUser.ho_ten : "Hệ thống";
+                    doc["Ngày duyệt"] = getSystemDateGMT7();
+                    
+                    updateOverallS02Status(doc);
+                    
+                    calculateRollups();
+                    saveDatabase();
+                    renderS02();
+                    showToast("Phê Duyệt", `Đã lưu ý kiến đóng góp thành công.`, "success");
+                }
+            }
+            editRegistrationIndex = -1;
         } else if (currentFormTarget === 's03') {
             const bsc = document.getElementById("form-bsc").value;
             if (editRegistrationIndex !== -1) {
@@ -5134,7 +5441,7 @@ function openEditModalForm(rowIdx) {
             }, ["STT", "Mã BSC", "Hạng mục", "Loại hồ sơ", "Tên sản phẩm / Số hiệu", "LINK lưu trữ", "Ngày HT", "Người lập", "Người duyệt", "TT duyệt"]);
 
             // 3. Write Sổ 02
-            await fillRegistrySheet(workbook, '02_KH Thang_Tuan', 3, db.s02, 13, (row, rowObj, r, i) => {
+            await fillRegistrySheet(workbook, '02_KH Thang_Tuan', 3, db.s02, 22, (row, rowObj, r, i) => {
                 row.getCell(1).value = i + 1;
                 row.getCell(2).value = rowObj["Mã BSC"];
                 row.getCell(3).value = rowObj["Hạng mục"];
@@ -5148,7 +5455,21 @@ function openEditModalForm(rowIdx) {
                 row.getCell(11).value = rowObj["Người lập"];
                 row.getCell(12).value = rowObj["Người duyệt"];
                 row.getCell(13).value = parseDateSafe(rowObj["Ngày duyệt"]);
-            }, ["STT", "Mã BSC", "Hạng mục", "Tháng", "Loại tài liệu", "Nội dung chính", "Đạt YCKT CĐT", "LINK tài liệu", "TT lập", "TT duyệt", "Người lập", "Người duyệt", "Ngày duyệt"]);
+                
+                row.getCell(14).value = rowObj["yc_tvgs"] ? "Có" : "Không";
+                row.getCell(15).value = rowObj["yc_banqlda"] ? "Có" : "Không";
+                row.getCell(16).value = rowObj["yc_cdt"] ? "Có" : "Không";
+                row.getCell(17).value = rowObj["tvgs_status"] || "Chờ ý kiến";
+                row.getCell(18).value = rowObj["tvgs_comment"] || "";
+                row.getCell(19).value = rowObj["banqlda_status"] || "Chờ ý kiến";
+                row.getCell(20).value = rowObj["banqlda_comment"] || "";
+                row.getCell(21).value = rowObj["cdt_status"] || "Chờ ý kiến";
+                row.getCell(22).value = rowObj["cdt_comment"] || "";
+            }, [
+                "STT", "Mã BSC", "Hạng mục", "Tháng", "Loại tài liệu", "Nội dung chính", 
+                "Đạt YCKT CĐT", "LINK tài liệu", "TT lập", "TT duyệt", "Người lập", "Người duyệt", "Ngày duyệt",
+                "yc_tvgs", "yc_banqlda", "yc_cdt", "tvgs_status", "tvgs_comment", "banqlda_status", "banqlda_comment", "cdt_status", "cdt_comment"
+            ]);
 
             // 4. Write Sổ 03
             await fillRegistrySheet(workbook, '03_Phat sinh', 3, db.s03, 17, (row, rowObj, r, i) => {
