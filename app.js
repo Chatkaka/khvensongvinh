@@ -955,6 +955,92 @@ document.addEventListener("DOMContentLoaded", () => {
         logoutBtn.addEventListener("click", handleLogout);
     }
 
+    // CHANGE PASSWORD MODAL LOGIC
+    const changePasswordBtn = document.getElementById("btn-change-password");
+    const passwordModal = document.getElementById("password-modal");
+    const passwordCloseBtn = document.getElementById("password-close-btn");
+    const passwordCancelBtn = document.getElementById("password-cancel-btn");
+    const passwordSaveBtn = document.getElementById("password-save-btn");
+
+    if (changePasswordBtn && passwordModal) {
+        changePasswordBtn.addEventListener("click", () => {
+            if (!currentUser) {
+                showToast("Bảo Mật", "Vui lòng đăng nhập hệ thống trước!", "danger");
+                return;
+            }
+            document.getElementById("pwd-current").value = "";
+            document.getElementById("pwd-new").value = "";
+            document.getElementById("pwd-confirm").value = "";
+            passwordModal.style.display = "flex";
+        });
+    }
+
+    const closePasswordModal = () => {
+        if (passwordModal) {
+            passwordModal.style.display = "none";
+        }
+    };
+
+    if (passwordCloseBtn) passwordCloseBtn.addEventListener("click", closePasswordModal);
+    if (passwordCancelBtn) passwordCancelBtn.addEventListener("click", closePasswordModal);
+
+    if (passwordSaveBtn) {
+        passwordSaveBtn.addEventListener("click", () => {
+            try {
+                if (!currentUser) {
+                    alert("Lỗi: Không tìm thấy phiên làm việc hiện tại!");
+                    closePasswordModal();
+                    return;
+                }
+                const currentPwd = document.getElementById("pwd-current").value.trim();
+                const newPwd = document.getElementById("pwd-new").value.trim();
+                const confirmPwd = document.getElementById("pwd-confirm").value.trim();
+
+                if (currentPwd === "" || newPwd === "" || confirmPwd === "") {
+                    alert("Vui lòng nhập đầy đủ các trường mật khẩu!");
+                    return;
+                }
+
+                // Verify current password against database.js/localStorage user
+                const dbUser = db.nhan_su.find(ns => ns && String(ns.email).toLowerCase().trim() === String(currentUser.email).toLowerCase().trim());
+                if (!dbUser) {
+                    alert("Lỗi: Không tìm thấy thông tin tài khoản trong cơ sở dữ liệu!");
+                    return;
+                }
+
+                if (dbUser.mat_khau !== currentPwd) {
+                    alert("Mật khẩu hiện tại không chính xác!");
+                    return;
+                }
+
+                if (newPwd.length < 4) {
+                    alert("Mật khẩu mới phải có ít nhất 4 ký tự!");
+                    return;
+                }
+
+                if (newPwd !== confirmPwd) {
+                    alert("Mật khẩu mới và mật khẩu xác nhận không trùng khớp!");
+                    return;
+                }
+
+                // Update password in DB & Session
+                dbUser.mat_khau = newPwd;
+                currentUser.mat_khau = newPwd;
+                sessionStorage.setItem("current_user", JSON.stringify(currentUser));
+                saveDatabase();
+
+                alert("Đổi mật khẩu thành công! Bản ghi mật khẩu mới đã được cập nhật cục bộ. Vui lòng bấm 'Xuất database.js' ở mục Cấu hình để tải file về lưu trữ lâu dài.");
+                if (typeof showToast === 'function') {
+                    showToast("Tài Khoản", "Đổi mật khẩu tài khoản thành công!", "success");
+                }
+                closePasswordModal();
+            } catch (err) {
+                console.error("Lỗi đổi mật khẩu:", err);
+                alert("Có lỗi xảy ra: " + err.message);
+            }
+        });
+    }
+
     document.getElementById("open-settings-btn").addEventListener("click", () => {
         // Security check: Only Admin role is allowed to open Settings tab
         if (!currentUser || currentUser.quyen !== 'Admin') {

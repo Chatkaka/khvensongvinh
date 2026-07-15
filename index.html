@@ -72,7 +72,10 @@
                         <div id="user-display-name" style="font-weight: 600; font-size: 0.85rem; color: #fff; line-height: 1.2;">Đang tải...</div>
                         <div id="user-display-role" style="font-size: 0.7rem; color: var(--text-secondary);">Đang xác thực</div>
                     </div>
-                    <button class="btn-action reject" id="btn-logout" style="padding: 2px 8px; font-size: 0.7rem; border-color: rgba(255,82,82,0.3); color: #ff5252; margin-left: 6px; border-radius: 6px;" title="Đăng xuất khỏi hệ thống">
+                    <button class="btn-action" id="btn-change-password" style="padding: 2px 8px; font-size: 0.7rem; border-color: rgba(59,130,246,0.3); color: #3b82f6; margin-left: 6px; border-radius: 6px;" title="Đổi mật khẩu tài khoản">
+                        <i class="fa-solid fa-key"></i>
+                    </button>
+                    <button class="btn-action reject" id="btn-logout" style="padding: 2px 8px; font-size: 0.7rem; border-color: rgba(255,82,82,0.3); color: #ff5252; margin-left: 4px; border-radius: 6px;" title="Đăng xuất khỏi hệ thống">
                         <i class="fa-solid fa-right-from-bracket"></i>
                     </button>
                 </div>
@@ -812,6 +815,36 @@
                 <button class="btn-action reject" id="modal-cancel-btn">Hủy bỏ</button>
                 <button class="btn-action approve" id="modal-save-btn" style="background-color: var(--color-green); color:#fff; border:none; padding:10px 20px;">
                     <i class="fa-solid fa-circle-check"></i> Lưu Bản Ghi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHANGE PASSWORD MODAL -->
+    <div class="modal-overlay" id="password-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); z-index: 2000; align-items: center; justify-content: center;">
+        <div class="modal-content" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; width: 400px; max-width: 90%; padding: 24px; box-shadow: var(--shadow-lg); text-align: left;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 1.15rem; font-weight: 600; color: #fff; margin: 0;">Đổi Mật Khẩu Tài Khoản</h3>
+                <button class="modal-close" id="password-close-btn" style="background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px;">Mật khẩu hiện tại</label>
+                    <input type="password" id="pwd-current" class="form-control" placeholder="Nhập mật khẩu hiện tại..." required>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px;">Mật khẩu mới</label>
+                    <input type="password" id="pwd-new" class="form-control" placeholder="Nhập mật khẩu mới..." required>
+                </div>
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px;">Xác nhận mật khẩu mới</label>
+                    <input type="password" id="pwd-confirm" class="form-control" placeholder="Xác nhận mật khẩu mới..." required>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button class="btn-action reject" id="password-cancel-btn">Hủy bỏ</button>
+                <button class="btn-action approve" id="password-save-btn" style="background-color: var(--color-green); color:#fff; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">
+                    <i class="fa-solid fa-check"></i> Cập Nhật
                 </button>
             </div>
         </div>
