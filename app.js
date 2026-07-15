@@ -4427,7 +4427,9 @@ function openEditModalForm(rowIdx) {
                 </div>
                 <div class="form-group">
                     <label>Hạng mục</label>
-                    <input type="text" id="form-hang-muc" class="form-control" placeholder="Tên dự án/hạng mục...">
+                    <select id="form-hang-muc" class="form-control" required>
+                        <option value="">-- Chọn Hạng mục --</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Tháng / Tuần</label>
@@ -4904,6 +4906,61 @@ function openEditModalForm(rowIdx) {
                 setupFormLinkValue(doc["LINK phương án"] || "");
             }
         }
+
+        // Dynamically update form-hang-muc options for Sổ 02 (Weekly/Monthly Plan) based on selected package (form-bsc)
+        if (target === 's02') {
+            const bscInput = document.getElementById("form-bsc");
+            const hangMucSelect = document.getElementById("form-hang-muc");
+            if (bscInput && hangMucSelect) {
+                const defaultHangMucVal = editRegistrationIndex !== -1 ? db.s02[editRegistrationIndex]["Hạng mục"] : "";
+                
+                const updateOptions = () => {
+                    const selectedBsc = bscInput.value;
+                    hangMucSelect.innerHTML = '<option value="">-- Chọn Hạng mục --</option>';
+                    if (!selectedBsc) return;
+
+                    // Filter child rows of the selected parent package
+                    const children = db.master.filter(row => {
+                        if (!row) return false;
+                        const hasBsc = String(row.ma_bsc || "").trim() !== "";
+                        if (hasBsc) return false; // Child rows have empty ma_bsc
+                        return getParentIdForTt(row) === selectedBsc;
+                    });
+
+                    if (children.length > 0) {
+                        children.forEach(child => {
+                            const optVal = String(child.hang_muc_work || "").trim();
+                            const optEl = document.createElement("option");
+                            optEl.value = optVal;
+                            optEl.textContent = `${child.tt} - ${optVal}`;
+                            if (optVal === defaultHangMucVal) {
+                                optEl.selected = true;
+                            }
+                            hangMucSelect.appendChild(optEl);
+                        });
+                    } else {
+                        // If no children, check if the selected item itself is a detail row
+                        const selfRow = db.master.find(row => row && (String(row.ma_bsc).trim() === selectedBsc || String(row.tt).trim() === selectedBsc));
+                        if (selfRow) {
+                            const optVal = String(selfRow.hang_muc_work || "").trim();
+                            const optEl = document.createElement("option");
+                            optEl.value = optVal;
+                            optEl.textContent = `${selfRow.tt} - ${optVal}`;
+                            optEl.selected = true;
+                            hangMucSelect.appendChild(optEl);
+                        }
+                    }
+                };
+
+                // Listen for change events from searchable select option click
+                bscInput.addEventListener("change", updateOptions);
+
+                // If editing, run immediately to populate the options with correct selection
+                if (editRegistrationIndex !== -1) {
+                    updateOptions();
+                }
+            }
+        }
     }
 
     function renderOptions(array) {
@@ -5271,6 +5328,23 @@ function openEditModalForm(rowIdx) {
             }
             renderS01();
         } else if (currentFormTarget === 's02') {
+            const bsc = document.getElementById("form-bsc").value;
+            const hangMuc = document.getElementById("form-hang-muc").value;
+            const thang = document.getElementById("form-thang").value.trim();
+
+            if (!bsc) {
+                alert("Vui lòng chọn Công trình / Gói thầu liên kết!");
+                return;
+            }
+            if (!hangMuc) {
+                alert("Vui lòng chọn Hạng mục!");
+                return;
+            }
+            if (thang === "") {
+                alert("Vui lòng nhập Tháng / Tuần!");
+                return;
+            }
+
             if (editRegistrationIndex !== -1) {
                 const doc = db.s02[editRegistrationIndex];
                 doc["Mã BSC"] = document.getElementById("form-bsc").value;
@@ -7507,6 +7581,10 @@ dropzone.addEventListener("click", () => fileInput.click());
     if (exportDbJsBtn) {
         exportDbJsBtn.addEventListener("click", () => {
             try {
+                if (!db || typeof db !== 'object' || !db.master) {
+                    alert("Lỗi: Dữ liệu CSDL trống hoặc không hợp lệ!");
+                    return;
+                }
                 const dbJson = JSON.stringify(db, null, 2);
                 const fileContent = `// File cấu hình cơ sở dữ liệu hệ thống ERP VSV\nconst INITIAL_DATABASE = ${dbJson};\n\nif (typeof module !== 'undefined' && module.exports) {\n    module.exports = INITIAL_DATABASE;\n}\n`;
                 
@@ -7519,10 +7597,15 @@ dropzone.addEventListener("click", () => fileInput.click());
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showToast("Hệ thống", "Đã xuất tệp cấu hình database.js thành công. Bạn hãy chép tệp này đè lên tệp cũ trong dự án.", "success");
+                
+                alert("Đã xuất tệp database.js thành công! Vui lòng kiểm tra thư mục tải xuống trên máy tính của bạn và sao chép tệp này đè lên tệp cũ trong thư mục dự án.");
+                
+                if (typeof showToast === 'function') {
+                    showToast("Hệ thống", "Đã xuất tệp cấu hình database.js thành công. Bạn hãy chép tệp này đè lên tệp cũ trong dự án.", "success");
+                }
             } catch (err) {
                 console.error("Lỗi xuất database.js:", err);
-                showToast("Lỗi", "Không thể xuất tệp database.js.", "danger");
+                alert("Lỗi khi xuất CSDL: " + err.message);
             }
         });
     }
