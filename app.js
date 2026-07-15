@@ -377,12 +377,16 @@ document.addEventListener("DOMContentLoaded", () => {
             const adminEmail = "hochat.tayan@gmail.com";
             
             // 1. Remove local accounts that are not in defaultDb.nhan_su (except the admin account "hochat.tayan@gmail.com")
-            db.nhan_su = db.nhan_su.filter(ns => {
-                if (!ns) return false;
-                const email = String(ns.email).toLowerCase().trim();
-                if (email === adminEmail) return true;
-                return defaultDb.nhan_su.some(dns => dns && String(dns.email).toLowerCase().trim() === email);
-            });
+            // CRITICAL: ONLY run the deletion logic on non-admin devices! Admin devices can add local accounts that are not yet in database.js
+            const isAdminDevice = localStorage.getItem("is_admin_device") === "true";
+            if (!isAdminDevice) {
+                db.nhan_su = db.nhan_su.filter(ns => {
+                    if (!ns) return false;
+                    const email = String(ns.email).toLowerCase().trim();
+                    if (email === adminEmail) return true;
+                    return defaultDb.nhan_su.some(dns => dns && String(dns.email).toLowerCase().trim() === email);
+                });
+            }
 
             // 2. Add or update accounts from defaultDb.nhan_su
             defaultDb.nhan_su.forEach(defaultNs => {
@@ -855,6 +859,9 @@ document.addEventListener("DOMContentLoaded", () => {
         currentUser = user;
         currentRole = user.quyen;
         sessionStorage.setItem("current_user", JSON.stringify(user));
+        if (user.quyen === 'Admin') {
+            localStorage.setItem("is_admin_device", "true");
+        }
         
         hideLoginOverlay();
         applyUserSession();
