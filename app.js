@@ -971,6 +971,10 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("pwd-current").value = "";
             document.getElementById("pwd-new").value = "";
             document.getElementById("pwd-confirm").value = "";
+            const usernameDisplay = document.getElementById("pwd-username-display");
+            if (usernameDisplay) {
+                usernameDisplay.textContent = currentUser.email || "";
+            }
             passwordModal.style.display = "flex";
         });
     }

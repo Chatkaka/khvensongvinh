@@ -7225,7 +7225,10 @@ const INITIAL_DATABASE = {
       "cdt_comment": "",
       "tvgs_time": "",
       "banqlda_time": "",
-      "cdt_time": ""
+      "cdt_time": "",
+      "tvgs_user": "",
+      "banqlda_user": "",
+      "cdt_user": ""
     }
   ],
   "s03": [
@@ -7373,7 +7376,20 @@ const INITIAL_DATABASE = {
   },
   "nhan_su": [
     {
-      "stt": 1,
+      "ho_ten": "Hồ Nghĩa Chất",
+      "email": "hochat.tayan@gmail.com",
+      "quyen": "Admin",
+      "vai_tro": "Phó Ban Quản lý Dự án (Admin)",
+      "phong_ban": "KTKH",
+      "mat_khau": "123456",
+      "quyen_them": true,
+      "quyen_sua": true,
+      "quyen_xoa": true,
+      "goi_thau": "Tất cả các gói",
+      "stt": 1
+    },
+    {
+      "stt": 2,
       "ho_ten": "Phan Thị Mỹ Hạnh",
       "email": "aaaaa",
       "phong_ban": "QLTK",
@@ -7386,7 +7402,7 @@ const INITIAL_DATABASE = {
       "goi_thau": "Tất cả các gói"
     },
     {
-      "stt": 2,
+      "stt": 3,
       "ho_ten": "Lê Hải Long",
       "email": "bbbbbbbbbbbbbbbbbbbbbbb",
       "phong_ban": "KTKH",
@@ -7399,7 +7415,7 @@ const INITIAL_DATABASE = {
       "goi_thau": "Tất cả các gói"
     },
     {
-      "stt": 3,
+      "stt": 4,
       "ho_ten": "Đinh Quốc Hùng",
       "email": "ggggggggggggggggggg",
       "phong_ban": "Ban QLDA",
@@ -7412,7 +7428,7 @@ const INITIAL_DATABASE = {
       "goi_thau": "Tất cả các gói"
     },
     {
-      "stt": 4,
+      "stt": 5,
       "ho_ten": "Nguyễn Danh Hoàng",
       "email": "ccccccccc",
       "phong_ban": "Ban QLDA",
@@ -7423,19 +7439,6 @@ const INITIAL_DATABASE = {
       "quyen_sua": false,
       "quyen_xoa": false,
       "goi_thau": "Tất cả các gói"
-    },
-    {
-      "ho_ten": "Hồ Nghĩa Chất",
-      "email": "hochat.tayan@gmail.com",
-      "quyen": "Admin",
-      "vai_tro": "Phó Ban Quản lý Dự án (Admin)",
-      "phong_ban": "KTKH",
-      "mat_khau": "123456",
-      "quyen_them": true,
-      "quyen_sua": true,
-      "quyen_xoa": true,
-      "goi_thau": "Tất cả các gói",
-      "stt": 5
     },
     {
       "stt": 6,
@@ -7485,6 +7488,19 @@ const INITIAL_DATABASE = {
       "quyen": "KTKH",
       "mat_khau": "123456",
       "quyen_them": false,
+      "quyen_sua": false,
+      "quyen_xoa": false,
+      "goi_thau": "Tất cả các gói"
+    },
+    {
+      "stt": 10,
+      "ho_ten": "Nguyễn Quang Đức",
+      "email": "Đức đứcpppppp",
+      "phong_ban": "Cty cung ứng",
+      "vai_tro": "PGĐ",
+      "quyen": "Supply",
+      "mat_khau": "123456",
+      "quyen_them": true,
       "quyen_sua": false,
       "quyen_xoa": false,
       "goi_thau": "Tất cả các gói"
