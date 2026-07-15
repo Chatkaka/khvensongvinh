@@ -146,6 +146,17 @@ document.addEventListener("DOMContentLoaded", () => {
         return `${year}-${month}-${day}`;
     }
 
+    function getSystemDateTimeGMT7() {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const seconds = String(d.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
     function loadDatabase() {
         const stored = localStorage.getItem("erp_db");
         if (stored) {
@@ -1424,6 +1435,22 @@ document.addEventListener("DOMContentLoaded", () => {
             return `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
         return dateStr;
+    }
+
+    function formatDateTimeDMY(dateTimeStr) {
+        if (!dateTimeStr) return "";
+        const parts = String(dateTimeStr).trim().split(" ");
+        if (parts.length === 2) {
+            const dateParts = parts[0].split("-");
+            if (dateParts.length === 3 && dateParts[0].length === 4) {
+                const timeParts = parts[1].split(":");
+                return `${timeParts[0]}:${timeParts[1]} ${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            }
+        }
+        if (String(dateTimeStr).includes(":") && String(dateTimeStr).includes("/")) {
+            return dateTimeStr;
+        }
+        return formatDateDMY(dateTimeStr);
     }
 
     async function sendTelegramMessage(message) {
@@ -3422,7 +3449,7 @@ function openEditModalForm(rowIdx) {
                 db.s01[idx]['TT duyệt'] = 'Đã duyệt';
                 db.s01[idx]['Lý do từ chối'] = '';
                 db.s01[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'CĐT';
-                db.s01[idx]['Ngày duyệt'] = getSystemDateGMT7();
+                db.s01[idx]['Ngày duyệt'] = getSystemDateTimeGMT7();
                 
                 // Rollup real-time
                 calculateRollups();
@@ -3442,7 +3469,7 @@ function openEditModalForm(rowIdx) {
                 db.s01[idx]['TT duyệt'] = 'Từ chối';
                 db.s01[idx]['Lý do từ chối'] = reason.trim();
                 db.s01[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'CĐT';
-                db.s01[idx]['Ngày duyệt'] = getSystemDateGMT7();
+                db.s01[idx]['Ngày duyệt'] = getSystemDateTimeGMT7();
                 
                 calculateRollups();
                 saveDatabase();
@@ -3571,7 +3598,7 @@ function openEditModalForm(rowIdx) {
                         <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                             ${getStatusBadge(row.yc_tvgs ? row.tvgs_status : 'N/A')}
                             ${row.tvgs_user ? `<small style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;">Duyệt bởi: ${row.tvgs_user}</small>` : ''}
-                            ${row.tvgs_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.tvgs_comment}</small>` : ''}
+                            ${row.tvgs_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.tvgs_comment}${row.tvgs_time ? ` (${formatDateTimeDMY(row.tvgs_time)})` : ''}</small>` : ''}
                         </div>
                     </div>
 
@@ -3580,7 +3607,7 @@ function openEditModalForm(rowIdx) {
                         <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                             ${getStatusBadge(row.yc_banqlda ? row.banqlda_status : 'N/A')}
                             ${row.banqlda_user ? `<small style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;">Duyệt bởi: ${row.banqlda_user}</small>` : ''}
-                            ${row.banqlda_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.banqlda_comment}</small>` : ''}
+                            ${row.banqlda_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.banqlda_comment}${row.banqlda_time ? ` (${formatDateTimeDMY(row.banqlda_time)})` : ''}</small>` : ''}
                         </div>
                     </div>
 
@@ -3589,7 +3616,7 @@ function openEditModalForm(rowIdx) {
                         <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                             ${getStatusBadge(row.yc_cdt ? row.cdt_status : 'N/A')}
                             ${row.cdt_user ? `<small style="font-size: 0.75rem; color: var(--color-green); font-weight: 600;">Duyệt bởi: ${row.cdt_user}</small>` : ''}
-                            ${row.cdt_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.cdt_comment}</small>` : ''}
+                            ${row.cdt_comment ? `<small style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; text-align: right; word-wrap: break-word;">Ý kiến: ${row.cdt_comment}${row.cdt_time ? ` (${formatDateTimeDMY(row.cdt_time)})` : ''}</small>` : ''}
                         </div>
                     </div>
                 </div>
@@ -3700,9 +3727,18 @@ function openEditModalForm(rowIdx) {
 
             let commentsHtml = "";
             const commentsList = [];
-            if (row.yc_tvgs && row.tvgs_comment) commentsList.push(`TVGS: ${row.tvgs_comment}`);
-            if (row.yc_banqlda && row.banqlda_comment) commentsList.push(`QLDA: ${row.banqlda_comment}`);
-            if (row.yc_cdt && row.cdt_comment) commentsList.push(`CĐT: ${row.cdt_comment}`);
+            if (row.yc_tvgs && row.tvgs_comment) {
+                const timeSuffix = row.tvgs_time ? ` (${formatDateTimeDMY(row.tvgs_time)})` : '';
+                commentsList.push(`TVGS: ${row.tvgs_comment}${timeSuffix}`);
+            }
+            if (row.yc_banqlda && row.banqlda_comment) {
+                const timeSuffix = row.banqlda_time ? ` (${formatDateTimeDMY(row.banqlda_time)})` : '';
+                commentsList.push(`QLDA: ${row.banqlda_comment}${timeSuffix}`);
+            }
+            if (row.yc_cdt && row.cdt_comment) {
+                const timeSuffix = row.cdt_time ? ` (${formatDateTimeDMY(row.cdt_time)})` : '';
+                commentsList.push(`CĐT: ${row.cdt_comment}${timeSuffix}`);
+            }
             if (commentsList.length > 0) {
                 commentsHtml = `<br><small style="color:#ff5252; font-style:italic; display:block; margin-top:4px; max-width:180px; word-wrap:break-word; text-align:left; line-height:1.2;">
                     ${commentsList.map(c => `• ${c}`).join("<br>")}
@@ -3733,7 +3769,7 @@ function openEditModalForm(rowIdx) {
                     ${commentsHtml}
                 </td>
                 <td>${row['Người lập'] || ""}/${approversStr}</td>
-                <td>${row['Ngày duyệt'] || ""}</td>
+                <td>${formatDateTimeDMY(row['Ngày duyệt'])}</td>
                 <td>
                     <div style="display:flex; gap:4px; justify-content:center;">
                         ${userCanGiveOpinion ? `
@@ -3836,7 +3872,7 @@ function openEditModalForm(rowIdx) {
                     </span>
                     ${row['TT duyệt'] === 'Từ chối' && row['Lý do từ chối'] ? `<br><small style="color:#ff5252; font-style:italic; display:block; margin-top:4px; max-width:150px; word-wrap:break-word;">Lý do: ${row['Lý do từ chối']}</small>` : ""}
                 </td>
-                <td>${row['Người duyệt'] || ""}<br><small>${formatDateDMY(row['Ngày duyệt'])}</small></td>
+                <td>${row['Người duyệt'] || ""}<br><small>${formatDateTimeDMY(row['Ngày duyệt'])}</small></td>
                 <td>
                     <div style="display:flex; gap:4px; justify-content:center;">
                         ${canApprove ? `
@@ -3870,7 +3906,7 @@ function openEditModalForm(rowIdx) {
                 db.s03[idx]['TT duyệt'] = 'Đã duyệt';
                 db.s03[idx]['Lý do từ chối'] = '';
                 db.s03[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'GĐDA';
-                db.s03[idx]['Ngày duyệt'] = getSystemDateGMT7();
+                db.s03[idx]['Ngày duyệt'] = getSystemDateTimeGMT7();
 
                 // Real-time synchronization rollup < 0.5s
                 calculateRollups();
@@ -3890,7 +3926,7 @@ function openEditModalForm(rowIdx) {
                 db.s03[idx]['TT duyệt'] = 'Từ chối';
                 db.s03[idx]['Lý do từ chối'] = reason.trim();
                 db.s03[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'GĐDA';
-                db.s03[idx]['Ngày duyệt'] = getSystemDateGMT7();
+                db.s03[idx]['Ngày duyệt'] = getSystemDateTimeGMT7();
 
                 saveDatabase();
                 renderS03();
@@ -4019,7 +4055,7 @@ function openEditModalForm(rowIdx) {
                 db.s04[idx]['Lý do từ chối'] = '';
                 db.s04[idx]['TT cung ứng'] = 'Đang cung ứng';
                 db.s04[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'BQLDA';
-                db.s04[idx]['Ngày duyệt'] = getSystemDateGMT7();
+                db.s04[idx]['Ngày duyệt'] = getSystemDateTimeGMT7();
                 
                 saveDatabase();
                 renderS04();
@@ -4037,7 +4073,7 @@ function openEditModalForm(rowIdx) {
                 db.s04[idx]['TT duyệt'] = 'Từ chối';
                 db.s04[idx]['Lý do từ chối'] = reason.trim();
                 db.s04[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'BQLDA';
-                db.s04[idx]['Ngày duyệt'] = getSystemDateGMT7();
+                db.s04[idx]['Ngày duyệt'] = getSystemDateTimeGMT7();
                 
                 saveDatabase();
                 renderS04();
@@ -4156,7 +4192,7 @@ function openEditModalForm(rowIdx) {
                 db.s05[idx]['TT duyệt'] = 'Đã duyệt';
                 db.s05[idx]['Lý do từ chối'] = '';
                 db.s05[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'BQLDA';
-                db.s05[idx]['Ngày duyệt'] = getSystemDateGMT7();
+                db.s05[idx]['Ngày duyệt'] = getSystemDateTimeGMT7();
                 
                 calculateRollups();
                 saveDatabase();
@@ -4175,7 +4211,7 @@ function openEditModalForm(rowIdx) {
                 db.s05[idx]['TT duyệt'] = 'Từ chối';
                 db.s05[idx]['Lý do từ chối'] = reason.trim();
                 db.s05[idx]['Người duyệt'] = currentUser ? currentUser.ho_ten : 'BQLDA';
-                db.s05[idx]['Ngày duyệt'] = getSystemDateGMT7();
+                db.s05[idx]['Ngày duyệt'] = getSystemDateTimeGMT7();
                 
                 calculateRollups();
                 saveDatabase();
@@ -5242,6 +5278,9 @@ function openEditModalForm(rowIdx) {
                 doc["tvgs_comment"] = "";
                 doc["banqlda_comment"] = "";
                 doc["cdt_comment"] = "";
+                doc["tvgs_time"] = "";
+                doc["banqlda_time"] = "";
+                doc["cdt_time"] = "";
                 
                 doc["TT lập"] = "Tổng thầu";
                 doc["Lý do từ chối"] = "";
@@ -5276,7 +5315,10 @@ function openEditModalForm(rowIdx) {
                     
                     "tvgs_comment": "",
                     "banqlda_comment": "",
-                    "cdt_comment": ""
+                    "cdt_comment": "",
+                    "tvgs_time": "",
+                    "banqlda_time": "",
+                    "cdt_time": ""
                 };
                 
                 updateOverallS02Status(newDoc);
@@ -5298,22 +5340,26 @@ function openEditModalForm(rowIdx) {
                         return; // early return stops closeModal
                     }
                     
+                    const opinionTime = getSystemDateTimeGMT7();
                     if (dept === 'tvgs') {
                         doc.tvgs_status = status;
                         doc.tvgs_comment = comment;
                         doc.tvgs_user = currentUser ? currentUser.ho_ten : "Hệ thống";
+                        doc.tvgs_time = opinionTime;
                     } else if (dept === 'banqlda') {
                         doc.banqlda_status = status;
                         doc.banqlda_comment = comment;
                         doc.banqlda_user = currentUser ? currentUser.ho_ten : "Hệ thống";
+                        doc.banqlda_time = opinionTime;
                     } else if (dept === 'cdt') {
                         doc.cdt_status = status;
                         doc.cdt_comment = comment;
                         doc.cdt_user = currentUser ? currentUser.ho_ten : "Hệ thống";
+                        doc.cdt_time = opinionTime;
                     }
                     
                     doc["Người duyệt"] = currentUser ? currentUser.ho_ten : "Hệ thống";
-                    doc["Ngày duyệt"] = getSystemDateGMT7();
+                    doc["Ngày duyệt"] = opinionTime;
                     
                     updateOverallS02Status(doc);
                     
