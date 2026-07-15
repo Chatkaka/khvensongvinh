@@ -402,11 +402,20 @@ document.addEventListener("DOMContentLoaded", () => {
                     existing.phong_ban = defaultNs.phong_ban;
                     existing.vai_tro = defaultNs.vai_tro;
                     existing.quyen = defaultNs.quyen;
-                    existing.mat_khau = defaultNs.mat_khau;
                     existing.quyen_them = defaultNs.quyen_them;
                     existing.quyen_sua = defaultNs.quyen_sua;
                     existing.quyen_xoa = defaultNs.quyen_xoa;
                     existing.goi_thau = defaultNs.goi_thau;
+
+                    // Sync password with safety guards:
+                    // Only sync/overwrite password if we are NOT on the admin's device AND the account is not the logged-in user themselves
+                    const isAdminDevice = localStorage.getItem("is_admin_device") === "true";
+                    const isSelf = currentUser && String(currentUser.email).toLowerCase().trim() === email;
+                    if (!isAdminDevice && !isSelf) {
+                        existing.mat_khau = defaultNs.mat_khau;
+                    } else if (!existing.mat_khau) {
+                        existing.mat_khau = defaultNs.mat_khau;
+                    }
                 }
             });
         }
