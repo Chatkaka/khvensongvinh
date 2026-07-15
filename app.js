@@ -363,18 +363,25 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!db.s04) db.s04 = [];
         if (!db.s05) db.s05 = [];
         const fallbackNhanSu = [
-            { ho_ten: "Hồ Nghĩa Chất", email: "hochat.tayan@gmail.com", quyen: "Admin", vai_tro: "Phó Ban Quản lý Dự án (Admin)", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456" }
+            { ho_ten: "Hồ Nghĩa Chất", email: "hochat.tayan@gmail.com", quyen: "Admin", vai_tro: "Phó Ban Quản lý Dự án (Admin)", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456", quyen_them: true, quyen_sua: true, quyen_xoa: true, goi_thau: "Tất cả các gói" },
+            { ho_ten: "Phan Văn Khánh", email: "khanh.pv@tdggroup.vn", quyen: "Admin", vai_tro: "Giám đốc Dự án (Admin)", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456", quyen_them: true, quyen_sua: true, quyen_xoa: true, goi_thau: "Tất cả các gói" },
+            { ho_ten: "Nguyễn Đình Hùng", email: "hung.nd@tdggroup.vn", quyen: "Admin", vai_tro: "Cán bộ quản lý (Admin)", phong_ban: "QLTK", mat_khau: "123456", quyen_them: true, quyen_sua: true, quyen_xoa: true, goi_thau: "Tất cả các gói" },
+            { ho_ten: "Nguyễn Hoàng Long", email: "long.nh@tvgs.vn", quyen: "Supervisor", vai_tro: "Trưởng đoàn TVGS", phong_ban: "Đoàn Tư vấn Giám sát", mat_khau: "123456", quyen_them: false, quyen_sua: true, quyen_xoa: false, goi_thau: "Tất cả các gói" },
+            { ho_ten: "Trần Quốc Huy", email: "huy.tq@anphong.vn", quyen: "Contractor", vai_tro: "Chỉ huy trưởng Tổng thầu", phong_ban: "Tổng thầu An Phong", mat_khau: "123456", quyen_them: true, quyen_sua: true, quyen_xoa: true, goi_thau: "Tất cả các gói" },
+            { ho_ten: "Lê Minh Tú", email: "tu.lm@supply.tdg.vn", quyen: "Supply", vai_tro: "Trưởng nhóm Cung ứng", phong_ban: "Phòng Kế hoạch Cung ứng", mat_khau: "123456", quyen_them: false, quyen_sua: true, quyen_xoa: false, goi_thau: "Tất cả các gói" }
         ];
 
         if (!db.nhan_su || db.nhan_su.length === 0) {
-            db.nhan_su = fallbackNhanSu;
+            db.nhan_su = JSON.parse(JSON.stringify(fallbackNhanSu));
         } else {
             fallbackNhanSu.forEach(defaultNs => {
-                const exists = db.nhan_su.some(ns => String(ns.email).toLowerCase().trim() === String(defaultNs.email).toLowerCase().trim());
+                const exists = db.nhan_su.some(ns => ns && String(ns.email).toLowerCase().trim() === String(defaultNs.email).toLowerCase().trim());
                 if (!exists) {
-                    db.nhan_su.push(defaultNs);
+                    const newNs = JSON.parse(JSON.stringify(defaultNs));
+                    newNs.stt = db.nhan_su.length + 1;
+                    db.nhan_su.push(newNs);
                 } else {
-                    const existing = db.nhan_su.find(ns => String(ns.email).toLowerCase().trim() === String(defaultNs.email).toLowerCase().trim());
+                    const existing = db.nhan_su.find(ns => ns && String(ns.email).toLowerCase().trim() === String(defaultNs.email).toLowerCase().trim());
                     if (existing) {
                         if (!existing.phong_ban || existing.phong_ban === "") {
                             existing.phong_ban = defaultNs.phong_ban;
