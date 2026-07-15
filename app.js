@@ -7524,7 +7524,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                     <div style="display:flex; gap:16px; margin-top:6px;">
                         <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
                             <input type="checkbox" id="p-can-add" checked> THÊM (Create)
-                        </label>
+</label>
                         <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
                             <input type="checkbox" id="p-can-edit" checked> SỬA (Update)
                         </label>
@@ -7536,92 +7536,6 @@ dropzone.addEventListener("click", () => fileInput.click());
                 <div class="form-group">
                     <label>Gói Thầu Phụ Trách</label>
                     <input type="text" id="p-package" class="form-control" placeholder="Mã gói thầu, ví dụ: VSV_QLTC_TT.01, hoặc Tất cả các gói">
-                </div>
-            </div>
-        `;
-        
-        window.syncDefaultCrudCheckboxes = () => {
-            const auth = document.getElementById("p-auth").value;
-            const addCb = document.getElementById("p-can-add");
-            const editCb = document.getElementById("p-can-edit");
-            const deleteCb = document.getElementById("p-can-delete");
-            if (!addCb || !editCb || !deleteCb) return;
-            
-            if (auth === 'Admin' || auth === 'BanQLDA') {
-                addCb.checked = true; editCb.checked = true; deleteCb.checked = true;
-            } else if (auth === 'Supervisor' || auth === 'KTKH' || auth === 'QLTK' || auth === 'Supply') {
-                addCb.checked = false; editCb.checked = true; deleteCb.checked = false;
-            } else if (auth === 'Contractor') {
-                addCb.checked = true; editCb.checked = true; deleteCb.checked = true;
-            }
-        };
-
-        formModal.style.display = "flex";
-    }
-
-    function openEditPersonnelModal(idx) {
-        editPersonnelIndex = idx;
-        currentFormTarget = "personnel_edit";
-        const row = db.nhan_su[idx];
-        
-        const titleEl = document.getElementById("modal-form-title");
-        const bodyEl = document.getElementById("modal-form-body");
-        
-        const isSelfEditOnly = currentUser && currentUser.email === row.email && currentUser.quyen !== 'Admin';
-        const disabledAttr = isSelfEditOnly ? 'disabled style="background:rgba(255,255,255,0.03); cursor:not-allowed;"' : '';
-
-        titleEl.textContent = `Chỉnh Sửa Thông Tin Nhân Sự: ${row.ho_ten}`;
-        bodyEl.innerHTML = `
-            <div style="display:grid; grid-template-columns:1fr; gap:12px;">
-                <div class="form-group">
-                    <label>Họ và Tên</label>
-                    <input type="text" id="p-name" class="form-control" value="${row.ho_ten || ''}" ${disabledAttr} required>
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="p-email" class="form-control" value="${row.email || ''}" ${disabledAttr} required>
-                </div>
-                <div class="form-group">
-                    <label>Phòng Ban</label>
-                    <input type="text" id="p-dept" class="form-control" value="${row.phong_ban || ''}" ${disabledAttr} required>
-                </div>
-                <div class="form-group">
-                    <label>Vai Trò / Chức Danh</label>
-                    <input type="text" id="p-role" class="form-control" value="${row.vai_tro || ''}" ${disabledAttr} required>
-                </div>
-                <div class="form-group">
-                    <label>Quyền Truy Cập Hệ Thống (Mức Phân Quyền)</label>
-                    <select id="p-auth" class="form-control" onchange="window.syncDefaultCrudCheckboxes()" ${disabledAttr}>
-                        <option value="Admin" ${row.quyen === 'Admin' ? 'selected' : ''}>Toàn quyền ( Admin)</option>
-                        <option value="BanQLDA" ${row.quyen === 'BanQLDA' ? 'selected' : ''}>Quyền Ban QLDA</option>
-                        <option value="Contractor" ${row.quyen === 'Contractor' ? 'selected' : ''}>Quyền Tổng thầu</option>
-                        <option value="Supervisor" ${row.quyen === 'Supervisor' ? 'selected' : ''}>Quyền TVGS</option>
-                        <option value="KTKH" ${row.quyen === 'KTKH' ? 'selected' : ''}>Quyền phòng KTKH</option>
-                        <option value="QLTK" ${row.quyen === 'QLTK' ? 'selected' : ''}>Quyền phòng QLTK</option>
-                        <option value="Supply" ${row.quyen === 'Supply' ? 'selected' : ''}>Quyền Cung ứng</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Mật Khẩu Đăng Nhập</label>
-                    <input type="text" id="p-password" class="form-control" value="${row.mat_khau || '123456'}" required>
-                </div>
-                <div class="form-group">
-                    <label>Phân quyền thao tác (CRUD)</label>
-                    <div style="display:flex; gap:16px; margin-top:6px;">
-                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                            <input type="checkbox" id="p-can-add" ${row.quyen_them ? 'checked' : ''} ${disabledAttr}> THÊM (Create)
-                        </label>
-                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                            <input type="checkbox" id="p-can-edit" ${row.quyen_sua ? 'checked' : ''} ${disabledAttr}> SỬA (Update)
-                        </label>
-                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                            <input type="checkbox" id="p-can-delete" ${row.quyen_xoa ? 'checked' : ''} ${disabledAttr}> XÓA (Delete)
-                        </label>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Gói Thầu Phụ Trách</label>
-                    <input type="text" id="p-package" class="form-control" value="${row.goi_thau || ''}" placeholder="Mã gói thầu, ví dụ: VSV_QLTC_TT.01, hoặc Tất cả các gói" ${disabledAttr}>
                 </div>
             </div>
         `;
@@ -7719,8 +7633,8 @@ dropzone.addEventListener("click", () => fileInput.click());
     if (modelSelect) {
         modelSelect.value = GeminiAI.model;
     }
-    if (telegramTokenInput) telegramTokenInput.value = localStorage.getItem("telegram_bot_token") || "";
-    if (telegramChatIdInput) telegramChatIdInput.value = localStorage.getItem("telegram_chat_id") || "";
+    if (telegramTokenInput) telegramTokenInput.value = (db.telegram_config && db.telegram_config.bot_token) || localStorage.getItem("telegram_bot_token") || "";
+    if (telegramChatIdInput) telegramChatIdInput.value = (db.telegram_config && db.telegram_config.chat_id) || localStorage.getItem("telegram_chat_id") || "";
     
     // Load Google Drive setting
     let gdriveUrlInput = document.getElementById("gdrive-upload-url");
@@ -7739,8 +7653,19 @@ dropzone.addEventListener("click", () => fileInput.click());
         GeminiAI.setApiKey(key);
         GeminiAI.setModel(model);
         
-        if (telegramTokenInput) localStorage.setItem("telegram_bot_token", telegramTokenInput.value.trim());
-        if (telegramChatIdInput) localStorage.setItem("telegram_chat_id", telegramChatIdInput.value.trim());
+        if (telegramTokenInput) {
+            const token = telegramTokenInput.value.trim();
+            localStorage.setItem("telegram_bot_token", token);
+            if (!db.telegram_config) db.telegram_config = {};
+            db.telegram_config.bot_token = token;
+        }
+        if (telegramChatIdInput) {
+            const chatId = telegramChatIdInput.value.trim();
+            localStorage.setItem("telegram_chat_id", chatId);
+            if (!db.telegram_config) db.telegram_config = {};
+            db.telegram_config.chat_id = chatId;
+        }
+        saveDatabase();
         
         // Save Google Drive setting
         const gdriveUrlInput = document.getElementById("gdrive-upload-url");
