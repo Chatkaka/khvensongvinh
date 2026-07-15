@@ -123,6 +123,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const expandedParents = new Set(); // Set of expanded parent IDs (Mã BSC / goi_thau_pl)
     let currentRole = "Admin";   // Active role: "Admin", "Supervisor", "Contractor", "Supply"
     let dashboardAlarmFilter = ""; // Active warning filter: "red", "orange", "yellow", "normal", or ""
+    let s02FilterPending = false;  // Active filter for Sổ 02 pending approval rows
+    let s03FilterPending = false;  // Active filter for Sổ 03 pending approval rows
+    let s04FilterPending = false;  // Active filter for Sổ 04 pending approval rows
     
     // Helper to lock plan fields for non-admin users
     function getPlanLockAttr(val) {
@@ -941,39 +944,36 @@ document.addEventListener("DOMContentLoaded", () => {
             const isChild = ma_bsc === "";
             if (!isChild) return; // All 10 indicators evaluate child rows
 
-            // 1 & 2: HSTKTC plan date checks
+            // 1: Đến hạn KH phát hành HSTKTC (diff < 3)
             const hstk_date = r.kh_phat_hang_hstktc;
             const hstk_status = String(r.tt_hstktc).trim();
             const hstk_done = hstk_status === 'Đã phát hành' || hstk_status === 'Hoàn thiện';
             if (hstk_date && !hstk_done) {
                 const diff = getDaysDiff(hstk_date, currentDate);
-                if (diff !== null) {
-                    if (diff <= 0) c1++;
-                    else if (diff > 0 && diff <= 3) c2++;
+                if (diff !== null && diff < 3) {
+                    c1++;
                 }
             }
 
-            // 3 & 4: LCNT plan date checks
+            // 3: Đến hạn KH LCNT (diff < 3)
             const lcnt_date = r.kh_lcnt;
             const lcnt_status = String(r.tt_lcnt).trim();
             const lcnt_done = lcnt_status === 'Đã có KQ' || lcnt_status === 'Đã ký';
             if (lcnt_date && !lcnt_done) {
                 const diff = getDaysDiff(lcnt_date, currentDate);
-                if (diff !== null) {
-                    if (diff <= 0) c3++;
-                    else if (diff > 0 && diff <= 3) c4++;
+                if (diff !== null && diff < 3) {
+                    c3++;
                 }
             }
 
-            // 5 & 6: HĐCU plan date checks
+            // 5: Đến hạn KH ký HĐCU (diff < 3)
             const hdcu_date = r.kh_ky_hdcu;
             const hdcu_status = String(r.tt_ky_hdcu).trim();
             const hdcu_done = hdcu_status === 'Đã CU';
             if (hdcu_date && !hdcu_done) {
                 const diff = getDaysDiff(hdcu_date, currentDate);
-                if (diff !== null) {
-                    if (diff <= 0) c5++;
-                    else if (diff > 0 && diff <= 3) c6++;
+                if (diff !== null && diff < 3) {
+                    c5++;
                 }
             }
 
@@ -999,13 +999,18 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
+        // 2, 4, 6: Pending approvals in Sổ 02, Sổ 03, Sổ 04
+        c2 = db.s02.filter(s => s && s['TT duyệt'] !== 'Đã duyệt').length;
+        c4 = db.s03.filter(s => s && s['TT duyệt'] !== 'Đã duyệt').length;
+        c6 = db.s04.filter(s => s && s['TT duyệt'] !== 'Đã duyệt').length;
+
         // Set UI counts
         const elC1 = document.getElementById("count-hstk-overdue");
-        const elC2 = document.getElementById("count-hstk-upcoming");
+        const elC2 = document.getElementById("count-s02-pending");
         const elC3 = document.getElementById("count-lcnt-overdue");
-        const elC4 = document.getElementById("count-lcnt-upcoming");
+        const elC4 = document.getElementById("count-s03-pending");
         const elC5 = document.getElementById("count-hdcu-overdue");
-        const elC6 = document.getElementById("count-hdcu-upcoming");
+        const elC6 = document.getElementById("count-s04-pending");
         const elC7 = document.getElementById("count-hdcu-ns-ratio");
         const elC8 = document.getElementById("count-khoi-cong-missing");
         const elC9 = document.getElementById("count-weekly-plan-missing");
@@ -3635,6 +3640,12 @@ function openEditModalForm(rowIdx) {
         tbody.innerHTML = "";
         const search = document.getElementById("s02-search-input").value.toLowerCase();
 
+        // Update Filter Alert visibility
+        const alertEl = document.getElementById("s02-filter-alert");
+        if (alertEl) {
+            alertEl.style.display = s02FilterPending ? "flex" : "none";
+        }
+
         // Lock Add Button if not Admin or Contractor with quyen_them
         const btnAdd = document.getElementById("btn-add-s02");
         if (btnAdd) {
@@ -3644,6 +3655,10 @@ function openEditModalForm(rowIdx) {
 
         db.s02.forEach((row, index) => {
             if (!row) return;
+
+            // Filter pending if active
+            if (s02FilterPending && row['TT duyệt'] === 'Đã duyệt') return;
+
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
 
@@ -3768,6 +3783,12 @@ function openEditModalForm(rowIdx) {
         tbody.innerHTML = "";
         const search = document.getElementById("s03-search-input").value.toLowerCase();
 
+        // Update Filter Alert visibility
+        const alertEl = document.getElementById("s03-filter-alert");
+        if (alertEl) {
+            alertEl.style.display = s03FilterPending ? "flex" : "none";
+        }
+
         // Lock Add Button if not Admin or Contractor with quyen_them
         const btnAdd = document.getElementById("btn-add-s03");
         if (btnAdd) {
@@ -3777,6 +3798,10 @@ function openEditModalForm(rowIdx) {
 
         db.s03.forEach((row, index) => {
             if (!row) return;
+
+            // Filter pending if active
+            if (s03FilterPending && row['TT duyệt'] === 'Đã duyệt') return;
+
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
 
@@ -3901,6 +3926,12 @@ function openEditModalForm(rowIdx) {
         tbody.innerHTML = "";
         const search = document.getElementById("s04-search-input").value.toLowerCase();
 
+        // Update Filter Alert visibility
+        const alertEl = document.getElementById("s04-filter-alert");
+        if (alertEl) {
+            alertEl.style.display = s04FilterPending ? "flex" : "none";
+        }
+
         // Lock Add Button if not Admin or Contractor with quyen_them
         const btnAdd = document.getElementById("btn-add-s04");
         if (btnAdd) {
@@ -3910,6 +3941,10 @@ function openEditModalForm(rowIdx) {
 
         db.s04.forEach((row, index) => {
             if (!row) return;
+
+            // Filter pending if active
+            if (s04FilterPending && row['TT duyệt'] === 'Đã duyệt') return;
+
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
 
@@ -5998,12 +6033,9 @@ function openEditModalForm(rowIdx) {
             if (alertEl && textEl) {
                 alertEl.style.display = "flex";
                 let label = "";
-                if (alarmType === "kh_hstktc_overdue") label = "Quá hạn KH phát hành HSTKTC";
-                if (alarmType === "kh_hstktc_upcoming") label = "Sắp đến hạn KH phát hành HSTKTC (<= 3 ngày)";
-                if (alarmType === "kh_lcnt_overdue") label = "Quá hạn KH LCNT";
-                if (alarmType === "kh_lcnt_upcoming") label = "Sắp đến hạn KH LCNT (<= 3 ngày)";
-                if (alarmType === "kh_hdcu_overdue") label = "Quá hạn KH ký HĐCU";
-                if (alarmType === "kh_hdcu_upcoming") label = "Sắp đến hạn KH ký HĐCU (<= 3 ngày)";
+                if (alarmType === "kh_hstktc_overdue") label = "Đến hạn KH phát hành HSTKTC";
+                if (alarmType === "kh_lcnt_overdue") label = "Đến hạn KH LCNT";
+                if (alarmType === "kh_hdcu_overdue") label = "Đến hạn KH ký HĐCU";
                 if (alarmType === "hdcu_ns_over_95") label = "%HĐCU/NS lớn hơn 95%";
                 if (alarmType === "commencement_missing_dk") label = "Thiếu điều kiện khởi công (Mục D)";
                 if (alarmType === "missing_weekly_plan") label = "Thiếu KH tuần (thời gian thực hiện tại)";
@@ -6040,10 +6072,14 @@ function openEditModalForm(rowIdx) {
         cardHstkOverdue.addEventListener("click", () => applyDashboardWarningFilter("kh_hstktc_overdue", "cdt"));
     }
     
-    // Card 2 Click
-    const cardHstkUpcoming = document.getElementById("card-hstk-upcoming");
-    if (cardHstkUpcoming) {
-        cardHstkUpcoming.addEventListener("click", () => applyDashboardWarningFilter("kh_hstktc_upcoming", "cdt"));
+    // Card 2 Click (Sổ 02 Chưa phê duyệt)
+    const cardS02Pending = document.getElementById("card-s02-pending");
+    if (cardS02Pending) {
+        cardS02Pending.addEventListener("click", () => {
+            s02FilterPending = true;
+            const navItem = document.querySelector(".nav-menu .nav-item[data-tab='s02']");
+            if (navItem) navItem.click();
+        });
     }
 
     // Card 3 Click
@@ -6052,10 +6088,14 @@ function openEditModalForm(rowIdx) {
         cardLcntOverdue.addEventListener("click", () => applyDashboardWarningFilter("kh_lcnt_overdue", "cung_ung"));
     }
 
-    // Card 4 Click
-    const cardLcntUpcoming = document.getElementById("card-lcnt-upcoming");
-    if (cardLcntUpcoming) {
-        cardLcntUpcoming.addEventListener("click", () => applyDashboardWarningFilter("kh_lcnt_upcoming", "cung_ung"));
+    // Card 4 Click (Sổ 03 Chưa phê duyệt)
+    const cardS03Pending = document.getElementById("card-s03-pending");
+    if (cardS03Pending) {
+        cardS03Pending.addEventListener("click", () => {
+            s03FilterPending = true;
+            const navItem = document.querySelector(".nav-menu .nav-item[data-tab='s03']");
+            if (navItem) navItem.click();
+        });
     }
 
     // Card 5 Click
@@ -6064,10 +6104,14 @@ function openEditModalForm(rowIdx) {
         cardHdcuOverdue.addEventListener("click", () => applyDashboardWarningFilter("kh_hdcu_overdue", "cung_ung"));
     }
 
-    // Card 6 Click
-    const cardHdcuUpcoming = document.getElementById("card-hdcu-upcoming");
-    if (cardHdcuUpcoming) {
-        cardHdcuUpcoming.addEventListener("click", () => applyDashboardWarningFilter("kh_hdcu_upcoming", "cung_ung"));
+    // Card 6 Click (Sổ 04 Chưa phê duyệt)
+    const cardS04Pending = document.getElementById("card-s04-pending");
+    if (cardS04Pending) {
+        cardS04Pending.addEventListener("click", () => {
+            s04FilterPending = true;
+            const navItem = document.querySelector(".nav-menu .nav-item[data-tab='s04']");
+            if (navItem) navItem.click();
+        });
     }
 
     // Card 7 Click
@@ -6094,10 +6138,34 @@ function openEditModalForm(rowIdx) {
         cardWeeklyActualMissing.addEventListener("click", () => applyDashboardWarningFilter("missing_weekly_actual", "thi_cong"));
     }
 
-    // Clear filter button
+    // Clear filter buttons
     const btnClearFilter = document.getElementById("btn-clear-dashboard-filter");
     if (btnClearFilter) {
         btnClearFilter.addEventListener("click", () => applyDashboardWarningFilter(""));
+    }
+
+    const btnClearS02Filter = document.getElementById("btn-clear-s02-filter");
+    if (btnClearS02Filter) {
+        btnClearS02Filter.addEventListener("click", () => {
+            s02FilterPending = false;
+            renderS02();
+        });
+    }
+
+    const btnClearS03Filter = document.getElementById("btn-clear-s03-filter");
+    if (btnClearS03Filter) {
+        btnClearS03Filter.addEventListener("click", () => {
+            s03FilterPending = false;
+            renderS03();
+        });
+    }
+
+    const btnClearS04Filter = document.getElementById("btn-clear-s04-filter");
+    if (btnClearS04Filter) {
+        btnClearS04Filter.addEventListener("click", () => {
+            s04FilterPending = false;
+            renderS04();
+        });
     }
 
     // Shift Weeks Action (Tuần cũ -> Tuần mới)

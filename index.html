@@ -132,41 +132,41 @@
                     </button>
                 </div>
                 <div class="dashboard-overview-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px;">
-                    <!-- Card 1: Quá hạn KH phát hành HSTKTC -->
+                    <!-- Card 1: Đến hạn KH phát hành HSTKTC -->
                     <div class="overview-card" id="card-hstk-overdue" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #ff5252; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
-                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🔴 Quá hạn KH HSTKTC</div>
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🔴 Đến hạn KH HSTKTC</div>
                         <div id="count-hstk-overdue" style="font-size: 1.8rem; font-weight: 700; color: #ff5252; line-height: 1;">0</div>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Ngày hiện tại >= KH phát hành</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Hạn chót <= 3 ngày</div>
                     </div>
-                    <!-- Card 2: Sắp đến hạn KH phát hành HSTKTC -->
-                    <div class="overview-card" id="card-hstk-upcoming" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
-                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🍊 Sắp đến hạn KH HSTKTC</div>
-                        <div id="count-hstk-upcoming" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Còn lại <= 3 ngày</div>
+                    <!-- Card 2: Sổ 02 Chưa phê duyệt -->
+                    <div class="overview-card" id="card-s02-pending" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">📅 Sổ 02 Chưa phê duyệt</div>
+                        <div id="count-s02-pending" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Kế hoạch chưa duyệt hoàn thành</div>
                     </div>
-                    <!-- Card 3: Quá hạn KH LCNT -->
+                    <!-- Card 3: Đến hạn KH LCNT -->
                     <div class="overview-card" id="card-lcnt-overdue" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #ff5252; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
-                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🔴 Quá hạn KH LCNT</div>
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🔴 Đến hạn KH LCNT</div>
                         <div id="count-lcnt-overdue" style="font-size: 1.8rem; font-weight: 700; color: #ff5252; line-height: 1;">0</div>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Ngày hiện tại >= KH LCNT</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Hạn chót <= 3 ngày</div>
                     </div>
-                    <!-- Card 4: Sắp đến hạn KH LCNT -->
-                    <div class="overview-card" id="card-lcnt-upcoming" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
-                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🍊 Sắp đến hạn KH LCNT</div>
-                        <div id="count-lcnt-upcoming" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Còn lại <= 3 ngày</div>
+                    <!-- Card 4: Sổ 03 Chưa phê duyệt -->
+                    <div class="overview-card" id="card-s03-pending" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">⚠️ Sổ 03 Chưa phê duyệt</div>
+                        <div id="count-s03-pending" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Hồ sơ phát sinh chờ duyệt</div>
                     </div>
-                    <!-- Card 5: Quá hạn KH ký HĐCU -->
+                    <!-- Card 5: Đến hạn KH ký HĐCU -->
                     <div class="overview-card" id="card-hdcu-overdue" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #ff5252; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
-                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🔴 Quá hạn ký HĐCU</div>
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🔴 Đến hạn ký HĐCU</div>
                         <div id="count-hdcu-overdue" style="font-size: 1.8rem; font-weight: 700; color: #ff5252; line-height: 1;">0</div>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Ngày hiện tại >= KH ký HĐCU</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Hạn chót <= 3 ngày</div>
                     </div>
-                    <!-- Card 6: Sắp đến hạn KH ký HĐCU -->
-                    <div class="overview-card" id="card-hdcu-upcoming" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
-                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🍊 Sắp đến hạn ký HĐCU</div>
-                        <div id="count-hdcu-upcoming" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Còn lại <= 3 ngày</div>
+                    <!-- Card 6: Sổ 04 Chưa phê duyệt -->
+                    <div class="overview-card" id="card-s04-pending" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🛒 Sổ 04 Chưa phê duyệt</div>
+                        <div id="count-s04-pending" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Cung ứng đặc thù chờ phê duyệt</div>
                     </div>
                     <!-- Card 7: %HĐCU/NS lớn hơn 95% -->
                     <div class="overview-card" id="card-hdcu-ns-ratio" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #eab308; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
@@ -389,6 +389,15 @@
 
         <!-- ==================== TAB: SỔ 02 (KH THÁNG/TUẦN) ==================== -->
         <div class="tab-pane" id="tab-s02">
+            <!-- Filter Alert (Active Filter Status) -->
+            <div id="s02-filter-alert" style="display: none; align-items: center; justify-content: space-between; background: rgba(249, 115, 22, 0.15); border: 1px dashed #f97316; padding: 10px 18px; border-radius: 8px; margin-bottom: 12px; transition: all 0.3s ease;">
+                <span id="s02-filter-alert-text" style="font-size: 0.85rem; color: #ffd8a8; font-weight: 600;">
+                    <i class="fa-solid fa-filter" style="margin-right: 6px;"></i> Đang lọc: <strong style="color: #ffd8a8; text-transform: uppercase;">Chưa phê duyệt (Chưa được ý kiến đủ thành phần)</strong>
+                </span>
+                <button class="btn-action" id="btn-clear-s02-filter" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(239, 68, 68, 0.4); color: #ff5252;">
+                    <i class="fa-solid fa-circle-xmark"></i> Hủy lọc
+                </button>
+            </div>
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
                 <div style="position: relative; max-width: 400px; width: 100%;">
                     <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 12px; color: var(--text-muted);"></i>
@@ -426,6 +435,15 @@
 
         <!-- ==================== TAB: SỔ 03 (PHÁT SINH HỢP ĐỒNG B - B') ==================== -->
         <div class="tab-pane" id="tab-s03">
+            <!-- Filter Alert (Active Filter Status) -->
+            <div id="s03-filter-alert" style="display: none; align-items: center; justify-content: space-between; background: rgba(249, 115, 22, 0.15); border: 1px dashed #f97316; padding: 10px 18px; border-radius: 8px; margin-bottom: 12px; transition: all 0.3s ease;">
+                <span id="s03-filter-alert-text" style="font-size: 0.85rem; color: #ffd8a8; font-weight: 600;">
+                    <i class="fa-solid fa-filter" style="margin-right: 6px;"></i> Đang lọc: <strong style="color: #ffd8a8; text-transform: uppercase;">Chưa phê duyệt (Chưa được ý kiến đủ thành phần)</strong>
+                </span>
+                <button class="btn-action" id="btn-clear-s03-filter" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(239, 68, 68, 0.4); color: #ff5252;">
+                    <i class="fa-solid fa-circle-xmark"></i> Hủy lọc
+                </button>
+            </div>
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
                 <div style="position: relative; max-width: 400px; width: 100%;">
                     <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 12px; color: var(--text-muted);"></i>
@@ -465,6 +483,15 @@
 
         <!-- ==================== TAB: SỔ 04 (CUNG ỨNG ĐẶC THÙ) ==================== -->
         <div class="tab-pane" id="tab-s04">
+            <!-- Filter Alert (Active Filter Status) -->
+            <div id="s04-filter-alert" style="display: none; align-items: center; justify-content: space-between; background: rgba(249, 115, 22, 0.15); border: 1px dashed #f97316; padding: 10px 18px; border-radius: 8px; margin-bottom: 12px; transition: all 0.3s ease;">
+                <span id="s04-filter-alert-text" style="font-size: 0.85rem; color: #ffd8a8; font-weight: 600;">
+                    <i class="fa-solid fa-filter" style="margin-right: 6px;"></i> Đang lọc: <strong style="color: #ffd8a8; text-transform: uppercase;">Chưa phê duyệt (Chưa được ý kiến đủ thành phần)</strong>
+                </span>
+                <button class="btn-action" id="btn-clear-s04-filter" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(239, 68, 68, 0.4); color: #ff5252;">
+                    <i class="fa-solid fa-circle-xmark"></i> Hủy lọc
+                </button>
+            </div>
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
                 <div style="position: relative; max-width: 400px; width: 100%;">
                     <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 12px; color: var(--text-muted);"></i>
