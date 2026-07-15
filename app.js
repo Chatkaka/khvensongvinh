@@ -363,17 +363,20 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!db.s04) db.s04 = [];
         if (!db.s05) db.s05 = [];
         const fallbackNhanSu = [
-            { ho_ten: "Hồ Nghĩa Chất", email: "hochat.tayan@gmail.com", quyen: "Admin", vai_tro: "Phó Ban Quản lý Dự án (Admin)", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456", quyen_them: true, quyen_sua: true, quyen_xoa: true, goi_thau: "Tất cả các gói" },
-            { ho_ten: "Phan Văn Khánh", email: "khanh.pv@tdggroup.vn", quyen: "Admin", vai_tro: "Giám đốc Dự án (Admin)", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456", quyen_them: true, quyen_sua: true, quyen_xoa: true, goi_thau: "Tất cả các gói" },
-            { ho_ten: "Nguyễn Đình Hùng", email: "hung.nd@tdggroup.vn", quyen: "Admin", vai_tro: "Cán bộ quản lý (Admin)", phong_ban: "QLTK", mat_khau: "123456", quyen_them: true, quyen_sua: true, quyen_xoa: true, goi_thau: "Tất cả các gói" },
-            { ho_ten: "Nguyễn Hoàng Long", email: "long.nh@tvgs.vn", quyen: "Supervisor", vai_tro: "Trưởng đoàn TVGS", phong_ban: "Đoàn Tư vấn Giám sát", mat_khau: "123456", quyen_them: false, quyen_sua: true, quyen_xoa: false, goi_thau: "Tất cả các gói" },
-            { ho_ten: "Trần Quốc Huy", email: "huy.tq@anphong.vn", quyen: "Contractor", vai_tro: "Chỉ huy trưởng Tổng thầu", phong_ban: "Tổng thầu An Phong", mat_khau: "123456", quyen_them: true, quyen_sua: true, quyen_xoa: true, goi_thau: "Tất cả các gói" },
-            { ho_ten: "Lê Minh Tú", email: "tu.lm@supply.tdg.vn", quyen: "Supply", vai_tro: "Trưởng nhóm Cung ứng", phong_ban: "Phòng Kế hoạch Cung ứng", mat_khau: "123456", quyen_them: false, quyen_sua: true, quyen_xoa: false, goi_thau: "Tất cả các gói" }
+            { ho_ten: "Hồ Nghĩa Chất", email: "hochat.tayan@gmail.com", quyen: "Admin", vai_tro: "Phó Ban Quản lý Dự án (Admin)", phong_ban: "Ban Quản lý Dự án (BQLDA)", mat_khau: "123456", quyen_them: true, quyen_sua: true, quyen_xoa: true, goi_thau: "Tất cả các gói" }
         ];
 
         if (!db.nhan_su || db.nhan_su.length === 0) {
             db.nhan_su = JSON.parse(JSON.stringify(fallbackNhanSu));
         } else {
+            // Remove the 5 pre-populated default users we do not want to auto-create
+            const defaultEmailsToRemove = ["khanh.pv@tdggroup.vn", "hung.nd@tdggroup.vn", "long.nh@tvgs.vn", "huy.tq@anphong.vn", "tu.lm@supply.tdg.vn"];
+            db.nhan_su = db.nhan_su.filter(ns => {
+                if (!ns) return false;
+                const email = String(ns.email).toLowerCase().trim();
+                return !defaultEmailsToRemove.includes(email);
+            });
+
             fallbackNhanSu.forEach(defaultNs => {
                 const exists = db.nhan_su.some(ns => ns && String(ns.email).toLowerCase().trim() === String(defaultNs.email).toLowerCase().trim());
                 if (!exists) {
@@ -391,6 +394,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
                 }
+            });
+
+            // Re-index STT
+            db.nhan_su.forEach((ns, idx) => {
+                if (ns) ns.stt = idx + 1;
             });
         }
         if (!db.danh_muc) db.danh_muc = {};
@@ -7493,6 +7501,80 @@ dropzone.addEventListener("click", () => fileInput.click());
             resetDatabaseToFactory();
         }
     });
+
+    // Xuất file cấu hình database.js chứa toàn bộ dữ liệu hiện tại
+    const exportDbJsBtn = document.getElementById("btn-export-db-js");
+    if (exportDbJsBtn) {
+        exportDbJsBtn.addEventListener("click", () => {
+            try {
+                const dbJson = JSON.stringify(db, null, 2);
+                const fileContent = `// File cấu hình cơ sở dữ liệu hệ thống ERP VSV\nconst INITIAL_DATABASE = ${dbJson};\n\nif (typeof module !== 'undefined' && module.exports) {\n    module.exports = INITIAL_DATABASE;\n}\n`;
+                
+                const blob = new Blob([fileContent], { type: "application/javascript;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "database.js";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast("Hệ thống", "Đã xuất tệp cấu hình database.js thành công. Bạn hãy chép tệp này đè lên tệp cũ trong dự án.", "success");
+            } catch (err) {
+                console.error("Lỗi xuất database.js:", err);
+                showToast("Lỗi", "Không thể xuất tệp database.js.", "danger");
+            }
+        });
+    }
+
+    // Nhập file cấu hình CSDL để khôi phục/đồng bộ dữ liệu
+    const importDbJsBtn = document.getElementById("btn-import-db-js");
+    const importDbJsInput = document.getElementById("input-import-db-js");
+    if (importDbJsBtn && importDbJsInput) {
+        importDbJsBtn.addEventListener("click", () => {
+            importDbJsInput.click();
+        });
+
+        importDbJsInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    let content = event.target.result;
+                    let parsedData = null;
+                    if (content.includes("INITIAL_DATABASE")) {
+                        const match = content.match(/INITIAL_DATABASE\s*=\s*(\{[\s\S]*?\});/);
+                        if (match) {
+                            parsedData = JSON.parse(match[1]);
+                        } else {
+                            throw new Error("Không tìm thấy biến INITIAL_DATABASE trong tệp JS.");
+                        }
+                    } else {
+                        parsedData = JSON.parse(content);
+                    }
+
+                    if (parsedData && parsedData.master && parsedData.nhan_su) {
+                        db = parsedData;
+                        sanitizeInitialData();
+                        saveDatabase();
+                        showToast("Hệ thống", "Đã nhập cơ sở dữ liệu thành công. Đang tải lại hệ thống...", "success");
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        throw new Error("Tệp không chứa cấu trúc cơ sở dữ liệu hợp lệ (thiếu bảng master hoặc nhan_su).");
+                    }
+                } catch (err) {
+                    console.error("Lỗi nhập CSDL:", err);
+                    alert("Nhập CSDL thất bại: " + err.message);
+                }
+            };
+            reader.readAsText(file, "UTF-8");
+            importDbJsInput.value = "";
+        });
+    }
 
     function updateAiStatusIndicator() {
         const status = GeminiAI.getAiStatus();

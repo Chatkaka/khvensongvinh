@@ -752,9 +752,34 @@
                     </div>
                 </div>
 
-                <hr style="border:none; border-top: 1px solid var(--border-color); margin: 10px 0;">
+                <hr style="border:none; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
-                <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                    <div>
+                        <h4 style="font-size:0.9rem; font-weight:600; margin-bottom:4px; color: var(--color-green);">Xuất file cấu hình CSDL (database.js)</h4>
+                        <p style="font-size:0.75rem; color:var(--text-secondary);">Tải xuống tệp `database.js` chứa toàn bộ dữ liệu (bao gồm các tài khoản phụ do Admin tự thêm) để đè lên máy trước khi chạy deploy_github.py.</p>
+                    </div>
+                    <button class="btn-action approve" id="btn-export-db-js" style="padding:10px 20px; background-color: var(--color-green-glow); color: var(--color-green); border-color: rgba(16, 185, 129, 0.3);">
+                        <i class="fa-solid fa-file-export"></i> Xuất database.js
+                    </button>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                    <div>
+                        <h4 style="font-size:0.9rem; font-weight:600; margin-bottom:4px; color: var(--color-yellow);">Nhập cấu hình CSDL</h4>
+                        <p style="font-size:0.75rem; color:var(--text-secondary);">Chọn tệp `database.js` hoặc file backup JSON để đồng bộ dữ liệu nhanh từ máy khác.</p>
+                    </div>
+                    <div>
+                        <input type="file" id="input-import-db-js" accept=".js,.json" style="display: none;">
+                        <button class="btn-action approve" id="btn-import-db-js" style="padding:10px 20px; background-color: rgba(234, 179, 8, 0.1); color: var(--color-yellow); border-color: rgba(234, 179, 8, 0.3);">
+                            <i class="fa-solid fa-file-import"></i> Nhập CSDL
+                        </button>
+                    </div>
+                </div>
+
+                <hr style="border:none; border-top: 1px solid var(--border-color); margin: 15px 0;">
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
                     <div>
                         <h4 style="font-size:0.9rem; font-weight:600; margin-bottom:4px;">Đặt Lại Cơ Sở Dữ Liệu</h4>
                         <p style="font-size:0.75rem; color:var(--text-secondary);">Khôi phục toàn bộ dữ liệu ban đầu từ file Excel gốc và xóa lịch sử thay đổi.</p>
