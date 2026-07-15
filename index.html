@@ -138,35 +138,17 @@
                         <div id="count-hstk-overdue" style="font-size: 1.8rem; font-weight: 700; color: #ff5252; line-height: 1;">0</div>
                         <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Hạn chót <= 3 ngày</div>
                     </div>
-                    <!-- Card 2: Sổ 02 Chưa phê duyệt -->
-                    <div class="overview-card" id="card-s02-pending" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
-                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">📅 Sổ 02 Chưa phê duyệt</div>
-                        <div id="count-s02-pending" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Kế hoạch chưa duyệt hoàn thành</div>
-                    </div>
                     <!-- Card 3: Đến hạn KH LCNT -->
                     <div class="overview-card" id="card-lcnt-overdue" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #ff5252; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
                         <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🔴 Đến hạn KH LCNT</div>
                         <div id="count-lcnt-overdue" style="font-size: 1.8rem; font-weight: 700; color: #ff5252; line-height: 1;">0</div>
                         <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Hạn chót <= 3 ngày</div>
                     </div>
-                    <!-- Card 4: Sổ 03 Chưa phê duyệt -->
-                    <div class="overview-card" id="card-s03-pending" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
-                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">⚠️ Sổ 03 Chưa phê duyệt</div>
-                        <div id="count-s03-pending" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Hồ sơ phát sinh chờ duyệt</div>
-                    </div>
                     <!-- Card 5: Đến hạn KH ký HĐCU -->
                     <div class="overview-card" id="card-hdcu-overdue" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #ff5252; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
                         <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🔴 Đến hạn ký HĐCU</div>
                         <div id="count-hdcu-overdue" style="font-size: 1.8rem; font-weight: 700; color: #ff5252; line-height: 1;">0</div>
                         <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Hạn chót <= 3 ngày</div>
-                    </div>
-                    <!-- Card 6: Sổ 04 Chưa phê duyệt -->
-                    <div class="overview-card" id="card-s04-pending" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
-                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🛒 Sổ 04 Chưa phê duyệt</div>
-                        <div id="count-s04-pending" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Cung ứng đặc thù chờ phê duyệt</div>
                     </div>
                     <!-- Card 7: %HĐCU/NS lớn hơn 95% -->
                     <div class="overview-card" id="card-hdcu-ns-ratio" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #eab308; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
@@ -191,6 +173,24 @@
                         <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">📊 Thiếu KQ tuần</div>
                         <div id="count-weekly-actual-missing" style="font-size: 1.8rem; font-weight: 700; color: #3b82f6; line-height: 1;">0</div>
                         <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Trống KQ tuần khi đang thực hiện</div>
+                    </div>
+                    <!-- Card 2: Sổ 02 Chưa phê duyệt -->
+                    <div class="overview-card" id="card-s02-pending" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">📅 Sổ 02 Chưa phê duyệt</div>
+                        <div id="count-s02-pending" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Kế hoạch chưa duyệt hoàn thành</div>
+                    </div>
+                    <!-- Card 4: Sổ 03 Chưa phê duyệt -->
+                    <div class="overview-card" id="card-s03-pending" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">⚠️ Sổ 03 Chưa phê duyệt</div>
+                        <div id="count-s03-pending" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Hồ sơ phát sinh chờ duyệt</div>
+                    </div>
+                    <!-- Card 6: Sổ 04 Chưa phê duyệt -->
+                    <div class="overview-card" id="card-s04-pending" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #f97316; border-radius: 8px; padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;">
+                        <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">🛒 Sổ 04 Chưa phê duyệt</div>
+                        <div id="count-s04-pending" style="font-size: 1.8rem; font-weight: 700; color: #f97316; line-height: 1;">0</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px;">Cung ứng đặc thù chờ phê duyệt</div>
                     </div>
                 </div>
             </div>
