@@ -367,40 +367,74 @@ document.addEventListener("DOMContentLoaded", () => {
         ];
 
         if (!db.nhan_su || db.nhan_su.length === 0) {
-            db.nhan_su = JSON.parse(JSON.stringify(fallbackNhanSu));
-        } else {
-            // Remove the 5 pre-populated default users we do not want to auto-create
-            const defaultEmailsToRemove = ["khanh.pv@tdggroup.vn", "hung.nd@tdggroup.vn", "long.nh@tvgs.vn", "huy.tq@anphong.vn", "tu.lm@supply.tdg.vn"];
+            db.nhan_su = (defaultDb && defaultDb.nhan_su && defaultDb.nhan_su.length > 0) 
+                ? JSON.parse(JSON.stringify(defaultDb.nhan_su))
+                : JSON.parse(JSON.stringify(fallbackNhanSu));
+        }
+
+        // Sync local db.nhan_su with defaultDb.nhan_su from database.js
+        if (defaultDb && defaultDb.nhan_su && Array.isArray(defaultDb.nhan_su)) {
+            const adminEmail = "hochat.tayan@gmail.com";
+            
+            // 1. Remove local accounts that are not in defaultDb.nhan_su (except the admin account "hochat.tayan@gmail.com")
             db.nhan_su = db.nhan_su.filter(ns => {
                 if (!ns) return false;
                 const email = String(ns.email).toLowerCase().trim();
-                return !defaultEmailsToRemove.includes(email);
+                if (email === adminEmail) return true;
+                return defaultDb.nhan_su.some(dns => dns && String(dns.email).toLowerCase().trim() === email);
             });
 
-            fallbackNhanSu.forEach(defaultNs => {
-                const exists = db.nhan_su.some(ns => ns && String(ns.email).toLowerCase().trim() === String(defaultNs.email).toLowerCase().trim());
-                if (!exists) {
+            // 2. Add or update accounts from defaultDb.nhan_su
+            defaultDb.nhan_su.forEach(defaultNs => {
+                if (!defaultNs || !defaultNs.email) return;
+                const email = String(defaultNs.email).toLowerCase().trim();
+                const existing = db.nhan_su.find(ns => ns && String(ns.email).toLowerCase().trim() === email);
+                if (!existing) {
                     const newNs = JSON.parse(JSON.stringify(defaultNs));
                     newNs.stt = db.nhan_su.length + 1;
                     db.nhan_su.push(newNs);
                 } else {
-                    const existing = db.nhan_su.find(ns => ns && String(ns.email).toLowerCase().trim() === String(defaultNs.email).toLowerCase().trim());
-                    if (existing) {
-                        if (!existing.phong_ban || existing.phong_ban === "") {
-                            existing.phong_ban = defaultNs.phong_ban;
-                        }
-                        if (existing.mat_khau === undefined) {
-                            existing.mat_khau = "123456";
-                        }
-                    }
+                    existing.ho_ten = defaultNs.ho_ten;
+                    existing.phong_ban = defaultNs.phong_ban;
+                    existing.vai_tro = defaultNs.vai_tro;
+                    existing.quyen = defaultNs.quyen;
+                    existing.mat_khau = defaultNs.mat_khau;
+                    existing.quyen_them = defaultNs.quyen_them;
+                    existing.quyen_sua = defaultNs.quyen_sua;
+                    existing.quyen_xoa = defaultNs.quyen_xoa;
+                    existing.goi_thau = defaultNs.goi_thau;
                 }
             });
-
-            // Re-index STT
-            db.nhan_su.forEach((ns, idx) => {
-                if (ns) ns.stt = idx + 1;
-            });
         }
+
+        // Make sure admin account always exists and has full access
+        fallbackNhanSu.forEach(defaultNs => {
+            const exists = db.nhan_su.some(ns => ns && String(ns.email).toLowerCase().trim() === String(defaultNs.email).toLowerCase().trim());
+            if (!exists) {
+                const newNs = JSON.parse(JSON.stringify(defaultNs));
+                newNs.stt = db.nhan_su.length + 1;
+                db.nhan_su.push(newNs);
+            } else {
+                const existing = db.nhan_su.find(ns => ns && String(ns.email).toLowerCase().trim() === String(defaultNs.email).toLowerCase().trim());
+                if (existing) {
+                    existing.quyen = "Admin";
+                    existing.quyen_them = true;
+                    existing.quyen_sua = true;
+                    existing.quyen_xoa = true;
+                    if (!existing.phong_ban || existing.phong_ban === "") {
+                        existing.phong_ban = defaultNs.phong_ban;
+                    }
+                    if (existing.mat_khau === undefined) {
+                        existing.mat_khau = "123456";
+                    }
+                }
+            }
+        });
+
+        // Re-index STT
+        db.nhan_su.forEach((ns, idx) => {
+            if (ns) ns.stt = idx + 1;
+        });
         if (!db.danh_muc) db.danh_muc = {};
         if (defaultDb.danh_muc) {
             for (const key in defaultDb.danh_muc) {
@@ -4425,11 +4459,9 @@ function openEditModalForm(rowIdx) {
                     <label>Công trình / Gói thầu liên kết</label>
                     ${renderSearchableBscSelect('form-bsc')}
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="position: relative;">
                     <label>Hạng mục</label>
-                    <select id="form-hang-muc" class="form-control" required>
-                        <option value="">-- Chọn Hạng mục --</option>
-                    </select>
+                    ${renderSearchableCombobox('form-hang-muc', 'Chọn hoặc tự nhập hạng mục...')}
                 </div>
                 <div class="form-group">
                     <label>Tháng / Tuần</label>
@@ -4909,15 +4941,20 @@ function openEditModalForm(rowIdx) {
 
         // Dynamically update form-hang-muc options for Sổ 02 (Weekly/Monthly Plan) based on selected package (form-bsc)
         if (target === 's02') {
+            const defaultHangMucVal = editRegistrationIndex !== -1 ? db.s02[editRegistrationIndex]["Hạng mục"] : "";
+            if (document.getElementById("form-hang-muc-wrapper")) {
+                initSearchableCombobox('form-hang-muc', [], defaultHangMucVal);
+            }
+
             const bscInput = document.getElementById("form-bsc");
-            const hangMucSelect = document.getElementById("form-hang-muc");
-            if (bscInput && hangMucSelect) {
-                const defaultHangMucVal = editRegistrationIndex !== -1 ? db.s02[editRegistrationIndex]["Hạng mục"] : "";
-                
+            const hangMucInput = document.getElementById("form-hang-muc");
+            if (bscInput && hangMucInput && typeof hangMucInput.updateOptionsList === 'function') {
                 const updateOptions = () => {
                     const selectedBsc = bscInput.value;
-                    hangMucSelect.innerHTML = '<option value="">-- Chọn Hạng mục --</option>';
-                    if (!selectedBsc) return;
+                    if (!selectedBsc) {
+                        hangMucInput.updateOptionsList([]);
+                        return;
+                    }
 
                     // Filter child rows of the selected parent package
                     const children = db.master.filter(row => {
@@ -4927,38 +4964,23 @@ function openEditModalForm(rowIdx) {
                         return getParentIdForTt(row) === selectedBsc;
                     });
 
+                    let options = [];
                     if (children.length > 0) {
-                        children.forEach(child => {
-                            const optVal = String(child.hang_muc_work || "").trim();
-                            const optEl = document.createElement("option");
-                            optEl.value = optVal;
-                            optEl.textContent = `${child.tt} - ${optVal}`;
-                            if (optVal === defaultHangMucVal) {
-                                optEl.selected = true;
-                            }
-                            hangMucSelect.appendChild(optEl);
-                        });
+                        options = children.map(child => String(child.hang_muc_work || "").trim());
                     } else {
-                        // If no children, check if the selected item itself is a detail row
                         const selfRow = db.master.find(row => row && (String(row.ma_bsc).trim() === selectedBsc || String(row.tt).trim() === selectedBsc));
                         if (selfRow) {
-                            const optVal = String(selfRow.hang_muc_work || "").trim();
-                            const optEl = document.createElement("option");
-                            optEl.value = optVal;
-                            optEl.textContent = `${selfRow.tt} - ${optVal}`;
-                            optEl.selected = true;
-                            hangMucSelect.appendChild(optEl);
+                            options = [String(selfRow.hang_muc_work || "").trim()];
                         }
                     }
+                    hangMucInput.updateOptionsList(options);
                 };
 
                 // Listen for change events from searchable select option click
                 bscInput.addEventListener("change", updateOptions);
 
-                // If editing, run immediately to populate the options with correct selection
-                if (editRegistrationIndex !== -1) {
-                    updateOptions();
-                }
+                // Run immediately to populate the options list
+                updateOptions();
             }
         }
     }
@@ -4978,6 +5000,15 @@ function openEditModalForm(rowIdx) {
             <div class="searchable-select-wrapper" id="${id}-wrapper">
                 <input type="hidden" id="${id}" value="">
                 <input type="text" id="${id}-search" class="form-control searchable-select-input" placeholder="${placeholder}" autocomplete="off">
+                <div class="searchable-select-dropdown" id="${id}-dropdown" style="display: none;"></div>
+            </div>
+        `;
+    }
+
+    function renderSearchableCombobox(id, placeholder = "Chọn hoặc tự nhập...") {
+        return `
+            <div class="searchable-select-wrapper" id="${id}-wrapper">
+                <input type="text" id="${id}" class="form-control searchable-select-input" placeholder="${placeholder}" autocomplete="off">
                 <div class="searchable-select-dropdown" id="${id}-dropdown" style="display: none;"></div>
             </div>
         `;
@@ -5073,6 +5104,78 @@ function openEditModalForm(rowIdx) {
             // Close dropdown shortly after blur to allow mousedown on options to register
             setTimeout(closeDropdown, 220);
         });
+    }
+
+    function initSearchableCombobox(inputId, optionsList, defaultVal = "") {
+        const wrapper = document.getElementById(inputId + "-wrapper");
+        const input = document.getElementById(inputId);
+        const dropdown = document.getElementById(inputId + "-dropdown");
+        
+        if (!wrapper || !input || !dropdown) return;
+        
+        input.value = defaultVal;
+        
+        function renderOptionsList(filterText = "") {
+            const query = filterText.toLowerCase().trim();
+            const filtered = query === "" ? optionsList : optionsList.filter(opt => opt && opt.toLowerCase().includes(query));
+            
+            if (filtered.length === 0) {
+                dropdown.style.display = "none";
+                return;
+            }
+            
+            dropdown.style.display = "block";
+            dropdown.innerHTML = filtered.map(opt => {
+                const isSelected = opt === input.value;
+                return `
+                    <div class="searchable-select-option ${isSelected ? 'selected' : ''}" data-value="${opt}">
+                        <span>${opt}</span>
+                    </div>
+                `;
+            }).join("");
+            
+            // Bind mousedown to options (mousedown fires before blur closes dropdown!)
+            dropdown.querySelectorAll(".searchable-select-option").forEach(optEl => {
+                optEl.addEventListener("mousedown", (e) => {
+                    e.preventDefault();
+                    input.value = optEl.getAttribute("data-value");
+                    // Trigger change event
+                    input.dispatchEvent(new Event("change"));
+                    closeDropdown();
+                });
+            });
+        }
+        
+        function openDropdown() {
+            dropdown.style.display = "block";
+            wrapper.classList.add("open");
+            renderOptionsList(input.value);
+        }
+        
+        function closeDropdown() {
+            dropdown.style.display = "none";
+            wrapper.classList.remove("open");
+        }
+        
+        input.addEventListener("focus", openDropdown);
+        input.addEventListener("click", openDropdown);
+        
+        input.addEventListener("input", (e) => {
+            openDropdown();
+            renderOptionsList(e.target.value);
+        });
+        
+        input.addEventListener("blur", () => {
+            setTimeout(closeDropdown, 220);
+        });
+
+        // Allow external update of the options list dynamically
+        input.updateOptionsList = (newOptions) => {
+            optionsList = newOptions;
+            if (wrapper.classList.contains("open")) {
+                renderOptionsList(input.value);
+            }
+        };
     }
 
     function closeModal() {
