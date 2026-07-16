@@ -157,23 +157,54 @@ document.addEventListener("DOMContentLoaded", () => {
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
+    function getSystemDateTimeGMT7() {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const seconds = String(d.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
     function loadDatabase() {
         const stored = localStorage.getItem("erp_db");
+        let localDb = null;
         if (stored) {
             try {
-                db = JSON.parse(stored);
+                localDb = JSON.parse(stored);
             } catch (e) {
-                console.error("Error loading localStorage DB, resetting...", e);
-                db = JSON.parse(JSON.stringify(defaultDb));
+                console.error("Error parsing stored DB:", e);
             }
-        } else {
-            db = JSON.parse(JSON.stringify(defaultDb));
         }
+
+        const serverUpdateStr = defaultDb && defaultDb.last_updated ? defaultDb.last_updated : "";
+        const localUpdateStr = localDb && localDb.last_updated ? localDb.last_updated : "";
+
+        // Determine if we should synchronize with defaultDb (the deployed database.js)
+        let shouldSync = false;
+        if (!localDb) {
+            shouldSync = true;
+        } else if (serverUpdateStr && (!localUpdateStr || serverUpdateStr > localUpdateStr)) {
+            shouldSync = true;
+        }
+
+        if (shouldSync) {
+            db = JSON.parse(JSON.stringify(defaultDb));
+            console.log("Automatically synchronized database with the server/deployed version:", serverUpdateStr);
+        } else {
+            db = localDb;
+        }
+
         sanitizeInitialData();
         saveDatabase(); // Persist the sanitized/healed database configuration
     }
 
     function saveDatabase() {
+        if (db) {
+            db.last_updated = getSystemDateTimeGMT7();
+        }
         localStorage.setItem("erp_db", JSON.stringify(db));
     }
 
@@ -986,6 +1017,49 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             passwordModal.style.display = "flex";
         });
+        
+        // Manual Sync Database from Server (GitHub)
+        const btnSync = document.getElementById("btn-sync-db");
+        if (btnSync) {
+            btnSync.addEventListener("click", async () => {
+                if (confirm("Hành động này sẽ kết nối lên máy chủ GitHub để đồng bộ và cập nhật dữ liệu cùng mật khẩu mới nhất. Bạn có chắc chắn muốn đồng bộ?")) {
+                    try {
+                        showToast("Đồng bộ", "Đang tải dữ liệu mới nhất từ máy chủ...", "info");
+                        const resp = await fetch("database.js?t=" + Date.now());
+                        if (!resp.ok) throw new Error("Không thể tải tệp database.js từ máy chủ.");
+                        const text = await resp.text();
+                        const match = text.match(/INITIAL_DATABASE\s*=\s*(\{[\s\S]*?\});/);
+                        if (match) {
+                            const parsed = JSON.parse(match[1]);
+                            if (parsed && parsed.master && parsed.nhan_su) {
+                                // Keep local Admin flag if present
+                                const isAdminDevice = localStorage.getItem("is_admin_device");
+                                
+                                // Override local database
+                                db = parsed;
+                                saveDatabase();
+                                
+                                if (isAdminDevice) {
+                                    localStorage.setItem("is_admin_device", isAdminDevice);
+                                }
+                                
+                                showToast("Hệ thống", "Đồng bộ dữ liệu thành công! Đang tải lại...", "success");
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 1000);
+                            } else {
+                                throw new Error("Cấu trúc dữ liệu trên máy chủ không hợp lệ.");
+                            }
+                        } else {
+                            throw new Error("Không tìm thấy biến INITIAL_DATABASE trong tệp tải về.");
+                        }
+                    } catch (err) {
+                        console.error("Lỗi đồng bộ:", err);
+                        alert("Đồng bộ thất bại: " + err.message);
+                    }
+                }
+            });
+        }
     }
 
     const closePasswordModal = () => {
