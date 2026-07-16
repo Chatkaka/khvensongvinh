@@ -3967,7 +3967,7 @@ function openEditModalForm(rowIdx) {
                         ${userCanGiveOpinion ? `
                             <button class="btn-action approve btn-opinion-s02" data-idx="${index}" style="background-color: #3b82f6; border-color: #2563eb; color: #fff;"><i class="fa-solid fa-pen-to-square"></i> Ý kiến</button>
                         ` : ""}
-                        ${canEdit ? `<button class="btn-action approve btn-edit-s02" data-idx="${index}" style="color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);" title="Sửa kế hoạch"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>` : ""}
+                        <button class="btn-action approve btn-download-s02" data-idx="${index}" style="color:#10b981; border-color:rgba(16,185,129,0.3);" title="Tải file báo cáo"><i class="fa-solid fa-download"></i> Tải file BC</button>
                         ${canDelete ? `<button class="btn-action reject btn-delete-s02" data-idx="${index}" style="color:#ff5252; border-color:rgba(255,82,82,0.3);"><i class="fa-solid fa-trash-can"></i> Xoá</button>` : ""}
                     </div>
                 </td>
@@ -3983,11 +3983,18 @@ function openEditModalForm(rowIdx) {
             });
         });
 
-        document.querySelectorAll(".btn-edit-s02").forEach(btn => {
+        document.querySelectorAll(".btn-download-s02").forEach(btn => {
             btn.addEventListener("click", () => {
                 const idx = parseInt(btn.getAttribute("data-idx"));
-                editRegistrationIndex = idx;
-                openModalForm('s02');
+                const row = db.s02[idx];
+                if (row) {
+                    const fileUrl = row['LINK tài liệu'] || "";
+                    if (fileUrl && fileUrl.trim() !== "" && fileUrl.trim() !== "(Không có)") {
+                        window.open(fileUrl, "_blank");
+                    } else {
+                        alert("Hạng mục này chưa đính kèm file báo cáo!");
+                    }
+                }
             });
         });
 
