@@ -179,7 +179,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify({
                     action: "save_db",
-                    dbData: db
+                    dbData: db,
+                    folderId: localStorage.getItem("gdrive_folder_id")
                 })
             });
             const res = await resp.json();
@@ -199,7 +200,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (gdriveUrl) {
             try {
                 console.log("Fetching database from Google Drive...");
-                const resp = await fetch(gdriveUrl + (gdriveUrl.includes("?") ? "&" : "?") + "action=load_db");
+                const folderId = (defaultDb && defaultDb.system_config && defaultDb.system_config.gdrive_folder_id) || localStorage.getItem("gdrive_folder_id") || "";
+                const fetchUrl = gdriveUrl + (gdriveUrl.includes("?") ? "&" : "?") + "action=load_db" + (folderId ? ("&folderId=" + folderId) : "");
+                const resp = await fetch(fetchUrl);
                 if (resp.ok) {
                     const res = await resp.json();
                     if (res && res.master) {
@@ -293,6 +296,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             if (db.system_config.gdrive_upload_url !== undefined) {
                 localStorage.setItem("gdrive_upload_url", db.system_config.gdrive_upload_url);
+            }
+            if (db.system_config.gdrive_folder_id !== undefined) {
+                localStorage.setItem("gdrive_folder_id", db.system_config.gdrive_folder_id);
             }
         }
         
@@ -1125,10 +1131,36 @@ document.addEventListener("DOMContentLoaded", () => {
             passwordModal.style.display = "flex";
         });
         
-        // Manual Sync Database from Server (GitHub)
+        // Manual Sync Database from Server (GitHub / Google Drive)
         const btnSync = document.getElementById("btn-sync-db");
         if (btnSync) {
             btnSync.addEventListener("click", async () => {
+                let gdriveUrl = localStorage.getItem("gdrive_upload_url") || (defaultDb && defaultDb.system_config && defaultDb.system_config.gdrive_upload_url) || "";
+                
+                if (!gdriveUrl) {
+                    const inputUrl = prompt("Không tìm thấy cấu hình kết nối đám mây. Vui lòng nhập Google Apps Script Web App URL của bạn để đồng bộ:");
+                    if (inputUrl) {
+                        gdriveUrl = inputUrl.trim();
+                        localStorage.setItem("gdrive_upload_url", gdriveUrl);
+                        if (!db.system_config) db.system_config = {};
+                        db.system_config.gdrive_upload_url = gdriveUrl;
+                    } else {
+                        return;
+                    }
+                }
+                
+                // Prompt for Google Drive Folder ID if missing
+                let gdriveFolderId = localStorage.getItem("gdrive_folder_id") || (defaultDb && defaultDb.system_config && defaultDb.system_config.gdrive_folder_id) || "";
+                if (!gdriveFolderId) {
+                    const inputFolder = prompt("Nhập Google Drive Folder ID để lưu trữ dữ liệu vào đúng thư mục (nếu có, nếu để trống sẽ lưu ở thư mục gốc của Drive):");
+                    if (inputFolder !== null) {
+                        gdriveFolderId = inputFolder.trim();
+                        localStorage.setItem("gdrive_folder_id", gdriveFolderId);
+                        if (!db.system_config) db.system_config = {};
+                        db.system_config.gdrive_folder_id = gdriveFolderId;
+                    }
+                }
+                
                 if (confirm("Hành động này sẽ kết nối lên đám mây Google Drive / máy chủ GitHub để đồng bộ và cập nhật dữ liệu cùng cấu hình hệ thống mới nhất. Bạn có chắc chắn muốn đồng bộ?")) {
                     try {
                         showToast("Đồng bộ", "Đang tải dữ liệu mới nhất...", "info");
@@ -1136,10 +1168,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         let parsed = null;
                         
                         // 1. Try to load from Google Drive
-                        const gdriveUrl = localStorage.getItem("gdrive_upload_url");
                         if (gdriveUrl) {
                             try {
-                                const resp = await fetch(gdriveUrl + (gdriveUrl.includes("?") ? "&" : "?") + "action=load_db");
+                                const fetchUrl = gdriveUrl + (gdriveUrl.includes("?") ? "&" : "?") + "action=load_db" + (gdriveFolderId ? ("&folderId=" + gdriveFolderId) : "");
+                                const resp = await fetch(fetchUrl);
                                 if (resp.ok) {
                                     const res = await resp.json();
                                     if (res && res.master) {
@@ -5162,7 +5194,8 @@ function openEditModalForm(rowIdx) {
                             body: JSON.stringify({
                                 filename: file.name,
                                 mimeType: mimeType,
-                                base64Data: rawBase64
+                                base64Data: rawBase64,
+                                folderId: localStorage.getItem("gdrive_folder_id")
                             })
                         })
                         .then(response => response.json())
@@ -7893,6 +7926,14 @@ dropzone.addEventListener("click", () => fileInput.click());
     }
     gdriveUrlInput.value = localStorage.getItem("gdrive_upload_url") || "";
     
+    let gdriveFolderInput = document.getElementById("gdrive-folder-id");
+    if (!gdriveFolderInput) {
+        gdriveFolderInput = document.createElement("input");
+        gdriveFolderInput.type = "text";
+        gdriveFolderInput.id = "gdrive-folder-id";
+    }
+    gdriveFolderInput.value = localStorage.getItem("gdrive_folder_id") || "";
+    
     updateAiStatusIndicator();
 
     saveSettingsBtn.addEventListener("click", () => {
@@ -7925,6 +7966,10 @@ dropzone.addEventListener("click", () => fileInput.click());
         const gdriveUrlVal = gdriveUrlInput ? gdriveUrlInput.value.trim() : "";
         localStorage.setItem("gdrive_upload_url", gdriveUrlVal);
         db.system_config.gdrive_upload_url = gdriveUrlVal;
+        
+        const gdriveFolderVal = gdriveFolderInput ? gdriveFolderInput.value.trim() : "";
+        localStorage.setItem("gdrive_folder_id", gdriveFolderVal);
+        db.system_config.gdrive_folder_id = gdriveFolderVal;
         
         saveDatabase();
         updateAiStatusIndicator();
