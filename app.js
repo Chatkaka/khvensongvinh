@@ -1798,25 +1798,30 @@ ${overdueHdcu.join("\n")}\n\n`;
             msg += `⚡ <b>SẮP ĐẾN HẠN KH KÝ HĐCU (3 ngày):</b>
 ${upcomingHdcu.join("\n")}\n\n`;
         }
+        msg += `📋 <b>KẾ HOẠCH TUẦN/THÁNG CHỜ PHÊ DUYỆT (SỔ 02):</b>\n`;
         if (pendingS02.length > 0) {
             hasWarning = true;
-            msg += `📋 <b>KẾ HOẠCH TUẦN/THÁNG CHỜ PHÊ DUYỆT (SỔ 02):</b>
-${pendingS02.join("\n")}\n\n`;
+            msg += `${pendingS02.join("\n")}\n\n`;
+        } else {
+            msg += `- Không có công việc chờ duyệt\n\n`;
         }
+        msg += `💰 <b>YÊU CẦU PHÁT SINH CHỜ PHÊ DUYỆT (SỔ 03):</b>\n`;
         if (pendingS03.length > 0) {
             hasWarning = true;
-            msg += `💰 <b>YÊU CẦU PHÁT SINH CHỜ PHÊ DUYỆT (SỔ 03):</b>
-${pendingS03.join("\n")}\n\n`;
+            msg += `${pendingS03.join("\n")}\n\n`;
+        } else {
+            msg += `- Không có yêu cầu chờ duyệt\n\n`;
         }
+        msg += `📦 <b>YÊU CẦU CUNG ỨNG VẬT TƯ CHỜ PHÊ DUYỆT (SỔ 04):</b>\n`;
         if (pendingS04.length > 0) {
             hasWarning = true;
-            msg += `📦 <b>YÊU CẦU CUNG ỨNG VẬT TƯ CHỜ PHÊ DUYỆT (SỔ 04):</b>
-${pendingS04.join("\n")}\n\n`;
+            msg += `${pendingS04.join("\n")}\n\n`;
+        } else {
+            msg += `- Không có yêu cầu chờ duyệt\n\n`;
         }
         if (slowWorks.length > 0) {
             hasWarning = true;
-            msg += `🐢 <b>GÓI THẦU CHẬM TRỄ TIẾN ĐỘ (SỔ 05):</b>
-${slowWorks.join("\n")}\n\n`;
+            msg += `🐢 <b>GÓI THẦU CHẬM TRỄ TIẾN ĐỘ (SỔ 05):</b>\n${slowWorks.join("\n")}\n\n`;
         }
 
         if (!hasWarning) {
