@@ -168,7 +168,26 @@ document.addEventListener("DOMContentLoaded", () => {
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
-    function loadDatabase() {
+    async function loadDatabase() {
+        // Dynamically fetch the latest database.js from server on startup to bypass browser cache
+        try {
+            const fetchUrl = window.location.protocol === "file:" ? "database.js" : ("database.js?t=" + Date.now());
+            const resp = await fetch(fetchUrl);
+            if (resp.ok) {
+                const text = await resp.text();
+                const match = text.match(/INITIAL_DATABASE\s*=\s*(\{[\s\S]*?\});/);
+                if (match) {
+                    const parsed = JSON.parse(match[1]);
+                    if (parsed && parsed.master) {
+                        defaultDb = parsed;
+                        console.log("Dynamically loaded defaultDb from server:", defaultDb.last_updated);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("Background fetch of database.js failed/offline, using statically loaded version.", e);
+        }
+
         const stored = localStorage.getItem("erp_db");
         let localDb = null;
         if (stored) {
@@ -204,6 +223,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         sanitizeInitialData();
+        
         // Sync system configuration fields from db to localStorage on startup
         if (db.system_config) {
             if (db.system_config.gemini_api_key !== undefined) {
@@ -224,7 +244,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 localStorage.setItem("gdrive_upload_url", db.system_config.gdrive_upload_url);
             }
         }
-        
         
         // Persist DB
         if (isAdminDevice) {
@@ -3554,8 +3573,8 @@ function openEditModalForm(rowIdx) {
     if (plFilterSelectEl) {
         plFilterSelectEl.addEventListener("change", renderMasterGrid);
     }
-    document.getElementById("btn-reset-master").addEventListener("click", () => {
-        loadDatabase();
+    document.getElementById("btn-reset-master").addEventListener("click", async () => {
+        await loadDatabase();
         renderMasterGrid();
         showToast("Hệ thống", "Đã khôi phục dữ liệu Master từ bộ nhớ đệm.", "info");
     });
@@ -7977,9 +7996,9 @@ dropzone.addEventListener("click", () => fileInput.click());
         }
     }
 
-    function initApp() {
-        initIndexedDB();
-        loadDatabase();
+    async function initApp() {
+        await initIndexedDB();
+        await loadDatabase();
         calculateRollups();
         renderDashboard();
         
