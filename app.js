@@ -168,24 +168,70 @@ document.addEventListener("DOMContentLoaded", () => {
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
-    async function loadDatabase() {
-        // Dynamically fetch the latest database.js from server on startup to bypass browser cache
+    async function uploadDatabaseToCloud() {
+        const gdriveUrl = localStorage.getItem("gdrive_upload_url");
+        if (!gdriveUrl) return;
         try {
-            const fetchUrl = window.location.protocol === "file:" ? "database.js" : ("database.js?t=" + Date.now());
-            const resp = await fetch(fetchUrl);
-            if (resp.ok) {
-                const text = await resp.text();
-                const match = text.match(/INITIAL_DATABASE\s*=\s*(\{[\s\S]*?\});/);
-                if (match) {
-                    const parsed = JSON.parse(match[1]);
-                    if (parsed && parsed.master) {
-                        defaultDb = parsed;
-                        console.log("Dynamically loaded defaultDb from server:", defaultDb.last_updated);
+            console.log("Syncing database to Google Drive...");
+            const resp = await fetch(gdriveUrl, {
+                method: "POST",
+                mode: "cors",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({
+                    action: "save_db",
+                    dbData: db
+                })
+            });
+            const res = await resp.json();
+            if (res.status === "success") {
+                console.log("Database synced to Google Drive successfully at:", res.last_updated);
+            }
+        } catch (err) {
+            console.error("Failed to sync database to Google Drive:", err);
+        }
+    }
+
+    async function loadDatabase() {
+        let loadedFromCloud = false;
+        
+        // 1. Try fetching from Google Drive if configured
+        const gdriveUrl = (defaultDb && defaultDb.system_config && defaultDb.system_config.gdrive_upload_url) || localStorage.getItem("gdrive_upload_url");
+        if (gdriveUrl) {
+            try {
+                console.log("Fetching database from Google Drive...");
+                const resp = await fetch(gdriveUrl + (gdriveUrl.includes("?") ? "&" : "?") + "action=load_db");
+                if (resp.ok) {
+                    const res = await resp.json();
+                    if (res && res.master) {
+                        defaultDb = res;
+                        loadedFromCloud = true;
+                        console.log("Successfully dynamically loaded defaultDb from Google Drive:", defaultDb.last_updated);
                     }
                 }
+            } catch (e) {
+                console.warn("Google Drive fetch failed. Falling back to local/static database.", e);
             }
-        } catch (e) {
-            console.warn("Background fetch of database.js failed/offline, using statically loaded version.", e);
+        }
+
+        // 2. Fallback to fetching from GitHub Pages if Google Drive load failed/not configured
+        if (!loadedFromCloud) {
+            try {
+                const fetchUrl = window.location.protocol === "file:" ? "database.js" : ("database.js?t=" + Date.now());
+                const resp = await fetch(fetchUrl);
+                if (resp.ok) {
+                    const text = await resp.text();
+                    const match = text.match(/INITIAL_DATABASE\s*=\s*(\{[\s\S]*?\});/);
+                    if (match) {
+                        const parsed = JSON.parse(match[1]);
+                        if (parsed && parsed.master) {
+                            defaultDb = parsed;
+                            console.log("Dynamically loaded defaultDb from server:", defaultDb.last_updated);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Background fetch of database.js failed/offline, using statically loaded version.", e);
+            }
         }
 
         const stored = localStorage.getItem("erp_db");
@@ -204,13 +250,18 @@ document.addEventListener("DOMContentLoaded", () => {
         // Determine if we should synchronize with defaultDb (the deployed database.js)
         let shouldSync = false;
         
-        // CRITICAL PROTECTION: Admin device is the author/source-of-truth. Never overwrite Admin's local storage automatically!
+        // CRITICAL PROTECTION: Admin device is the author/source-of-truth. Never overwrite Admin's local storage automatically unless server is newer
         const isAdminDevice = localStorage.getItem("is_admin_device") === "true";
         
         if (!isAdminDevice) {
             if (!localDb) {
                 shouldSync = true;
             } else if (serverUpdateStr && (!localUpdateStr || serverUpdateStr > localUpdateStr)) {
+                shouldSync = true;
+            }
+        } else {
+            // Admin device will also auto-sync if the Google Drive database is strictly newer (bidirectional sync)
+            if (serverUpdateStr && localUpdateStr && serverUpdateStr > localUpdateStr) {
                 shouldSync = true;
             }
         }
@@ -255,10 +306,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function saveDatabase() {
         const isAdminDevice = localStorage.getItem("is_admin_device") === "true";
-        if (db && isAdminDevice) {
+        if (db) {
             db.last_updated = getSystemDateTimeGMT7();
         }
         localStorage.setItem("erp_db", JSON.stringify(db));
+        
+        // Background upload database to Google Drive
+        uploadDatabaseToCloud();
     }
 
     function resetDatabaseToFactory() {
@@ -1075,37 +1129,66 @@ document.addEventListener("DOMContentLoaded", () => {
         const btnSync = document.getElementById("btn-sync-db");
         if (btnSync) {
             btnSync.addEventListener("click", async () => {
-                if (confirm("Hành động này sẽ kết nối lên máy chủ GitHub để đồng bộ và cập nhật dữ liệu cùng mật khẩu mới nhất. Bạn có chắc chắn muốn đồng bộ?")) {
+                if (confirm("Hành động này sẽ kết nối lên đám mây Google Drive / máy chủ GitHub để đồng bộ và cập nhật dữ liệu cùng cấu hình hệ thống mới nhất. Bạn có chắc chắn muốn đồng bộ?")) {
                     try {
-                        showToast("Đồng bộ", "Đang tải dữ liệu mới nhất từ máy chủ...", "info");
-                        const fetchUrl = window.location.protocol === "file:" ? "database.js" : ("database.js?t=" + Date.now());
-                        const resp = await fetch(fetchUrl);
-                        if (!resp.ok) throw new Error("Không thể tải tệp database.js từ máy chủ.");
-                        const text = await resp.text();
-                        const match = text.match(/INITIAL_DATABASE\s*=\s*(\{[\s\S]*?\});/);
-                        if (match) {
-                            const parsed = JSON.parse(match[1]);
-                            if (parsed && parsed.master && parsed.nhan_su) {
-                                // Keep local Admin flag if present
-                                const isAdminDevice = localStorage.getItem("is_admin_device");
-                                
-                                // Override local database
-                                db = parsed;
-                                saveDatabase();
-                                
-                                if (isAdminDevice) {
-                                    localStorage.setItem("is_admin_device", isAdminDevice);
+                        showToast("Đồng bộ", "Đang tải dữ liệu mới nhất...", "info");
+                        let loaded = false;
+                        let parsed = null;
+                        
+                        // 1. Try to load from Google Drive
+                        const gdriveUrl = localStorage.getItem("gdrive_upload_url");
+                        if (gdriveUrl) {
+                            try {
+                                const resp = await fetch(gdriveUrl + (gdriveUrl.includes("?") ? "&" : "?") + "action=load_db");
+                                if (resp.ok) {
+                                    const res = await resp.json();
+                                    if (res && res.master) {
+                                        parsed = res;
+                                        loaded = true;
+                                        console.log("Manual sync loaded from Google Drive!");
+                                    }
                                 }
-                                
-                                showToast("Hệ thống", "Đồng bộ dữ liệu thành công! Đang tải lại...", "success");
-                                setTimeout(() => {
-                                    location.reload();
-                                }, 1000);
-                            } else {
-                                throw new Error("Cấu trúc dữ liệu trên máy chủ không hợp lệ.");
+                            } catch (e) {
+                                console.warn("Google Drive load failed in manual sync:", e);
                             }
+                        }
+                        
+                        // 2. Fallback to GitHub Pages database.js fetch
+                        if (!loaded) {
+                            const fetchUrl = window.location.protocol === "file:" ? "database.js" : ("database.js?t=" + Date.now());
+                            const resp = await fetch(fetchUrl);
+                            if (!resp.ok) throw new Error("Không thể tải tệp database.js từ máy chủ.");
+                            const text = await resp.text();
+                            const match = text.match(/INITIAL_DATABASE\s*=\s*(\{[\s\S]*?\});/);
+                            if (match) {
+                                parsed = JSON.parse(match[1]);
+                                if (parsed && parsed.master) {
+                                    loaded = true;
+                                    console.log("Manual sync loaded from GitHub Pages!");
+                                }
+                            }
+                        }
+                        
+                        if (loaded && parsed) {
+                            // Keep local Admin flag if present
+                            const isAdminDevice = localStorage.getItem("is_admin_device");
+                            
+                            // Override local database
+                            db = parsed;
+                            
+                            // Save to local storage
+                            localStorage.setItem("erp_db", JSON.stringify(db));
+                            
+                            if (isAdminDevice) {
+                                localStorage.setItem("is_admin_device", isAdminDevice);
+                            }
+                            
+                            showToast("Hệ thống", "Đồng bộ dữ liệu thành công! Đang tải lại...", "success");
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1000);
                         } else {
-                            throw new Error("Không tìm thấy biến INITIAL_DATABASE trong tệp tải về.");
+                            throw new Error("Không thể tải hoặc phân tích dữ liệu từ máy chủ/đám mây.");
                         }
                     } catch (err) {
                         console.error("Lỗi đồng bộ:", err);
