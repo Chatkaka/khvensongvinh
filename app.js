@@ -1653,14 +1653,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const currentDate = getSystemDateGMT7();
         
         let overdueHstk = [];
+        let dueTodayHstk = [];
         let upcomingHstk = [];
         let overdueLcnt = [];
         let upcomingLcnt = [];
         let overdueHdcu = [];
         let upcomingHdcu = [];
-        let highRatio = [];
-        let missingDk = [];
         let slowWorks = [];
+        let pendingS02 = [];
+        let pendingS03 = [];
+        let pendingS04 = [];
 
         const getParentBsc = (ttStr) => {
             if (!ttStr || !ttStr.includes(".")) return "";
@@ -1683,7 +1685,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const pBsc = getParentBsc(String(r.tt));
                 const bscPart = pBsc ? ` [${pBsc}]` : "";
                 
-                // 1 & 2: HSTKTC plan date checks
+                // 1: HSTKTC plan date checks
                 const hstk_date = r.kh_phat_hang_hstktc;
                 const hstk_status = String(r.tt_hstktc).trim();
                 const hstk_done = hstk_status === 'Đã phát hành' || hstk_status === 'Hoàn thiện';
@@ -1691,12 +1693,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     const diff = getDaysDiff(hstk_date, currentDate);
                     if (diff !== null) {
                         const rowName = `[${r.tt}]${bscPart} ${r.hang_muc_work}`;
-                        if (diff <= 0) overdueHstk.push(`- ${rowName} (Hạn: ${formatDateDMY(hstk_date)})`);
+                        if (diff < 0) overdueHstk.push(`- ${rowName} (Hạn: ${formatDateDMY(hstk_date)})`);
+                        else if (diff === 0) dueTodayHstk.push(`- ${rowName} (Hạn: ${formatDateDMY(hstk_date)} - Hôm nay!)`);
                         else if (diff > 0 && diff <= 3) upcomingHstk.push(`- ${rowName} (Hạn: ${formatDateDMY(hstk_date)} - Còn ${diff} ngày)`);
                     }
                 }
 
-                // 3 & 4: LCNT plan date checks
+                // 2: LCNT plan date checks
                 const lcnt_date = r.kh_lcnt;
                 const lcnt_status = String(r.tt_lcnt).trim();
                 const lcnt_done = lcnt_status === 'Đã có KQ' || lcnt_status === 'Đã ký';
@@ -1709,7 +1712,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 }
 
-                // 5 & 6: HĐCU plan date checks
+                // 3: HĐCU plan date checks
                 const hdcu_date = r.kh_ky_hdcu;
                 const hdcu_status = String(r.tt_ky_hdcu).trim();
                 const hdcu_done = hdcu_status === 'Đã CU';
@@ -1721,74 +1724,103 @@ document.addEventListener("DOMContentLoaded", () => {
                         else if (diff > 0 && diff <= 3) upcomingHdcu.push(`- ${rowName} (Hạn: ${formatDateDMY(hdcu_date)} - Còn ${diff} ngày)`);
                     }
                 }
-            } else {
-                // Root packages
-                // 7: %HĐCU/NS > 95%
-                const ns = parseFloat(r.ngan_sach || 0);
-                const hd = parseFloat(r.gia_tri_hdcu || 0);
-                const percent = ns > 0 ? (hd / ns) : 0;
-                if (percent > 0.95) {
-                    highRatio.push(`- [${r.ma_bsc}] ${r.hang_muc_work} (Tỷ lệ: ${(percent * 100).toFixed(1)}%)`);
-                }
-
-                // 8: Chốt chặn khởi công - Chưa đủ ĐK
-                if (r.dieu_kien_du === 'THIẾU ĐK') {
-                    missingDk.push(`- [${r.ma_bsc}] ${r.hang_muc_work}`);
-                }
             }
         });
 
-        // 9: Slow works from Sổ 05
+        // 4: Slow works from Sổ 05
         db.s05.forEach(d => {
-            if (d['TT thực hiện'] !== 'Đã hoàn thành') {
+            if (d && d['TT thực hiện'] !== 'Đã hoàn thành') {
                 slowWorks.push(`- [${d['Mã BSC']}] ${d['Hạng mục']} (Trễ: ${d['Mức chậm (ngày)']} ngày)`);
             }
         });
 
-        let msg = `🔔 <b>BÁO CÁO CẢNH BÁO TIẾN ĐỘ & CHI PHÍ</b>\n`;
-        msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>\n\n`;
+        // 5: Pending Sổ 02 (Kế hoạch tuần/tháng chờ duyệt)
+        db.s02.forEach(d => {
+            if (d && String(d['TT duyệt'] || 'Chờ duyệt').trim() === 'Chờ duyệt') {
+                pendingS02.push(`- [${d['Mã BSC']}] ${d['Hạng mục']} (Người lập: ${d['Người lập'] || 'N/A'})`);
+            }
+        });
+
+        // 6: Pending Sổ 03 (Yêu cầu phát sinh chờ duyệt)
+        db.s03.forEach(d => {
+            if (d && String(d['TT duyệt'] || 'Chờ duyệt').trim() === 'Chờ duyệt') {
+                pendingS03.push(`- [${d['Mã PS']}] Phát sinh: ${d['Mô tả'] || d['Hạng mục']} (Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
+            }
+        });
+
+        // 7: Pending Sổ 04 (Yêu cầu cung ứng vật tư chờ duyệt)
+        db.s04.forEach(d => {
+            if (d && String(d['TT duyệt'] || 'Chờ duyệt').trim() === 'Chờ duyệt') {
+                pendingS04.push(`- [${d['Mã YC']}] Yêu cầu: ${d['Vật tư/Thiết bị'] || d['Hạng mục']} (Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
+            }
+        });
+
+        let msg = `📢 <b>BÁO CÁO GIÁM SÁT TIẾN ĐỘ & CÔNG VIỆC CHỜ DUYỆT</b>
+`;
+        msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>
+
+`;
 
         let hasWarning = false;
 
         if (overdueHstk.length > 0) {
             hasWarning = true;
-            msg += `🔴 <b>QUÁ HẠN KH HSTKTC:</b>\n${overdueHstk.join("\n")}\n\n`;
+            msg += `⏰ <b>QUÁ HẠN KH HSTKTC:</b>
+${overdueHstk.join("\n")}\n\n`;
+        }
+        if (dueTodayHstk.length > 0) {
+            hasWarning = true;
+            msg += `🎯 <b>ĐẾN HẠN KH HSTKTC HÔM NAY:</b>
+${dueTodayHstk.join("\n")}\n\n`;
         }
         if (upcomingHstk.length > 0) {
             hasWarning = true;
-            msg += `🍊 <b>SẮP ĐẾN HẠN KH HSTKTC (3 ngày):</b>\n${upcomingHstk.join("\n")}\n\n`;
+            msg += `⏳ <b>SẮP ĐẾN HẠN KH HSTKTC (3 ngày):</b>
+${upcomingHstk.join("\n")}\n\n`;
         }
         if (overdueLcnt.length > 0) {
             hasWarning = true;
-            msg += `🔴 <b>QUÁ HẠN KH LCNT:</b>\n${overdueLcnt.join("\n")}\n\n`;
+            msg += `🚨 <b>QUÁ HẠN KH LCNT:</b>
+${overdueLcnt.join("\n")}\n\n`;
         }
         if (upcomingLcnt.length > 0) {
             hasWarning = true;
-            msg += `🍊 <b>SẮP ĐẾN HẠN KH LCNT (3 ngày):</b>\n${upcomingLcnt.join("\n")}\n\n`;
+            msg += `⚠️ <b>SẮP ĐẾN HẠN KH LCNT (3 ngày):</b>
+${upcomingLcnt.join("\n")}\n\n`;
         }
         if (overdueHdcu.length > 0) {
             hasWarning = true;
-            msg += `🔴 <b>QUÁ HẠN KH KÝ HĐCU:</b>\n${overdueHdcu.join("\n")}\n\n`;
+            msg += `❌ <b>QUÁ HẠN KH KÝ HĐCU:</b>
+${overdueHdcu.join("\n")}\n\n`;
         }
         if (upcomingHdcu.length > 0) {
             hasWarning = true;
-            msg += `🍊 <b>SẮP ĐẾN HẠN KH KÝ HĐCU (3 ngày):</b>\n${upcomingHdcu.join("\n")}\n\n`;
+            msg += `⚡ <b>SẮP ĐẾN HẠN KH KÝ HĐCU (3 ngày):</b>
+${upcomingHdcu.join("\n")}\n\n`;
         }
-        if (highRatio.length > 0) {
+        if (pendingS02.length > 0) {
             hasWarning = true;
-            msg += `💸 <b>HĐCU/NS VƯỢT 95%:</b>\n${highRatio.join("\n")}\n\n`;
+            msg += `📋 <b>KẾ HOẠCH TUẦN/THÁNG CHỜ PHÊ DUYỆT (SỔ 02):</b>
+${pendingS02.join("\n")}\n\n`;
         }
-        if (missingDk.length > 0) {
+        if (pendingS03.length > 0) {
             hasWarning = true;
-            msg += `🛑 <b>THIẾU ĐK KHỞI CÔNG:</b>\n${missingDk.join("\n")}\n\n`;
+            msg += `💰 <b>YÊU CẦU PHÁT SINH CHỜ PHÊ DUYỆT (SỔ 03):</b>
+${pendingS03.join("\n")}\n\n`;
+        }
+        if (pendingS04.length > 0) {
+            hasWarning = true;
+            msg += `📦 <b>YÊU CẦU CUNG ỨNG VẬT TƯ CHỜ PHÊ DUYỆT (SỔ 04):</b>
+${pendingS04.join("\n")}\n\n`;
         }
         if (slowWorks.length > 0) {
             hasWarning = true;
-            msg += `🐢 <b>GÓI THẦU CHẬM TRỄ (Sổ 05):</b>\n${slowWorks.join("\n")}\n\n`;
+            msg += `🐢 <b>GÓI THẦU CHẬM TRỄ TIẾN ĐỘ (SỔ 05):</b>
+${slowWorks.join("\n")}\n\n`;
         }
 
         if (!hasWarning) {
-            msg += `✅ <b>Hệ thống hoạt động tốt:</b> Không ghi nhận cảnh báo quá hạn hay chậm trễ nào tại thời điểm hiện tại.`;
+            msg += `✅ <b>Hệ thống hoạt động tốt:</b> Không ghi nhận cảnh báo quá hạn hay công việc chờ duyệt nào tại thời điểm hiện tại.`;
         }
 
         const ok = await sendTelegramMessage(msg);
