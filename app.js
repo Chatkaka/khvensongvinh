@@ -209,6 +209,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         defaultDb = res;
                         loadedFromCloud = true;
                         console.log("Successfully dynamically loaded defaultDb from Google Drive:", defaultDb.last_updated);
+                    } else if (res && res.status === "error") {
+                        console.warn("erp_database.json not found on Google Drive.");
+                        const isAdminDevice = localStorage.getItem("is_admin_device") === "true";
+                        if (isAdminDevice) {
+                            console.log("Admin device detected. Initializing cloud database file...");
+                            setTimeout(() => {
+                                uploadDatabaseToCloud();
+                            }, 3000);
+                        }
                     }
                 }
             } catch (e) {
@@ -1168,6 +1177,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         let parsed = null;
                         
                         // 1. Try to load from Google Drive
+                        let driveFileNotFound = false;
                         if (gdriveUrl) {
                             try {
                                 const fetchUrl = gdriveUrl + (gdriveUrl.includes("?") ? "&" : "?") + "action=load_db" + (gdriveFolderId ? ("&folderId=" + gdriveFolderId) : "");
@@ -1178,10 +1188,27 @@ document.addEventListener("DOMContentLoaded", () => {
                                         parsed = res;
                                         loaded = true;
                                         console.log("Manual sync loaded from Google Drive!");
+                                    } else if (res && res.status === "error") {
+                                        driveFileNotFound = true;
                                     }
                                 }
                             } catch (e) {
                                 console.warn("Google Drive load failed in manual sync:", e);
+                            }
+                        }
+                        
+                        if (driveFileNotFound) {
+                            const isAdminDevice = localStorage.getItem("is_admin_device") === "true";
+                            if (isAdminDevice) {
+                                if (confirm("Không tìm thấy cơ sở dữ liệu trên Google Drive. Bạn có muốn tải lên (Upload) dữ liệu hiện tại làm dữ liệu dùng chung trên Drive không?")) {
+                                    showToast("Đồng bộ", "Đang tải dữ liệu lên Google Drive...", "info");
+                                    await uploadDatabaseToCloud();
+                                    showToast("Hệ thống", "Đã tải dữ liệu lên Google Drive thành công!", "success");
+                                    return;
+                                }
+                            } else {
+                                alert("Không tìm thấy tệp cơ sở dữ liệu dùng chung trên Google Drive. Vui lòng liên hệ Admin để tải dữ liệu lên trước!");
+                                return;
                             }
                         }
                         
