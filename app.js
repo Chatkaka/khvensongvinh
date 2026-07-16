@@ -1736,22 +1736,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 5: Pending Sổ 02 (Kế hoạch tuần/tháng chờ duyệt)
         db.s02.forEach(d => {
-            if (d && String(d['TT duyệt'] || 'Chờ duyệt').trim() === 'Chờ duyệt') {
-                pendingS02.push(`- [${d['Mã BSC']}] ${d['Hạng mục']} (Người lập: ${d['Người lập'] || 'N/A'})`);
+            if (d && String(d['TT duyệt'] || '').trim() !== 'Đã duyệt') {
+                pendingS02.push(`- [${d['Mã BSC']}] ${d['Hạng mục']} (Trạng thái: ${d['TT duyệt'] || 'Chờ ý kiến'} - Người lập: ${d['Người lập'] || 'N/A'})`);
             }
         });
 
         // 6: Pending Sổ 03 (Yêu cầu phát sinh chờ duyệt)
         db.s03.forEach(d => {
-            if (d && String(d['TT duyệt'] || 'Chờ duyệt').trim() === 'Chờ duyệt') {
-                pendingS03.push(`- [${d['Mã PS']}] Phát sinh: ${d['Mô tả'] || d['Hạng mục']} (Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
+            if (d && String(d['TT duyệt'] || '').trim() !== 'Đã duyệt') {
+                pendingS03.push(`- [${d['Mã PS']}] Phát sinh: ${d['Mô tả'] || d['Hạng mục']} (Trạng thái: ${d['TT duyệt'] || 'Chờ duyệt'} - Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
             }
         });
 
         // 7: Pending Sổ 04 (Yêu cầu cung ứng vật tư chờ duyệt)
         db.s04.forEach(d => {
-            if (d && String(d['TT duyệt'] || 'Chờ duyệt').trim() === 'Chờ duyệt') {
-                pendingS04.push(`- [${d['Mã YC']}] Yêu cầu: ${d['Vật tư/Thiết bị'] || d['Hạng mục']} (Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
+            if (d && String(d['TT duyệt'] || '').trim() !== 'Đã duyệt') {
+                pendingS04.push(`- [${d['Mã YC']}] Yêu cầu: ${d['Vật tư/Thiết bị'] || d['Hạng mục']} (Trạng thái: ${d['TT duyệt'] || 'Chờ duyệt'} - Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
             }
         });
 
