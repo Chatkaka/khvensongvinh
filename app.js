@@ -204,6 +204,27 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         sanitizeInitialData();
+        // Sync system configuration fields from db to localStorage on startup
+        if (db.system_config) {
+            if (db.system_config.gemini_api_key !== undefined) {
+                localStorage.setItem("gemini_api_key", db.system_config.gemini_api_key);
+                if (typeof GeminiAI !== 'undefined') GeminiAI.apiKey = db.system_config.gemini_api_key;
+            }
+            if (db.system_config.gemini_model !== undefined) {
+                localStorage.setItem("gemini_model", db.system_config.gemini_model);
+                if (typeof GeminiAI !== 'undefined') GeminiAI.model = db.system_config.gemini_model;
+            }
+            if (db.system_config.telegram_bot_token !== undefined) {
+                localStorage.setItem("telegram_bot_token", db.system_config.telegram_bot_token);
+            }
+            if (db.system_config.telegram_chat_id !== undefined) {
+                localStorage.setItem("telegram_chat_id", db.system_config.telegram_chat_id);
+            }
+            if (db.system_config.gdrive_upload_url !== undefined) {
+                localStorage.setItem("gdrive_upload_url", db.system_config.gdrive_upload_url);
+            }
+        }
+        
         
         // Persist DB
         if (isAdminDevice) {
@@ -7778,24 +7799,32 @@ dropzone.addEventListener("click", () => fileInput.click());
         GeminiAI.setApiKey(key);
         GeminiAI.setModel(model);
         
+        if (!db.system_config) db.system_config = {};
+        
+        db.system_config.gemini_api_key = key;
+        db.system_config.gemini_model = model;
+        
         if (telegramTokenInput) {
             const token = telegramTokenInput.value.trim();
             localStorage.setItem("telegram_bot_token", token);
             if (!db.telegram_config) db.telegram_config = {};
             db.telegram_config.bot_token = token;
+            db.system_config.telegram_bot_token = token;
         }
         if (telegramChatIdInput) {
             const chatId = telegramChatIdInput.value.trim();
             localStorage.setItem("telegram_chat_id", chatId);
             if (!db.telegram_config) db.telegram_config = {};
             db.telegram_config.chat_id = chatId;
+            db.system_config.telegram_chat_id = chatId;
         }
-        saveDatabase();
         
         // Save Google Drive setting
-        const gdriveUrlInput = document.getElementById("gdrive-upload-url");
-        if (gdriveUrlInput) localStorage.setItem("gdrive_upload_url", gdriveUrlInput.value.trim());
+        const gdriveUrlVal = gdriveUrlInput ? gdriveUrlInput.value.trim() : "";
+        localStorage.setItem("gdrive_upload_url", gdriveUrlVal);
+        db.system_config.gdrive_upload_url = gdriveUrlVal;
         
+        saveDatabase();
         updateAiStatusIndicator();
         showToast("Hệ thống", "Đã lưu cài đặt cấu hình thành công.", "success");
     });
