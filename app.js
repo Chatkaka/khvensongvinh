@@ -184,25 +184,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Determine if we should synchronize with defaultDb (the deployed database.js)
         let shouldSync = false;
-        if (!localDb) {
-            shouldSync = true;
-        } else if (serverUpdateStr && (!localUpdateStr || serverUpdateStr > localUpdateStr)) {
-            shouldSync = true;
+        
+        // CRITICAL PROTECTION: Admin device is the author/source-of-truth. Never overwrite Admin's local storage automatically!
+        const isAdminDevice = localStorage.getItem("is_admin_device") === "true";
+        
+        if (!isAdminDevice) {
+            if (!localDb) {
+                shouldSync = true;
+            } else if (serverUpdateStr && (!localUpdateStr || serverUpdateStr > localUpdateStr)) {
+                shouldSync = true;
+            }
         }
 
         if (shouldSync) {
             db = JSON.parse(JSON.stringify(defaultDb));
             console.log("Automatically synchronized database with the server/deployed version:", serverUpdateStr);
         } else {
-            db = localDb;
+            db = localDb || JSON.parse(JSON.stringify(defaultDb));
         }
 
         sanitizeInitialData();
-        saveDatabase(); // Persist the sanitized/healed database configuration
+        
+        // Persist DB
+        if (isAdminDevice) {
+            saveDatabase();
+        } else {
+            localStorage.setItem("erp_db", JSON.stringify(db));
+        }
     }
 
     function saveDatabase() {
-        if (db) {
+        const isAdminDevice = localStorage.getItem("is_admin_device") === "true";
+        if (db && isAdminDevice) {
             db.last_updated = getSystemDateTimeGMT7();
         }
         localStorage.setItem("erp_db", JSON.stringify(db));
@@ -1025,7 +1038,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (confirm("Hành động này sẽ kết nối lên máy chủ GitHub để đồng bộ và cập nhật dữ liệu cùng mật khẩu mới nhất. Bạn có chắc chắn muốn đồng bộ?")) {
                     try {
                         showToast("Đồng bộ", "Đang tải dữ liệu mới nhất từ máy chủ...", "info");
-                        const resp = await fetch("database.js?t=" + Date.now());
+                        const fetchUrl = window.location.protocol === "file:" ? "database.js" : ("database.js?t=" + Date.now());
+                        const resp = await fetch(fetchUrl);
                         if (!resp.ok) throw new Error("Không thể tải tệp database.js từ máy chủ.");
                         const text = await resp.text();
                         const match = text.match(/INITIAL_DATABASE\s*=\s*(\{[\s\S]*?\});/);
