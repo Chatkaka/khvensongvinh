@@ -115,7 +115,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     };
 
-    const defaultDb = (typeof INITIAL_DATABASE !== 'undefined' ? INITIAL_DATABASE : (window.INITIAL_DATABASE || { master: [], s01: [], s02: [], s03: [], s04: [], s05: [], danh_muc: {} }));
+    let defaultDb = (typeof INITIAL_DATABASE !== 'undefined' ? INITIAL_DATABASE : (window.INITIAL_DATABASE || { master: [], s01: [], s02: [], s03: [], s04: [], s05: [], danh_muc: {} }));
+    
+    // Fallback static configuration (Will be auto-baked during deployment)
+    const fallbackGdriveUrl = "";
+    const fallbackGdriveFolderId = "";
     
     // View level and column sub-tabs state variables
     let activeLevel = "project"; // "project" (Cấp công trình) or "detail" (Cấp chi tiết)
@@ -169,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function uploadDatabaseToCloud() {
-        const gdriveUrl = localStorage.getItem("gdrive_upload_url");
+        const gdriveUrl = localStorage.getItem("gdrive_upload_url") || fallbackGdriveUrl;
         if (!gdriveUrl) return;
         try {
             console.log("Syncing database to Google Drive...");
@@ -180,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({
                     action: "save_db",
                     dbData: db,
-                    folderId: localStorage.getItem("gdrive_folder_id")
+                    folderId: localStorage.getItem("gdrive_folder_id") || fallbackGdriveFolderId
                 })
             });
             const res = await resp.json();
@@ -196,11 +200,11 @@ document.addEventListener("DOMContentLoaded", () => {
         let loadedFromCloud = false;
         
         // 1. Try fetching from Google Drive if configured
-        const gdriveUrl = (defaultDb && defaultDb.system_config && defaultDb.system_config.gdrive_upload_url) || localStorage.getItem("gdrive_upload_url");
+        const gdriveUrl = (defaultDb && defaultDb.system_config && defaultDb.system_config.gdrive_upload_url) || localStorage.getItem("gdrive_upload_url") || fallbackGdriveUrl;
         if (gdriveUrl) {
             try {
                 console.log("Fetching database from Google Drive...");
-                const folderId = (defaultDb && defaultDb.system_config && defaultDb.system_config.gdrive_folder_id) || localStorage.getItem("gdrive_folder_id") || "";
+                const folderId = (defaultDb && defaultDb.system_config && defaultDb.system_config.gdrive_folder_id) || localStorage.getItem("gdrive_folder_id") || fallbackGdriveFolderId;
                 const fetchUrl = gdriveUrl + (gdriveUrl.includes("?") ? "&" : "?") + "action=load_db" + (folderId ? ("&folderId=" + folderId) : "");
                 const resp = await fetch(fetchUrl);
                 if (resp.ok) {
@@ -5202,7 +5206,7 @@ function openEditModalForm(rowIdx) {
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     const base64Data = event.target.result;
-                    const gdriveUrl = localStorage.getItem("gdrive_upload_url");
+                    const gdriveUrl = localStorage.getItem("gdrive_upload_url") || fallbackGdriveUrl;
                     
                     if (gdriveUrl) {
                         // Display uploading status
@@ -5222,7 +5226,7 @@ function openEditModalForm(rowIdx) {
                                 filename: file.name,
                                 mimeType: mimeType,
                                 base64Data: rawBase64,
-                                folderId: localStorage.getItem("gdrive_folder_id")
+                                folderId: localStorage.getItem("gdrive_folder_id") || fallbackGdriveFolderId
                             })
                         })
                         .then(response => response.json())
