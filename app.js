@@ -118,8 +118,8 @@ document.addEventListener("DOMContentLoaded", () => {
     let defaultDb = (typeof INITIAL_DATABASE !== 'undefined' ? INITIAL_DATABASE : (window.INITIAL_DATABASE || { master: [], s01: [], s02: [], s03: [], s04: [], s05: [], danh_muc: {} }));
     
     // Fallback static configuration (Will be auto-baked during deployment)
-    const fallbackGdriveUrl = "";
-    const fallbackGdriveFolderId = "";
+    const fallbackGdriveUrl = "https://script.google.com/macros/s/AKfycbyhwxmcAAfPU5CPqCJMVFNvUjkcQrH9Vp4f_LGBuKEruxBgdg2PAJR3nAyeAHB4QBzR/exec";
+    const fallbackGdriveFolderId = "Vòng đời gói thầu VSV";
     
     // View level and column sub-tabs state variables
     let activeLevel = "project"; // "project" (Cấp công trình) or "detail" (Cấp chi tiết)
