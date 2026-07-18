@@ -2008,105 +2008,112 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // 5: Pending Sổ 02 (Kế hoạch tuần/tháng chờ duyệt)
+        // 5: Pending Sổ 02
         db.s02.forEach(d => {
             if (d && String(d['TT duyệt'] || '').trim() !== 'Đã duyệt') {
-                pendingS02.push(`- [${d['Mã BSC']}] ${d['Hạng mục']} (Trạng thái: ${d['TT duyệt'] || 'Chờ ý kiến'} - Người lập: ${d['Người lập'] || 'N/A'})`);
+                const noiDung = d['Nội dung chính'] || 'N/A';
+                pendingS02.push(`- [${d['Mã BSC']}] ${d['Hạng mục']} (Trạng thái: ${d['TT duyệt'] || 'Chờ ý kiến'} - Nội dung: ${noiDung})`);
             }
         });
 
-        // 6: Pending Sổ 03 (Yêu cầu phát sinh chờ duyệt)
+        // 6: Pending Sổ 03
         db.s03.forEach(d => {
             if (d && String(d['TT duyệt'] || '').trim() !== 'Đã duyệt') {
                 pendingS03.push(`- [${d['Mã PS']}] Phát sinh: ${d['Mô tả'] || d['Hạng mục']} (Trạng thái: ${d['TT duyệt'] || 'Chờ duyệt'} - Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
             }
         });
 
-        // 7: Pending Sổ 04 (Yêu cầu cung ứng vật tư chờ duyệt)
+        // 7: Pending Sổ 04
         db.s04.forEach(d => {
             if (d && String(d['TT duyệt'] || '').trim() !== 'Đã duyệt') {
                 pendingS04.push(`- [${d['Mã YC']}] Yêu cầu: ${d['Vật tư/Thiết bị'] || d['Hạng mục']} (Trạng thái: ${d['TT duyệt'] || 'Chờ duyệt'} - Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
             }
         });
 
-        let msg = `📢 <b>BÁO CÁO GIÁM SÁT TIẾN ĐỘ & CÔNG VIỆC CHỜ DUYỆT</b>
-`;
-        msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>
+        const messages = [];
 
-`;
+        // 1. HSTKTC
+        if (overdueHstk.length > 0 || dueTodayHstk.length > 0 || upcomingHstk.length > 0) {
+            let msg = `📢 <b>BÁO CÁO GIÁM SÁT TIẾN ĐỘ - HỒ SƠ THIẾT KẾ BẢN VẼ THI CÔNG (HSTKTC)</b>\n`;
+            msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>\n\n`;
+            if (overdueHstk.length > 0) msg += `⏰ <b>QUÁ HẠN KH HSTKTC:</b>\n${overdueHstk.join("\n")}\n\n`;
+            if (dueTodayHstk.length > 0) msg += `🎯 <b>ĐẾN HẠN KH HSTKTC HÔM NAY:</b>\n${dueTodayHstk.join("\n")}\n\n`;
+            if (upcomingHstk.length > 0) msg += `⏳ <b>SẮP ĐẾN HẠN KH HSTKTC (3 ngày):</b>\n${upcomingHstk.join("\n")}\n\n`;
+            messages.push(msg.trim());
+        }
 
-        let hasWarning = false;
+        // 2. LCNT
+        if (overdueLcnt.length > 0 || upcomingLcnt.length > 0) {
+            let msg = `📢 <b>BÁO CÁO GIÁM SÁT TIẾN ĐỘ - LỰA CHỌN NHÀ THẦU (LCNT)</b>\n`;
+            msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>\n\n`;
+            if (overdueLcnt.length > 0) msg += `🚨 <b>QUÁ HẠN KH LCNT:</b>\n${overdueLcnt.join("\n")}\n\n`;
+            if (upcomingLcnt.length > 0) msg += `⚠️ <b>SẮP ĐẾN HẠN KH LCNT (3 ngày):</b>\n${upcomingLcnt.join("\n")}\n\n`;
+            messages.push(msg.trim());
+        }
 
-        if (overdueHstk.length > 0) {
-            hasWarning = true;
-            msg += `⏰ <b>QUÁ HẠN KH HSTKTC:</b>
-${overdueHstk.join("\n")}\n\n`;
+        // 3. HĐCU
+        if (overdueHdcu.length > 0 || upcomingHdcu.length > 0) {
+            let msg = `📢 <b>BÁO CÁO GIÁM SÁT TIẾN ĐỘ - KÝ HỢP ĐỒNG CUNG ỨNG (HĐCU)</b>\n`;
+            msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>\n\n`;
+            if (overdueHdcu.length > 0) msg += `❌ <b>QUÁ HẠN KH KÝ HĐCU:</b>\n${overdueHdcu.join("\n")}\n\n`;
+            if (upcomingHdcu.length > 0) msg += `⚡ <b>SẮP ĐẾN HẠN KH KÝ HĐCU (3 ngày):</b>\n${upcomingHdcu.join("\n")}\n\n`;
+            messages.push(msg.trim());
         }
-        if (dueTodayHstk.length > 0) {
-            hasWarning = true;
-            msg += `🎯 <b>ĐẾN HẠN KH HSTKTC HÔM NAY:</b>
-${dueTodayHstk.join("\n")}\n\n`;
-        }
-        if (upcomingHstk.length > 0) {
-            hasWarning = true;
-            msg += `⏳ <b>SẮP ĐẾN HẠN KH HSTKTC (3 ngày):</b>
-${upcomingHstk.join("\n")}\n\n`;
-        }
-        if (overdueLcnt.length > 0) {
-            hasWarning = true;
-            msg += `🚨 <b>QUÁ HẠN KH LCNT:</b>
-${overdueLcnt.join("\n")}\n\n`;
-        }
-        if (upcomingLcnt.length > 0) {
-            hasWarning = true;
-            msg += `⚠️ <b>SẮP ĐẾN HẠN KH LCNT (3 ngày):</b>
-${upcomingLcnt.join("\n")}\n\n`;
-        }
-        if (overdueHdcu.length > 0) {
-            hasWarning = true;
-            msg += `❌ <b>QUÁ HẠN KH KÝ HĐCU:</b>
-${overdueHdcu.join("\n")}\n\n`;
-        }
-        if (upcomingHdcu.length > 0) {
-            hasWarning = true;
-            msg += `⚡ <b>SẮP ĐẾN HẠN KH KÝ HĐCU (3 ngày):</b>
-${upcomingHdcu.join("\n")}\n\n`;
-        }
-        msg += `📋 <b>KẾ HOẠCH TUẦN/THÁNG CHỜ PHÊ DUYỆT (SỔ 02):</b>\n`;
+
+        // 4. Sổ 02
         if (pendingS02.length > 0) {
-            hasWarning = true;
-            msg += `${pendingS02.join("\n")}\n\n`;
-        } else {
-            msg += `- Không có công việc chờ duyệt\n\n`;
+            let msg = `📋 <b>BÁO CÁO CÔNG VIỆC CHỜ PHÊ DUYỆT - KẾ HOẠCH TUẦN/THÁNG (SỔ 02)</b>\n`;
+            msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>\n\n`;
+            msg += pendingS02.join("\n");
+            messages.push(msg.trim());
         }
-        msg += `💰 <b>YÊU CẦU PHÁT SINH CHỜ PHÊ DUYỆT (SỔ 03):</b>\n`;
+
+        // 5. Sổ 03
         if (pendingS03.length > 0) {
-            hasWarning = true;
-            msg += `${pendingS03.join("\n")}\n\n`;
-        } else {
-            msg += `- Không có yêu cầu chờ duyệt\n\n`;
+            let msg = `💰 <b>BÁO CÁO YÊU CẦU CHỜ PHÊ DUYỆT - PHÁT SINH CHI PHÍ (SỔ 03)</b>\n`;
+            msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>\n\n`;
+            msg += pendingS03.join("\n");
+            messages.push(msg.trim());
         }
-        msg += `📦 <b>YÊU CẦU CUNG ỨNG VẬT TƯ CHỜ PHÊ DUYỆT (SỔ 04):</b>\n`;
+
+        // 6. Sổ 04
         if (pendingS04.length > 0) {
-            hasWarning = true;
-            msg += `${pendingS04.join("\n")}\n\n`;
-        } else {
-            msg += `- Không có yêu cầu chờ duyệt\n\n`;
+            let msg = `📦 <b>BÁO CÁO YÊU CẦU CHỜ PHÊ DUYỆT - CUNG ỨNG VẬT TƯ (SỔ 04)</b>\n`;
+            msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>\n\n`;
+            msg += pendingS04.join("\n");
+            messages.push(msg.trim());
         }
+
+        // 7. Sổ 05
         if (slowWorks.length > 0) {
-            hasWarning = true;
-            msg += `🐢 <b>GÓI THẦU CHẬM TRỄ TIẾN ĐỘ (SỔ 05):</b>\n${slowWorks.join("\n")}\n\n`;
+            let msg = `🐢 <b>BÁO CÁO GIÁM SÁT TIẾN ĐỘ THI CÔNG - CÁC GÓI THẦU CHẬM TRỄ (SỔ 05)</b>\n`;
+            msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>\n\n`;
+            msg += slowWorks.join("\n");
+            messages.push(msg.trim());
         }
 
-        if (!hasWarning) {
+        // If no warning
+        if (messages.length === 0) {
+            let msg = `📢 <b>BÁO CÁO GIÁM SÁT TIẾN ĐỘ & CÔNG VIỆC CHỜ DUYỆT</b>\n`;
+            msg += `<i>Ngày lập: ${formatDateDMY(currentDate)}</i>\n\n`;
             msg += `✅ <b>Hệ thống hoạt động tốt:</b> Không ghi nhận cảnh báo quá hạn hay công việc chờ duyệt nào tại thời điểm hiện tại.`;
+            messages.push(msg);
         }
 
-        const ok = await sendTelegramMessage(msg);
-        if (ok) {
-            showToast("Telegram", "Đã gửi báo cáo cảnh báo qua Telegram thành công!", "success");
+        // Send messages sequentially
+        let successCount = 0;
+        showToast("Telegram", `Bắt đầu gửi ${messages.length} phần báo cáo cảnh báo...`, "info");
+        for (let i = 0; i < messages.length; i++) {
+            const ok = await sendTelegramMessage(messages[i]);
+            if (ok) successCount++;
+            // short delay between messages to ensure sequence order in Telegram
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        if (successCount === messages.length) {
+            showToast("Telegram", `Đã gửi toàn bộ ${messages.length} phần báo cáo thành công!`, "success");
         } else {
-            showToast("Telegram", "Gửi báo cáo qua Telegram thất bại. Vui lòng kiểm tra lại Bot Token và Chat ID.", "danger");
+            showToast("Telegram", `Đã gửi ${successCount}/${messages.length} phần báo cáo. Vui lòng kiểm tra cấu hình.`, "warning");
         }
     }
 
