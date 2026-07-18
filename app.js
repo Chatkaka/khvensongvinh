@@ -2001,10 +2001,27 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
+        const getStatusEmoji = (status) => {
+            const clean = String(status || '').trim().toLowerCase();
+            if (clean.includes("từ chối") || clean.includes("không duyệt") || clean.includes("không đồng ý") || clean.includes("không phê duyệt")) {
+                return "🔴 <b>[TỪ CHỐI / KHÔNG DUYỆT]</b> ";
+            }
+            return "- ";
+        };
+
         // 4: Slow works from Sổ 05
         db.s05.forEach(d => {
-            if (d && d['TT thực hiện'] !== 'Đã hoàn thành') {
-                slowWorks.push(`- [${d['Mã BSC']}] ${d['Hạng mục']} (Trễ: ${d['Mức chậm (ngày)']} ngày)`);
+            if (d) {
+                const status_tt = String(d['TT thực hiện'] || '').trim();
+                const status_duyet = String(d['TT duyệt'] || '').trim();
+                if (status_tt.toLowerCase().includes("từ chối") || status_tt.toLowerCase().includes("không duyệt") || 
+                    status_duyet.toLowerCase().includes("từ chối") || status_duyet.toLowerCase().includes("không duyệt") ||
+                    status_tt.toLowerCase().includes("không đồng ý") || status_duyet.toLowerCase().includes("không đồng ý") ||
+                    status_tt.toLowerCase().includes("không phê duyệt") || status_duyet.toLowerCase().includes("không phê duyệt")) {
+                    slowWorks.push(`🔴 <b>[TỪ CHỐI]</b> [${d['Mã BSC']}] ${d['Hạng mục']} (Duyệt PA: ${status_duyet} - TT thực hiện: ${status_tt})`);
+                } else if (status_tt !== 'Đã hoàn thành') {
+                    slowWorks.push(`- [${d['Mã BSC']}] ${d['Hạng mục']} (Trễ: ${d['Mức chậm (ngày)']} ngày)`);
+                }
             }
         });
 
@@ -2012,21 +2029,27 @@ document.addEventListener("DOMContentLoaded", () => {
         db.s02.forEach(d => {
             if (d && String(d['TT duyệt'] || '').trim() !== 'Đã duyệt') {
                 const noiDung = d['Nội dung chính'] || 'N/A';
-                pendingS02.push(`- [${d['Mã BSC']}] ${d['Hạng mục']} (Trạng thái: ${d['TT duyệt'] || 'Chờ ý kiến'} - Nội dung: ${noiDung})`);
+                const status = String(d['TT duyệt'] || '').trim();
+                const statusEmoji = getStatusEmoji(status);
+                pendingS02.push(`${statusEmoji}[${d['Mã BSC']}] ${d['Hạng mục']} (Trạng thái: <b>${status}</b> - Nội dung: ${noiDung})`);
             }
         });
 
         // 6: Pending Sổ 03
         db.s03.forEach(d => {
             if (d && String(d['TT duyệt'] || '').trim() !== 'Đã duyệt') {
-                pendingS03.push(`- [${d['Mã PS']}] Phát sinh: ${d['Mô tả'] || d['Hạng mục']} (Trạng thái: ${d['TT duyệt'] || 'Chờ duyệt'} - Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
+                const status = String(d['TT duyệt'] || '').trim();
+                const statusEmoji = getStatusEmoji(status);
+                pendingS03.push(`${statusEmoji}[${d['Mã PS']}] Phát sinh: ${d['Mô tả'] || d['Hạng mục']} (Trạng thái: <b>${status}</b> - Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
             }
         });
 
         // 7: Pending Sổ 04
         db.s04.forEach(d => {
             if (d && String(d['TT duyệt'] || '').trim() !== 'Đã duyệt') {
-                pendingS04.push(`- [${d['Mã YC']}] Yêu cầu: ${d['Vật tư/Thiết bị'] || d['Hạng mục']} (Trạng thái: ${d['TT duyệt'] || 'Chờ duyệt'} - Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
+                const status = String(d['TT duyệt'] || '').trim();
+                const statusEmoji = getStatusEmoji(status);
+                pendingS04.push(`${statusEmoji}[${d['Mã YC']}] Yêu cầu: ${d['Vật tư/Thiết bị'] || d['Hạng mục']} (Trạng thái: <b>${status}</b> - Giá trị: ${d['Giá trị (tỷ)'] || 0} tỷ)`);
             }
         });
 
