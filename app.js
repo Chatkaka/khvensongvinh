@@ -128,6 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentRole = "Admin";   // Active role: "Admin", "Supervisor", "Contractor", "Supply"
     let dashboardAlarmFilter = ""; // Active warning filter: "red", "orange", "yellow", "normal", or ""
     let s02FilterPending = false;  // Active filter for Sổ 02 pending approval rows
+    let s02FilterOverdue = false;  // Active filter for Sổ 02 overdue pending rows
     let s03FilterPending = false;  // Active filter for Sổ 03 pending approval rows
     let s04FilterPending = false;  // Active filter for Sổ 04 pending approval rows
     
@@ -1417,13 +1418,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            // 7: %HĐCU/NS > 95%
-            const ns = parseFloat(r.ngan_sach || 0);
-            const hd = parseFloat(r.gia_tri_hdcu || 0);
-            const percent = ns > 0 ? (hd / ns) : 0;
-            if (percent > 0.95) {
-                c7++;
-            }
+
 
             // 8: Chốt chặn khởi công - Chưa đủ ĐK
             if (r.dieu_kien_du === 'THIẾU ĐK') {
@@ -1439,10 +1434,18 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // 2, 4, 6: Pending approvals in Sổ 02, Sổ 03, Sổ 04
+        // 2, 4, 6, 7: Pending approvals and overdue items
         c2 = db.s02.filter(s => s && s['TT duyệt'] !== 'Đã duyệt').length;
         c4 = db.s03.filter(s => s && s['TT duyệt'] !== 'Đã duyệt').length;
         c6 = db.s04.filter(s => s && s['TT duyệt'] !== 'Đã duyệt').length;
+        
+        c7 = db.s02.filter(s => {
+            if (!s || s['TT duyệt'] === 'Đã duyệt') return false;
+            const thoiHan = s['TT lập']; // Thời hạn cần KQ
+            if (!thoiHan) return false;
+            const diff = getDaysDiff(thoiHan, currentDate);
+            return diff !== null && diff <= 0;
+        }).length;
 
         // Set UI counts
         const elC1 = document.getElementById("count-hstk-overdue");
@@ -1451,7 +1454,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const elC4 = document.getElementById("count-s03-pending");
         const elC5 = document.getElementById("count-hdcu-overdue");
         const elC6 = document.getElementById("count-s04-pending");
-        const elC7 = document.getElementById("count-hdcu-ns-ratio");
+        const elC7 = document.getElementById("count-s02-overdue");
         const elC8 = document.getElementById("count-khoi-cong-missing");
         const elC9 = document.getElementById("count-weekly-plan-missing");
         const elC10 = document.getElementById("count-weekly-actual-missing");
@@ -2030,8 +2033,19 @@ document.addEventListener("DOMContentLoaded", () => {
             if (d && String(d['TT duyệt'] || '').trim() !== 'Đã duyệt') {
                 const noiDung = d['Nội dung chính'] || 'N/A';
                 const status = String(d['TT duyệt'] || '').trim();
-                const statusEmoji = getStatusEmoji(status);
-                pendingS02.push(`${statusEmoji}[${d['Mã BSC']}] ${d['Hạng mục']} (Trạng thái: <b>${status}</b> - Nội dung: ${noiDung})`);
+                const thoiHan = d['TT lập'];
+                
+                let prefix = "- ";
+                const cleanStatus = status.toLowerCase();
+                if (cleanStatus.includes("từ chối") || cleanStatus.includes("không duyệt") || cleanStatus.includes("không đồng ý") || cleanStatus.includes("không phê duyệt")) {
+                    prefix = "🔴 <b>[TỪ CHỐI / KHÔNG DUYỆT]</b> ";
+                } else if (thoiHan) {
+                    const diff = getDaysDiff(thoiHan, currentDate);
+                    if (diff !== null && diff <= 0) {
+                        prefix = "⏰ <b>[QUÁ HẠN KQ]</b> ";
+                    }
+                }
+                pendingS02.push(`${prefix}[${d['Mã BSC']}] ${d['Hạng mục']} (Trạng thái: <b>${status}</b> - Hạn KQ: ${formatDateDMY(thoiHan)} - Nội dung: ${noiDung})`);
             }
         });
 
@@ -4165,8 +4179,21 @@ function openEditModalForm(rowIdx) {
 
         // Update Filter Alert visibility
         const alertEl = document.getElementById("s02-filter-alert");
+        const alertTextEl = document.getElementById("s02-filter-alert-text");
         if (alertEl) {
-            alertEl.style.display = s02FilterPending ? "flex" : "none";
+            if (s02FilterPending) {
+                alertEl.style.display = "flex";
+                if (alertTextEl) {
+                    alertTextEl.innerHTML = `<i class="fa-solid fa-filter" style="margin-right: 6px;"></i> Đang lọc: <strong style="color: #ffd8a8; text-transform: uppercase;">Chờ phê duyệt (Chưa được ý kiến đủ thành phần)</strong>`;
+                }
+            } else if (s02FilterOverdue) {
+                alertEl.style.display = "flex";
+                if (alertTextEl) {
+                    alertTextEl.innerHTML = `<i class="fa-solid fa-filter" style="margin-right: 6px;"></i> Đang lọc: <strong style="color: #ff5252; text-transform: uppercase;">Kế hoạch quá hạn chưa phê duyệt</strong>`;
+                }
+            } else {
+                alertEl.style.display = "none";
+            }
         }
 
         // Lock Add Button if not Admin or Contractor with quyen_them
@@ -4181,6 +4208,16 @@ function openEditModalForm(rowIdx) {
 
             // Filter pending if active
             if (s02FilterPending && row['TT duyệt'] === 'Đã duyệt') return;
+
+            // Filter overdue if active (currentDate >= thoiHan and not approved)
+            if (s02FilterOverdue) {
+                if (row['TT duyệt'] === 'Đã duyệt') return;
+                const thoiHan = row['TT lập'];
+                if (!thoiHan) return;
+                const currentDate = getSystemDateGMT7();
+                const diff = getDaysDiff(thoiHan, currentDate);
+                if (diff === null || diff > 0) return;
+            }
 
             const bsc = String(row['Mã BSC']);
             if (search && !bsc.toLowerCase().includes(search)) return;
@@ -6805,10 +6842,15 @@ function openEditModalForm(rowIdx) {
         });
     }
 
-    // Card 7 Click
-    const cardHdcuNsRatio = document.getElementById("card-hdcu-ns-ratio");
-    if (cardHdcuNsRatio) {
-        cardHdcuNsRatio.addEventListener("click", () => applyDashboardWarningFilter("hdcu_ns_over_95", "cung_ung"));
+    // Card 7 Click (Sổ 02 Quá hạn chưa phê duyệt)
+    const cardS02Overdue = document.getElementById("card-s02-overdue");
+    if (cardS02Overdue) {
+        cardS02Overdue.addEventListener("click", () => {
+            s02FilterOverdue = true;
+            s02FilterPending = false;
+            const navItem = document.querySelector(".nav-menu .nav-item[data-tab='s02']");
+            if (navItem) navItem.click();
+        });
     }
 
     // Card 8 Click
@@ -6839,6 +6881,7 @@ function openEditModalForm(rowIdx) {
     if (btnClearS02Filter) {
         btnClearS02Filter.addEventListener("click", () => {
             s02FilterPending = false;
+            s02FilterOverdue = false;
             renderS02();
         });
     }
