@@ -467,17 +467,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!db.master) {
             db.master = [];
         } else {
-            db.master.forEach(row => {
-                if (!row) return;
-                const workName = String(row.hang_muc_work || "").trim();
-                if (workName === "26 căn Liền kề") {
-                    row.tt = "16.2.1";
-                } else if (workName === "30 căn SH") {
-                    row.tt = "16.2.2";
-                } else if (workName === "15 căn Biệt thự") {
-                    row.tt = "16.2.3";
-                }
-            });
+
             db.master = restructureMasterData(db.master);
         }
 
