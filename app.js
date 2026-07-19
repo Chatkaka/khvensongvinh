@@ -4256,7 +4256,7 @@ function openEditModalForm(rowIdx) {
                 <td>${row['Nội dung chính'] || ""}</td>
                 <td>${row['Đạt YCKT CĐT'] === 'Có' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>'}</td>
                 <td>${renderLinkHtml(row['LINK tài liệu'])}</td>
-                <td>${row['TT lập'] || ""}</td>
+                <td>${formatDateDMY(row['TT lập']) || ""}</td>
                 <td>
                     <span class="badge ${overallBadgeClass}">
                         ${row['TT duyệt'] || "Chờ duyệt"}
@@ -4933,6 +4933,10 @@ function openEditModalForm(rowIdx) {
                     </datalist>
                 </div>
                 <div class="form-group">
+                    <label>Thời hạn cần KQ</label>
+                    <input type="date" id="form-thoi-han-kq" class="form-control" required>
+                </div>
+                <div class="form-group">
                     <label>Link, hồ sơ đính kèm</label>
                     <div style="display: flex; gap: 8px; flex-direction: column;">
                         <input type="text" id="form-link" class="form-control" placeholder="Nhập Link liên kết (URL) hoặc chọn tệp..." value="">
@@ -5344,6 +5348,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-loai").value = doc["Loại tài liệu"] || "";
                 document.getElementById("form-noi-dung").value = doc["Nội dung chính"] || "";
                 document.getElementById("form-dat-yckt").value = doc["Đạt YCKT CĐT"] || "Có";
+                document.getElementById("form-thoi-han-kq").value = doc["TT lập"] || "";
                 setupFormLinkValue(doc["LINK tài liệu"] || "");
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
                 document.getElementById("form-yc-tvgs").checked = doc["yc_tvgs"] !== false;
@@ -5922,7 +5927,7 @@ function openEditModalForm(rowIdx) {
                 doc["banqlda_time"] = "";
                 doc["cdt_time"] = "";
                 
-                doc["TT lập"] = "Tổng thầu";
+                doc["TT lập"] = document.getElementById("form-thoi-han-kq").value;
                 doc["Lý do từ chối"] = "";
                 
                 updateOverallS02Status(doc);
@@ -5939,7 +5944,7 @@ function openEditModalForm(rowIdx) {
                     "Nội dung chính": document.getElementById("form-noi-dung").value,
                     "Đạt YCKT CĐT": document.getElementById("form-dat-yckt").value,
                     "LINK tài liệu": getFormLinkValue(),
-                    "TT lập": "Tổng thầu",
+                    "TT lập": document.getElementById("form-thoi-han-kq").value,
                     "TT duyệt": "Chờ duyệt",
                     "Người lập": document.getElementById("form-maker").value,
                     "Người duyệt": "",
@@ -6559,7 +6564,7 @@ function openEditModalForm(rowIdx) {
                 row.getCell(6).value = rowObj["Nội dung chính"];
                 row.getCell(7).value = rowObj["Đạt YCKT CĐT"];
                 row.getCell(8).value = rowObj["LINK tài liệu"];
-                row.getCell(9).value = rowObj["TT lập"];
+                row.getCell(9).value = formatDateDMY(rowObj["TT lập"]);
                 row.getCell(10).value = rowObj["TT duyệt"];
                 row.getCell(11).value = rowObj["Người lập"];
                 row.getCell(12).value = rowObj["Người duyệt"];
@@ -6576,7 +6581,7 @@ function openEditModalForm(rowIdx) {
                 row.getCell(22).value = rowObj["cdt_comment"] || "";
             }, [
                 "STT", "Mã BSC", "Hạng mục", "Tháng", "Loại tài liệu", "Nội dung chính", 
-                "Đạt YCKT CĐT", "LINK tài liệu", "TT lập", "TT duyệt", "Người lập", "Người duyệt", "Ngày duyệt",
+                "Đạt YCKT CĐT", "LINK tài liệu", "Thời hạn cần KQ", "TT duyệt", "Người lập", "Người duyệt", "Ngày duyệt",
                 "yc_tvgs", "yc_banqlda", "yc_cdt", "tvgs_status", "tvgs_comment", "banqlda_status", "banqlda_comment", "cdt_status", "cdt_comment"
             ]);
 
