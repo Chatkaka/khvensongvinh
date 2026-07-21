@@ -1070,6 +1070,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (settingsBtn) {
             settingsBtn.style.display = isAdmin ? "flex" : "none";
         }
+
+        // Hide Gemini AI button if not Admin
+        const aiQueryBtn = document.getElementById("ai-quick-query-btn");
+        if (aiQueryBtn) {
+            aiQueryBtn.style.display = isAdmin ? "inline-block" : "none";
+        }
         
         // Auto refresh permissions on current active view
         const activeNav = document.querySelector(".nav-menu .nav-item.active");
