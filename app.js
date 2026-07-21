@@ -5467,6 +5467,34 @@ function openEditModalForm(rowIdx) {
 
                 // Run immediately to populate the options list
                 updateOptions();
+                
+                // RESTRICTED EDIT LOGIC: Lock all fields except file upload if already submitted for opinion
+                if (editRegistrationIndex !== -1) {
+                    const doc = db.s02[editRegistrationIndex];
+                    const currentStatus = doc["TT duyệt"];
+                    if (currentStatus !== "Chờ duyệt" && currentStatus !== "Từ chối" && currentStatus !== "Chưa duyệt") {
+                        const fieldsToLock = [
+                            "form-bsc-search", "form-hang-muc", "form-thang", "form-loai", 
+                            "form-noi-dung", "form-dat-yckt", "form-thoi-han-kq", "form-maker", 
+                            "form-yc-tvgs", "form-yc-banqlda", "form-yc-cdt"
+                        ];
+                        fieldsToLock.forEach(id => {
+                            const el = document.getElementById(id);
+                            if (el) {
+                                el.disabled = true;
+                                if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
+                                    el.style.backgroundColor = "var(--bg-lighter)";
+                                    el.style.cursor = "not-allowed";
+                                }
+                            }
+                        });
+                        const hintHtml = `<div style="background-color: rgba(255,165,0,0.1); color: #ffa500; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9rem; border: 1px solid rgba(255,165,0,0.3);">
+                            <i class="fa-solid fa-circle-info"></i> Hồ sơ đang lấy ý kiến hoặc đã duyệt. Bạn chỉ được phép cập nhật Link/File kết quả.
+                        </div>`;
+                        const modalBody = document.getElementById("modal-form-body");
+                        if (modalBody) modalBody.insertAdjacentHTML("afterbegin", hintHtml);
+                    }
+                }
             }
         }
     }
@@ -5936,36 +5964,43 @@ function openEditModalForm(rowIdx) {
 
             if (editRegistrationIndex !== -1) {
                 const doc = db.s02[editRegistrationIndex];
-                doc["Mã BSC"] = document.getElementById("form-bsc").value;
-                doc["Hạng mục"] = document.getElementById("form-hang-muc").value;
-                doc["Tháng"] = document.getElementById("form-thang").value;
-                doc["Loại tài liệu"] = document.getElementById("form-loai").value;
-                doc["Nội dung chính"] = document.getElementById("form-noi-dung").value;
-                doc["Đạt YCKT CĐT"] = document.getElementById("form-dat-yckt").value;
-                doc["LINK tài liệu"] = getFormLinkValue();
-                doc["Người lập"] = document.getElementById("form-maker").value;
-                
-                doc["yc_tvgs"] = document.getElementById("form-yc-tvgs").checked;
-                doc["yc_banqlda"] = document.getElementById("form-yc-banqlda").checked;
-                doc["yc_cdt"] = document.getElementById("form-yc-cdt").checked;
-                
-                doc["tvgs_status"] = doc["yc_tvgs"] ? "Chờ ý kiến" : "N/A";
-                doc["banqlda_status"] = doc["yc_banqlda"] ? "Chờ ý kiến" : "N/A";
-                doc["cdt_status"] = doc["yc_cdt"] ? "Chờ ý kiến" : "N/A";
-                
-                doc["tvgs_comment"] = "";
-                doc["banqlda_comment"] = "";
-                doc["cdt_comment"] = "";
-                doc["tvgs_time"] = "";
-                doc["banqlda_time"] = "";
-                doc["cdt_time"] = "";
-                
-                doc["TT lập"] = document.getElementById("form-thoi-han-kq").value;
-                doc["Lý do từ chối"] = "";
-                
-                updateOverallS02Status(doc);
-                
-                showToast("Sổ 02", "Đã cập nhật và trình lại kế hoạch tuần/tháng thành công.", "success");
+                const currentStatus = doc["TT duyệt"];
+                if (currentStatus !== "Chờ duyệt" && currentStatus !== "Từ chối" && currentStatus !== "Chưa duyệt") {
+                    // Restricted Edit: ONLY update file link, DO NOT reset status
+                    doc["LINK tài liệu"] = getFormLinkValue();
+                    showToast("Sổ 02", "Đã cập nhật Link/File kết quả thành công.", "success");
+                } else {
+                    doc["Mã BSC"] = document.getElementById("form-bsc").value;
+                    doc["Hạng mục"] = document.getElementById("form-hang-muc").value;
+                    doc["Tháng"] = document.getElementById("form-thang").value;
+                    doc["Loại tài liệu"] = document.getElementById("form-loai").value;
+                    doc["Nội dung chính"] = document.getElementById("form-noi-dung").value;
+                    doc["Đạt YCKT CĐT"] = document.getElementById("form-dat-yckt").value;
+                    doc["LINK tài liệu"] = getFormLinkValue();
+                    doc["Người lập"] = document.getElementById("form-maker").value;
+                    
+                    doc["yc_tvgs"] = document.getElementById("form-yc-tvgs").checked;
+                    doc["yc_banqlda"] = document.getElementById("form-yc-banqlda").checked;
+                    doc["yc_cdt"] = document.getElementById("form-yc-cdt").checked;
+                    
+                    doc["tvgs_status"] = doc["yc_tvgs"] ? "Chờ ý kiến" : "N/A";
+                    doc["banqlda_status"] = doc["yc_banqlda"] ? "Chờ ý kiến" : "N/A";
+                    doc["cdt_status"] = doc["yc_cdt"] ? "Chờ ý kiến" : "N/A";
+                    
+                    doc["tvgs_comment"] = "";
+                    doc["banqlda_comment"] = "";
+                    doc["cdt_comment"] = "";
+                    doc["tvgs_time"] = "";
+                    doc["banqlda_time"] = "";
+                    doc["cdt_time"] = "";
+                    
+                    doc["TT lập"] = document.getElementById("form-thoi-han-kq").value;
+                    doc["Lý do từ chối"] = "";
+                    
+                    updateOverallS02Status(doc);
+                    
+                    showToast("Sổ 02", "Đã cập nhật và trình lại kế hoạch tuần/tháng thành công.", "success");
+                }
                 editRegistrationIndex = -1;
             } else {
                 const newDoc = {
