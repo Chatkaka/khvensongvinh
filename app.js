@@ -1882,8 +1882,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function sendTelegramMessage(message) {
-        const token = localStorage.getItem("telegram_bot_token") || "";
-        const chatId = localStorage.getItem("telegram_chat_id") || "";
+        const token = localStorage.getItem("telegram_bot_token") || (db.telegram_config && db.telegram_config.bot_token) || (db.system_config && db.system_config.telegram_bot_token) || "";
+        const chatId = localStorage.getItem("telegram_chat_id") || (db.telegram_config && db.telegram_config.chat_id) || (db.system_config && db.system_config.telegram_chat_id) || "";
         if (!token || !chatId) {
             console.warn("Telegram notification skipped: Bot Token or Chat ID not configured.");
             return false;
@@ -1916,8 +1916,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function sendTelegramWarningReport() {
-        const token = localStorage.getItem("telegram_bot_token") || "";
-        const chatId = localStorage.getItem("telegram_chat_id") || "";
+        const token = localStorage.getItem("telegram_bot_token") || (db.telegram_config && db.telegram_config.bot_token) || (db.system_config && db.system_config.telegram_bot_token) || "";
+        const chatId = localStorage.getItem("telegram_chat_id") || (db.telegram_config && db.telegram_config.chat_id) || (db.system_config && db.system_config.telegram_chat_id) || "";
         if (!token || !chatId) {
             showToast("Telegram", "Vui lòng cấu hình Bot Token và Chat ID trong phần Cài đặt hệ thống trước!", "danger");
             return;
