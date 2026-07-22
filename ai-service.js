@@ -6,7 +6,7 @@
 class GeminiAIService {
     constructor() {
         this.apiKey = localStorage.getItem('gemini_api_key') || '';
-        this.model = localStorage.getItem('gemini_model') || 'gemini-3.5-flash';
+        this.model = localStorage.getItem('gemini_model') || 'gemini-3.6-flash';
         this.isSimulation = !this.apiKey;
     }
 
@@ -17,7 +17,7 @@ class GeminiAIService {
     }
 
     setModel(modelName) {
-        this.model = modelName || 'gemini-3.5-flash';
+        this.model = modelName || 'gemini-3.6-flash';
         localStorage.setItem('gemini_model', this.model);
     }
 
