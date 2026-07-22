@@ -8078,7 +8078,7 @@ dropzone.addEventListener("click", () => fileInput.click());
 
     saveSettingsBtn.addEventListener("click", () => {
         const key = apiKeyInput.value.trim();
-        const model = modelSelect ? modelSelect.value : 'gemini-3.5-flash';
+        const model = modelSelect ? modelSelect.value : 'gemini-3.6-flash';
         GeminiAI.setApiKey(key);
         GeminiAI.setModel(model);
         
