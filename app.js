@@ -8284,8 +8284,8 @@ dropzone.addEventListener("click", () => fileInput.click());
 
     // ==========================================================================
     // 16. TAB QUẢN LÝ TIẾN ĐỘ CÔNG VIỆC (ENTERPRISE GANTT CHART MANAGEMENT)
-    // ==========================================================================
     let ganttCollapsedPackages = new Set();
+    let ganttSelectedBsc = ""; // Selected Mã BSC or Child Item
     let ganttSearchQuery = "";
     let ganttFilterNhom = "";
     let ganttFilterStatus = "";
@@ -8296,7 +8296,13 @@ dropzone.addEventListener("click", () => fileInput.click());
         const container = document.getElementById("gantt-management-container");
         if (!container) return;
 
-        // Populate dropdown filter options for Nhóm CT if not populated
+        // Structure master data into parent packages & child items
+        const structuredPackages = restructureMasterData(db.master);
+
+        // Populate Dropdown for Mã BSC / Gói thầu / Hạng mục
+        populateGanttBscDropdown(structuredPackages);
+
+        // Populate Nhóm CT Filter
         const nhomSelect = document.getElementById("gantt-filter-nhom");
         if (nhomSelect && nhomSelect.options.length <= 1) {
             const nhomSet = new Set();
@@ -8311,41 +8317,63 @@ dropzone.addEventListener("click", () => fileInput.click());
             });
         }
 
-        // Bind filter & control listeners once
+        // Bind Controls Once
         bindGanttControlsOnce();
 
-        // 1. Gather parent packages from db.master
-        let packages = db.master.filter(r => r && String(r.ma_bsc || "").trim() !== "");
+        // Filter packages based on user selection
+        let displayPackages = structuredPackages.filter(pkg => pkg && pkg.parent);
 
-        // Filter by search query
+        // Dropdown selection filter (Mã BSC or Child item)
+        if (ganttSelectedBsc) {
+            if (ganttSelectedBsc.includes("||")) {
+                // Child item selected
+                const [parentBsc, childTt] = ganttSelectedBsc.split("||");
+                displayPackages = displayPackages.filter(pkg => 
+                    String(pkg.parent.ma_bsc || "").trim() === parentBsc
+                );
+            } else {
+                // Parent package selected
+                displayPackages = displayPackages.filter(pkg => 
+                    String(pkg.parent.ma_bsc || "").trim() === ganttSelectedBsc
+                );
+            }
+        }
+
+        // Filter by Search Query
         if (ganttSearchQuery) {
             const q = ganttSearchQuery.toLowerCase();
-            packages = packages.filter(p => 
-                String(p.ma_bsc || "").toLowerCase().includes(q) ||
-                String(p.hang_muc_work || "").toLowerCase().includes(q) ||
-                String(p.phu_trach || "").toLowerCase().includes(q)
-            );
+            displayPackages = displayPackages.filter(pkg => {
+                const p = pkg.parent;
+                const matchParent = String(p.ma_bsc || "").toLowerCase().includes(q) ||
+                                    String(p.hang_muc_work || "").toLowerCase().includes(q) ||
+                                    String(p.phu_trach || "").toLowerCase().includes(q);
+                const matchChild = pkg.children && pkg.children.some(c => 
+                    String(c.hang_muc_work || "").toLowerCase().includes(q) ||
+                    String(c.tt || "").toLowerCase().includes(q)
+                );
+                return matchParent || matchChild;
+            });
         }
 
         // Filter by Nhóm CT
         if (ganttFilterNhom) {
-            packages = packages.filter(p => p.nhom_ct === ganttFilterNhom);
+            displayPackages = displayPackages.filter(pkg => pkg.parent.nhom_ct === ganttFilterNhom);
         }
 
-        // Filter by Status
-        if (ganttFilterStatus) {
-            packages = packages.filter(p => {
-                const status = calculatePackageGanttStatus(p);
+        // Filter by Status (Only apply if user explicitly selected status and no specific BSC dropdown is picked)
+        if (ganttFilterStatus && !ganttSelectedBsc) {
+            displayPackages = displayPackages.filter(pkg => {
+                const status = calculatePackageGanttStatus(pkg.parent);
                 return status === ganttFilterStatus;
             });
         }
 
-        if (packages.length === 0) {
+        if (displayPackages.length === 0) {
             container.innerHTML = `
                 <div style="padding: 60px; text-align: center; color: var(--text-muted); width: 100%;">
-                    <i class="fa-solid fa-chart-gantt" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;"></i>
-                    <p style="font-size: 1.1rem; font-weight: 600;">Không tìm thấy gói thầu / hạng mục tiến độ nào phù hợp!</p>
-                    <p style="font-size: 0.85rem;">Vui lòng thử điều chỉnh lại từ khóa tìm kiếm hoặc bộ lọc.</p>
+                    <i class="fa-solid fa-chart-gantt" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3; color: var(--color-ai-primary);"></i>
+                    <p style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">Không tìm thấy gói thầu / hạng mục tiến độ nào phù hợp!</p>
+                    <p style="font-size: 0.85rem; margin-top: 6px;">Vui lòng chọn từ danh sách Dropdown <b>Mã BSC / Gói thầu</b> phía trên hoặc điều chỉnh lại bộ lọc.</p>
                 </div>
             `;
             return;
@@ -8354,58 +8382,55 @@ dropzone.addEventListener("click", () => fileInput.click());
         const treeRows = [];
         let allDates = [];
 
-        packages.forEach(p => {
+        displayPackages.forEach(pkg => {
+            const p = pkg.parent;
             const isCollapsed = ganttCollapsedPackages.has(p.ma_bsc);
-            
-            // Parent dates
-            const startDate = p.ngay_bd_yc ? new Date(p.ngay_bd_yc) : null;
-            const endDate = p.ngay_kt_yc ? new Date(p.ngay_kt_yc) : null;
 
-            if (startDate && !isNaN(startDate)) allDates.push(startDate);
-            if (endDate && !isNaN(endDate)) allDates.push(endDate);
-
-            // Sub milestones:
-            // Milestone 1: KH HSTKTC
+            // Sub milestones for Package:
             const m1DateStr = p.kh_phat_hanh_hstktc || p.kh_pd_khtk || "";
-            const m1Date = m1DateStr ? new Date(m1DateStr) : null;
-            const m1Status = p.tt_khtk || p.tt_hstktc || (m1DateStr ? "Đã lập KH" : "Chưa lập");
-            if (m1Date && !isNaN(m1Date)) allDates.push(m1Date);
-
-            // Milestone 2: KH LCNT
+            const m1Date = parseGanttDateSafe(m1DateStr);
+            
             const m2DateStr = p.kh_lcnt || "";
-            const m2Date = m2DateStr ? new Date(m2DateStr) : null;
-            const m2Status = p.tt_lcnt || (m2DateStr ? "Đã lập KH" : "Chưa chọn");
-            if (m2Date && !isNaN(m2Date)) allDates.push(m2Date);
+            const m2Date = parseGanttDateSafe(m2DateStr);
 
-            // Milestone 3: KH ký HĐCU
             const m3DateStr = p.kh_ky_hdcu || "";
-            const m3Date = m3DateStr ? new Date(m3DateStr) : null;
-            const m3Status = p.tt_ky_hdcu || (m3DateStr ? "Đã ký" : "Chưa ký");
-            if (m3Date && !isNaN(m3Date)) allDates.push(m3Date);
+            const m3Date = parseGanttDateSafe(m3DateStr);
 
-            // Milestone 4: Ngày BĐ khởi công
             const m4DateStr = p.ngay_bd_khoi_cong || "";
-            const m4Date = m4DateStr ? new Date(m4DateStr) : null;
-            const m4Status = p.dieu_kien_du || (m4DateStr ? "Đã khởi công" : "Chưa KC");
-            if (m4Date && !isNaN(m4Date)) allDates.push(m4Date);
+            const m4Date = parseGanttDateSafe(m4DateStr);
 
-            // Poka-Yoke check: Is sequence chronologically logical?
+            // Calculate robust Parent Start & End Dates
+            let startDate = parseGanttDateSafe(p.ngay_bd_yc);
+            let endDate = parseGanttDateSafe(p.ngay_kt_yc);
+
+            // Six Sigma Poka-Yoke Fallbacks if dates are missing
+            const validMilestones = [m1Date, m2Date, m3Date, m4Date].filter(d => d !== null);
+            if (!startDate && validMilestones.length > 0) {
+                startDate = new Date(Math.min(...validMilestones.map(d => d.getTime())));
+            }
+            if (!endDate && startDate) {
+                endDate = new Date(startDate.getTime() + (90 * 24 * 60 * 60 * 1000)); // Default 90 days span
+            }
+            if (!startDate) startDate = new Date("2025-01-01");
+            if (!endDate) endDate = new Date("2026-12-31");
+
+            if (startDate) allDates.push(startDate);
+            if (endDate) allDates.push(endDate);
+            validMilestones.forEach(d => allDates.push(d));
+
+            // Poka-Yoke check for inverted milestones
             let seqWarning = false;
             let prevTime = 0;
-            [m1Date, m2Date, m3Date, m4Date].forEach(d => {
-                if (d && !isNaN(d)) {
-                    if (prevTime > 0 && d.getTime() < prevTime) {
-                        seqWarning = true;
-                    }
-                    prevTime = d.getTime();
-                }
+            validMilestones.forEach(d => {
+                if (prevTime > 0 && d.getTime() < prevTime) seqWarning = true;
+                prevTime = d.getTime();
             });
 
-            // Add parent row
+            // Add Parent Row
             treeRows.push({
                 type: 'parent',
                 ma_bsc: p.ma_bsc,
-                title: `${p.ma_bsc} - ${p.hang_muc_work}`,
+                title: `📦 [Gói] ${p.ma_bsc} - ${p.hang_muc_work}`,
                 person: p.phu_trach || "",
                 startDate: startDate,
                 endDate: endDate,
@@ -8415,56 +8440,75 @@ dropzone.addEventListener("click", () => fileInput.click());
                 seqWarning: seqWarning
             });
 
-            // Add 4 child milestone rows if not collapsed
+            // Add 4 Milestone Rows if Parent is not collapsed
             if (!isCollapsed) {
                 treeRows.push({
-                    type: 'child',
+                    type: 'child_milestone',
                     mType: 1,
                     parentBsc: p.ma_bsc,
                     title: "1. KH HSTKTC (Phê duyệt Hồ sơ Thiết kế Thi công)",
                     person: p.phu_trach || "",
                     date: m1Date,
                     dateStr: m1DateStr,
-                    status: m1Status,
+                    status: p.tt_khtk || p.tt_hstktc || (m1DateStr ? "Đã lập KH" : "Chưa lập"),
                     color: "#10b981"
                 });
                 treeRows.push({
-                    type: 'child',
+                    type: 'child_milestone',
                     mType: 2,
                     parentBsc: p.ma_bsc,
                     title: "2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
                     person: p.phu_trach || "",
                     date: m2Date,
                     dateStr: m2DateStr,
-                    status: m2Status,
+                    status: p.tt_lcnt || (m2DateStr ? "Đã lập KH" : "Chưa chọn"),
                     color: "#f59e0b"
                 });
                 treeRows.push({
-                    type: 'child',
+                    type: 'child_milestone',
                     mType: 3,
                     parentBsc: p.ma_bsc,
                     title: "3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
                     person: p.phu_trach || "",
                     date: m3Date,
                     dateStr: m3DateStr,
-                    status: m3Status,
+                    status: p.tt_ky_hdcu || (m3DateStr ? "Đã ký" : "Chưa ký"),
                     color: "#8b5cf6"
                 });
                 treeRows.push({
-                    type: 'child',
+                    type: 'child_milestone',
                     mType: 4,
                     parentBsc: p.ma_bsc,
                     title: "4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
                     person: p.phu_trach || "",
                     date: m4Date,
                     dateStr: m4DateStr,
-                    status: m4Status,
+                    status: p.dieu_kien_du || (m4DateStr ? "Đã khởi công" : "Chưa KC"),
                     color: "#ef4444"
                 });
+
+                // Add Child Work Items if any exist
+                if (pkg.children && pkg.children.length > 0) {
+                    pkg.children.forEach(c => {
+                        const cDate = parseGanttDateSafe(c.ngay_bd_khoi_cong || c.kh_phat_hanh_hstktc || p.ngay_bd_yc);
+                        if (cDate) allDates.push(cDate);
+                        treeRows.push({
+                            type: 'child_work',
+                            parentBsc: p.ma_bsc,
+                            tt: c.tt,
+                            title: `└─ [Chi tiết ${c.tt}] ${c.hang_muc_work}`,
+                            person: c.phu_trach || p.phu_trach || "",
+                            date: cDate,
+                            dateStr: c.ngay_bd_khoi_cong || c.kh_phat_hanh_hstktc || "",
+                            status: c.progress_status || c.dieu_kien_du || "Đang thực hiện",
+                            color: "#38bdf8"
+                        });
+                    });
+                }
             }
         });
 
-        // 2. Timeline calculations
+        // Calculate Min & Max Time for SVG Timeline Scale
         let minTime = Infinity;
         let maxTime = -Infinity;
 
@@ -8486,19 +8530,19 @@ dropzone.addEventListener("click", () => fileInput.click());
 
         const totalDays = Math.ceil((maxTime - minTime) / (24 * 60 * 60 * 1000));
         const dayWidth = ganttZoomMode === 'week' ? 18 : 8;
-        const ganttWidth = Math.max(totalDays * dayWidth, 900);
+        const ganttWidth = Math.max(totalDays * dayWidth, 950);
         const rowHeight = 38;
         const headerHeight = 50;
         const ganttHeight = headerHeight + (treeRows.length * rowHeight);
 
-        // Render HTML Split Layout
+        // Render Split View HTML
         let html = `
             <div class="gantt-left-panel">
                 <table class="gantt-left-table">
                     <thead>
                         <tr>
-                            <th style="width: 240px;">CÔNG VIỆC</th>
-                            <th style="width: 100px;">NGƯỜI THỰC HIỆN</th>
+                            <th style="width: 250px;">CÔNG VIỆC / HẠNG MỤC</th>
+                            <th style="width: 90px;">PHỤ TRÁCH</th>
                             <th style="width: 80px;">TRẠNG THÁI</th>
                             <th style="width: 60px; text-align: center;">TIẾN ĐỘ</th>
                         </tr>
@@ -8522,17 +8566,30 @@ dropzone.addEventListener("click", () => fileInput.click());
                         <td style="text-align: center; font-weight:700; color:#38bdf8;">${row.progress}%</td>
                     </tr>
                 `;
-            } else {
+            } else if (row.type === 'child_milestone') {
                 const badgeClass = getGanttStatusBadgeClass(row.status);
                 const dateDisplay = row.dateStr ? formatDateDMY(row.dateStr) : "--/--/----";
                 html += `
                     <tr class="row-child-gantt" data-row-idx="${idx}">
-                        <td style="padding-left: 28px;" title="${escapeHtml(row.title)}">
+                        <td style="padding-left: 24px;" title="${escapeHtml(row.title)}">
                             <span style="color:${row.color}; font-weight:600;">${escapeHtml(row.title)}</span>
                         </td>
                         <td><span style="color:var(--text-muted); font-size:0.75rem;">${escapeHtml(row.person)}</span></td>
                         <td><span class="badge ${badgeClass}">${escapeHtml(row.status)}</span></td>
                         <td style="text-align: center; font-size:0.75rem; color:var(--text-muted);">${dateDisplay}</td>
+                    </tr>
+                `;
+            } else if (row.type === 'child_work') {
+                const badgeClass = getGanttStatusBadgeClass(row.status);
+                const dateDisplay = row.dateStr ? formatDateDMY(row.dateStr) : "--/--/----";
+                html += `
+                    <tr class="row-child-gantt" style="background-color: rgba(56, 189, 248, 0.03);" data-row-idx="${idx}">
+                        <td style="padding-left: 36px;" title="${escapeHtml(row.title)}">
+                            <span style="color: #e2e8f0; font-weight: 500;">${escapeHtml(row.title)}</span>
+                        </td>
+                        <td><span style="color:var(--text-muted); font-size:0.75rem;">${escapeHtml(row.person)}</span></td>
+                        <td><span class="badge ${badgeClass}">${escapeHtml(row.status)}</span></td>
+                        <td style="text-align: center; font-size:0.75rem; color:#38bdf8;">${dateDisplay}</td>
                     </tr>
                 `;
             }
@@ -8562,20 +8619,55 @@ dropzone.addEventListener("click", () => fileInput.click());
 
         container.innerHTML = html;
 
-        // Sync vertical scroll between left table and right SVG timeline
+        // Sync Vertical Scroll
         const leftPanel = container.querySelector('.gantt-left-panel');
         const rightPanel = container.querySelector('.gantt-right-panel');
         if (leftPanel && rightPanel) {
-            rightPanel.addEventListener('scroll', () => {
-                leftPanel.scrollTop = rightPanel.scrollTop;
-            });
-            leftPanel.addEventListener('scroll', () => {
-                rightPanel.scrollTop = leftPanel.scrollTop;
-            });
+            rightPanel.addEventListener('scroll', () => { leftPanel.scrollTop = rightPanel.scrollTop; });
+            leftPanel.addEventListener('scroll', () => { rightPanel.scrollTop = leftPanel.scrollTop; });
         }
 
-        // Attach SVG interactive tooltips
         attachGanttInteractiveTooltips();
+    }
+
+    function populateGanttBscDropdown(structuredPackages) {
+        const selectEl = document.getElementById("gantt-select-bsc");
+        if (!selectEl) return;
+
+        // Keep current selected value if user already chose
+        const curVal = selectEl.value || ganttSelectedBsc || "";
+
+        selectEl.innerHTML = `<option value="">-- Tất cả Mã BSC / Gói thầu / Hạng mục (${structuredPackages.length} Gói thầu) --</option>`;
+
+        structuredPackages.forEach(pkg => {
+            if (!pkg || !pkg.parent) return;
+            const p = pkg.parent;
+            const bsc = String(p.ma_bsc || "").trim();
+            const parentOpt = document.createElement("option");
+            parentOpt.value = bsc;
+            parentOpt.textContent = `📦 [Gói] ${bsc} - ${p.hang_muc_work || ""}`;
+            if (bsc === curVal) parentOpt.selected = true;
+            selectEl.appendChild(parentOpt);
+
+            if (pkg.children && pkg.children.length > 0) {
+                pkg.children.forEach(c => {
+                    const val = `${bsc}||${c.tt}`;
+                    const childOpt = document.createElement("option");
+                    childOpt.value = val;
+                    childOpt.textContent = `   └─ [Chi tiết ${c.tt}] ${c.hang_muc_work || ""}`;
+                    if (val === curVal) childOpt.selected = true;
+                    selectEl.appendChild(childOpt);
+                });
+            }
+        });
+    }
+
+    function parseGanttDateSafe(dStr) {
+        if (!dStr) return null;
+        const str = String(dStr).trim();
+        if (!str) return null;
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? null : d;
     }
 
     function calculatePackageGanttStatus(p) {
@@ -8626,6 +8718,18 @@ dropzone.addEventListener("click", () => fileInput.click());
     function bindGanttControlsOnce() {
         if (ganttControlsBound) return;
         ganttControlsBound = true;
+
+        const bscSelect = document.getElementById("gantt-select-bsc");
+        if (bscSelect) {
+            bscSelect.addEventListener("change", (e) => {
+                ganttSelectedBsc = e.target.value;
+                // Reset status filter so it never accidentally yields empty
+                ganttFilterStatus = "";
+                const statusSelect = document.getElementById("gantt-filter-status");
+                if (statusSelect) statusSelect.value = "";
+                renderFullGanttManagementView();
+            });
+        }
 
         const searchInput = document.getElementById("gantt-search-input");
         if (searchInput) {
@@ -8758,7 +8862,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         <text x="${x1 + 8}" y="${y + 23}" fill="#ffffff" font-size="10" font-weight="700" pointer-events="none">${escapeHtml(row.ma_bsc)} (${row.progress}%)</text>
                     `;
                 }
-            } else {
+            } else if (row.type === 'child_milestone') {
                 if (row.date && !isNaN(row.date)) {
                     const x = ((row.date.getTime() - minTime) / totalSpanMs) * ganttWidth;
                     const key = `${row.parentBsc}_m${row.mType}`;
@@ -8782,6 +8886,16 @@ dropzone.addEventListener("click", () => fileInput.click());
                             <text x="${x + barWidth + 6}" y="${y + 23}" fill="${row.color}" font-size="10" font-weight="600">${formatDateDMY(row.date)}</text>
                         `;
                     }
+                }
+            } else if (row.type === 'child_work') {
+                if (row.date && !isNaN(row.date)) {
+                    const x = ((row.date.getTime() - minTime) / totalSpanMs) * ganttWidth;
+                    const barWidth = 35;
+                    svg += `
+                        <rect x="${x}" y="${y + 12}" width="${barWidth}" height="14" fill="#38bdf8" rx="3" ry="3" opacity="0.85"
+                              data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn / Ngày KC: ${formatDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
+                        <text x="${x + barWidth + 6}" y="${y + 23}" fill="#38bdf8" font-size="9.5" font-weight="600">${formatDateDMY(row.date)}</text>
+                    `;
                 }
             }
         });
@@ -8822,34 +8936,6 @@ dropzone.addEventListener("click", () => fileInput.click());
         });
 
         return svg;
-    }
-
-    function getGanttWeekNumber(d) {
-        const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-        const dayNum = date.getUTCDay() || 7;
-        date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-        const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
-        return Math.ceil((((date - yearStart) / 86400000) + 1)/7);
-    }
-
-    function attachGanttInteractiveTooltips() {
-        const tooltip = document.getElementById("gantt-tooltip");
-        if (!tooltip) return;
-
-        document.querySelectorAll("[data-tip]").forEach(el => {
-            el.addEventListener("mouseenter", (e) => {
-                const tipContent = el.getAttribute("data-tip");
-                tooltip.innerHTML = tipContent;
-                tooltip.style.display = "block";
-            });
-            el.addEventListener("mousemove", (e) => {
-                tooltip.style.left = (e.pageX + 15) + "px";
-                tooltip.style.top = (e.pageY + 15) + "px";
-            });
-            el.addEventListener("mouseleave", () => {
-                tooltip.style.display = "none";
-            });
-        });
     }
 
 });
