@@ -8399,7 +8399,7 @@ dropzone.addEventListener("click", () => fileInput.click());
     let ganttSelectedBsc = ""; 
     let ganttSearchQuery = "";
     let ganttFilterNhom = "";
-    let ganttFilterStatus = ""; // Defaults to ALL statuses
+    let ganttFilterStatus = ""; 
     let ganttZoomMode = "month"; 
     let ganttControlsBound = false;
 
@@ -8410,7 +8410,7 @@ dropzone.addEventListener("click", () => fileInput.click());
         // Structure master data into parent packages & child items
         const structuredPackages = restructureMasterData(db.master);
 
-        // Populate Dropdown for Mã BSC / Gói thầu / Hạng mục
+        // Populate Dropdown for PL / Mã BSC / Gói thầu / Hạng mục
         populateGanttBscDropdown(structuredPackages);
 
         // Populate Nhóm CT Filter
@@ -8418,7 +8418,8 @@ dropzone.addEventListener("click", () => fileInput.click());
         if (nhomSelect && nhomSelect.options.length <= 1) {
             const nhomSet = new Set();
             db.master.forEach(r => {
-                if (r && r.nhom_ct) nhomSet.add(r.nhom_ct);
+                const item = r.parent ? r.parent : r;
+                if (item && item.nhom_ct) nhomSet.add(item.nhom_ct);
             });
             nhomSet.forEach(nhom => {
                 const opt = document.createElement("option");
@@ -8434,29 +8435,47 @@ dropzone.addEventListener("click", () => fileInput.click());
         // Filter packages based on user selection
         let displayPackages = structuredPackages.filter(pkg => pkg && pkg.parent);
 
-        // Dropdown selection filter (Mã BSC or Child item)
+        // Dropdown selection filter (PL, Mã BSC, or Child item)
         if (ganttSelectedBsc) {
-            if (ganttSelectedBsc.includes("||")) {
+            if (ganttSelectedBsc.startsWith("PL::")) {
+                // User selected a PL group (e.g. PL02, PL16)
+                const selectedPl = ganttSelectedBsc.replace("PL::", "").trim().toLowerCase();
+                displayPackages = displayPackages.filter(pkg => {
+                    const pl = String(pkg.parent.goi_thau_pl || "").trim().toLowerCase();
+                    return pl === selectedPl;
+                });
+
+                // Auto UNCOLLAPSE all packages in this PL so all level-2 child work items show!
+                displayPackages.forEach(pkg => {
+                    if (pkg.parent && pkg.parent.ma_bsc) {
+                        ganttCollapsedPackages.delete(pkg.parent.ma_bsc);
+                    }
+                });
+            } else if (ganttSelectedBsc.includes("||")) {
+                // Child item selected
                 const [parentBsc, childTt] = ganttSelectedBsc.split("||");
                 displayPackages = displayPackages.filter(pkg => 
                     String(pkg.parent.ma_bsc || "").trim() === parentBsc
                 );
+                ganttCollapsedPackages.delete(parentBsc);
             } else {
+                // Single Parent package selected
                 displayPackages = displayPackages.filter(pkg => 
                     String(pkg.parent.ma_bsc || "").trim() === ganttSelectedBsc
                 );
+                ganttCollapsedPackages.delete(ganttSelectedBsc);
             }
         }
 
-        // Filter by 3-Level Search Query
+        // Filter by Quick Search Query (Matching PL Name, BSC, Package, Hạng mục cấp 2, Milestones)
         if (ganttSearchQuery) {
             const q = ganttSearchQuery.toLowerCase();
             displayPackages = displayPackages.filter(pkg => {
                 const p = pkg.parent;
+                const matchPl = String(p.goi_thau_pl || "").toLowerCase().includes(q);
                 const matchParent = String(p.ma_bsc || "").toLowerCase().includes(q) ||
                                     String(p.hang_muc_work || "").toLowerCase().includes(q) ||
                                     String(p.nhom_ct || "").toLowerCase().includes(q) ||
-                                    String(p.goi_thau_pl || "").toLowerCase().includes(q) ||
                                     String(p.phu_trach || "").toLowerCase().includes(q) ||
                                     String(p.tt_khtk || "").toLowerCase().includes(q) ||
                                     String(p.tt_lcnt || "").toLowerCase().includes(q) ||
@@ -8474,7 +8493,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                     "3. kh ký hdcu kế hoạch ký hợp đồng cung ứng".includes(q) ||
                     "4. ngày bd khởi công mốc bắt đầu khởi công".includes(q);
 
-                const isMatch = matchParent || matchChild || matchMilestones;
+                const isMatch = matchPl || matchParent || matchChild || matchMilestones;
+                // Auto uncollapse matching package so child work items show!
                 if (isMatch && ganttCollapsedPackages.has(p.ma_bsc)) {
                     ganttCollapsedPackages.delete(p.ma_bsc);
                 }
@@ -8487,7 +8507,7 @@ dropzone.addEventListener("click", () => fileInput.click());
             displayPackages = displayPackages.filter(pkg => pkg.parent.nhom_ct === ganttFilterNhom);
         }
 
-        // Filter by Status (ROBUST: Correct status calculation mapping)
+        // Filter by Status (Only if explicitly selected)
         if (ganttFilterStatus) {
             displayPackages = displayPackages.filter(pkg => {
                 const status = calculatePackageGanttStatus(pkg.parent);
@@ -8500,7 +8520,10 @@ dropzone.addEventListener("click", () => fileInput.click());
                 <div style="padding: 60px; text-align: center; color: var(--text-muted); width: 100%;">
                     <i class="fa-solid fa-chart-gantt" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3; color: var(--color-ai-primary);"></i>
                     <p style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">Không tìm thấy gói thầu / hạng mục tiến độ nào phù hợp!</p>
-                    <p style="font-size: 0.85rem; margin-top: 6px;">Vui lòng mở danh sách Dropdown <b>Mã BSC / Gói thầu</b> phía trên hoặc đổi Bộ lọc Trạng thái về <b>"Tất cả Trạng thái"</b>.</p>
+                    <p style="font-size: 0.85rem; margin-top: 6px; margin-bottom: 18px;">Vui lòng chọn từ danh sách Dropdown <b>Phân Lộ (PL) / Mã BSC</b> phía trên hoặc đặt lại bộ lọc.</p>
+                    <button class="btn-action primary" onclick="resetGanttFilters()" style="padding: 8px 20px; font-size: 0.85rem; border-radius: 20px;">
+                        <i class="fa-solid fa-rotate-left"></i> Xem Tất Cả Gói Thầu (${structuredPackages.length} Gói)
+                    </button>
                 </div>
             `;
             return;
@@ -8513,7 +8536,7 @@ dropzone.addEventListener("click", () => fileInput.click());
             const p = pkg.parent;
             const isCollapsed = ganttCollapsedPackages.has(p.ma_bsc);
 
-            // Sub milestones for Package (dates extracted directly from Master table):
+            // Sub milestones for Package:
             const m1DateStr = p.kh_phat_hanh_hstktc || p.kh_pd_khtk || "";
             const m1Date = parseGanttDateSafe(m1DateStr);
             
@@ -8552,11 +8575,12 @@ dropzone.addEventListener("click", () => fileInput.click());
                 prevTime = d.getTime();
             });
 
-            // Add Parent Row (Column: NỘI DUNG CÔNG VIỆC)
+            // Add Parent Package Row (Column: NỘI DUNG CÔNG VIỆC)
+            const plTag = p.goi_thau_pl ? `[${p.goi_thau_pl}] ` : "";
             treeRows.push({
                 type: 'parent',
                 ma_bsc: p.ma_bsc,
-                title: `📦 [Gói thầu] ${p.ma_bsc} - ${p.hang_muc_work}`,
+                title: `📦 ${plTag}${p.ma_bsc} - ${p.hang_muc_work}`,
                 person: p.phu_trach || "BQLDA",
                 startDate: startDate,
                 endDate: endDate,
@@ -8566,7 +8590,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                 seqWarning: seqWarning
             });
 
-            // Add 4 Milestone Rows under the Package (Khoanh đỏ: nằm ở cột Nội dung công việc)
+            // Add 4 Milestone Rows under the Package (Cột: Nội dung công việc)
             if (!isCollapsed) {
                 treeRows.push({
                     type: 'child_milestone',
@@ -8613,7 +8637,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                     color: "#ef4444"
                 });
 
-                // Add Child Work Items if any exist
+                // Add Child Work Items (Hạng mục/Công việc cấp 2)
                 if (pkg.children && pkg.children.length > 0) {
                     pkg.children.forEach(c => {
                         const cDate = parseGanttDateSafe(c.ngay_bd_khoi_cong || c.kh_phat_hanh_hstktc) || new Date(startDate.getTime() + 30*86400000);
@@ -8622,7 +8646,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                             type: 'child_work',
                             parentBsc: p.ma_bsc,
                             tt: c.tt,
-                            title: `└─ [Chi tiết ${c.tt}] ${c.hang_muc_work}`,
+                            title: `└─ [Hạng mục cấp 2 - ${c.tt}] ${c.hang_muc_work}`,
                             person: c.phu_trach || p.phu_trach || "",
                             date: cDate,
                             dateStr: c.ngay_bd_khoi_cong || c.kh_phat_hanh_hstktc || "",
@@ -8667,9 +8691,9 @@ dropzone.addEventListener("click", () => fileInput.click());
                 <table class="gantt-left-table">
                     <thead>
                         <tr>
-                            <th style="width: 260px; background: #1f2937; color: #38bdf8;">NỘI DUNG CÔNG VIỆC</th>
+                            <th style="width: 280px; background: #1f2937; color: #38bdf8;">NỘI DUNG CÔNG VIỆC</th>
                             <th style="width: 90px; background: #1f2937;">PHỤ TRÁCH</th>
-                            <th style="width: 80px; background: #1f2937;">TRẠNG THÁI</th>
+                            <th style="width: 85px; background: #1f2937;">TRẠNG THÁI</th>
                             <th style="width: 60px; text-align: center; background: #1f2937;">TIẾN ĐỘ</th>
                         </tr>
                     </thead>
@@ -8709,7 +8733,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                 const badgeClass = getGanttStatusBadgeClass(row.status);
                 const dateDisplay = row.date ? formatDateDMY(row.date) : "--/--/----";
                 html += `
-                    <tr class="row-child-gantt" style="background-color: rgba(56, 189, 248, 0.03);" data-row-idx="${idx}">
+                    <tr class="row-child-gantt" style="background-color: rgba(56, 189, 248, 0.04);" data-row-idx="${idx}">
                         <td style="padding-left: 36px;" title="${escapeHtml(row.title)}">
                             <span style="color: #e2e8f0; font-weight: 500;">${escapeHtml(row.title)}</span>
                         </td>
@@ -8726,7 +8750,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                 </table>
             </div>
 
-            <!-- Right Interactive SVG Gantt Chart (Hàng trên cùng: Dòng thời gian) -->
+            <!-- Right Interactive SVG Gantt Chart (Hàng trên cùng: DÒNG THỜI GIAN) -->
             <div class="gantt-right-panel" id="gantt-right-scroll-pane">
                 <svg class="gantt-svg" width="${ganttWidth}" height="${ganttHeight}">
                     <defs>
@@ -8757,35 +8781,77 @@ dropzone.addEventListener("click", () => fileInput.click());
         attachGanttInteractiveTooltips();
     }
 
+    // Populate Dropdown for Phân Lộ (PL) / Mã BSC / Gói thầu / Hạng mục cấp 2
     function populateGanttBscDropdown(structuredPackages) {
         const selectEl = document.getElementById("gantt-select-bsc");
         if (!selectEl) return;
 
         const curVal = selectEl.value || ganttSelectedBsc || "";
-        selectEl.innerHTML = `<option value="">-- Tất cả Mã BSC / Gói thầu / Hạng mục (${structuredPackages.length} Gói thầu) --</option>`;
+        selectEl.innerHTML = `<option value="">-- Tất cả Phân Lộ (PL) / Mã BSC / Gói thầu (${structuredPackages.length} Gói) --</option>`;
 
+        // Group packages by PL
+        const plGroups = {};
         structuredPackages.forEach(pkg => {
             if (!pkg || !pkg.parent) return;
-            const p = pkg.parent;
-            const bsc = String(p.ma_bsc || "").trim();
-            const parentOpt = document.createElement("option");
-            parentOpt.value = bsc;
-            parentOpt.textContent = `📦 [Gói] ${bsc} - ${p.hang_muc_work || ""}`;
-            if (bsc === curVal) parentOpt.selected = true;
-            selectEl.appendChild(parentOpt);
+            const pl = String(pkg.parent.goi_thau_pl || "Khác").trim();
+            if (!plGroups[pl]) plGroups[pl] = [];
+            plGroups[pl].push(pkg);
+        });
 
-            if (pkg.children && pkg.children.length > 0) {
-                pkg.children.forEach(c => {
-                    const val = `${bsc}||${c.tt}`;
-                    const childOpt = document.createElement("option");
-                    childOpt.value = val;
-                    childOpt.textContent = `   └─ [Chi tiết ${c.tt}] ${c.hang_muc_work || ""}`;
-                    if (val === curVal) childOpt.selected = true;
-                    selectEl.appendChild(childOpt);
-                });
-            }
+        // Add options grouped by PL
+        const sortedPls = Object.keys(plGroups).sort();
+        sortedPls.forEach(pl => {
+            const pkgsInPl = plGroups[pl];
+            
+            // 1. Group Header Option for PL
+            const plOpt = document.createElement("option");
+            plOpt.value = `PL::${pl}`;
+            plOpt.textContent = `📁 [NHÓM PL] ${pl} (${pkgsInPl.length} Gói thầu)`;
+            plOpt.style.fontWeight = "bold";
+            plOpt.style.color = "#38bdf8";
+            if (`PL::${pl}` === curVal) plOpt.selected = true;
+            selectEl.appendChild(plOpt);
+
+            // 2. Packages under this PL
+            pkgsInPl.forEach(pkg => {
+                const p = pkg.parent;
+                const bsc = String(p.ma_bsc || "").trim();
+                const parentOpt = document.createElement("option");
+                parentOpt.value = bsc;
+                parentOpt.textContent = `   📦 [Gói ${pl}] ${bsc} - ${p.hang_muc_work || ""}`;
+                if (bsc === curVal) parentOpt.selected = true;
+                selectEl.appendChild(parentOpt);
+
+                // 3. Level-2 Child Work Items under this package
+                if (pkg.children && pkg.children.length > 0) {
+                    pkg.children.forEach(c => {
+                        const val = `${bsc}||${c.tt}`;
+                        const childOpt = document.createElement("option");
+                        childOpt.value = val;
+                        childOpt.textContent = `      └─ [Hạng mục cấp 2 - ${c.tt}] ${c.hang_muc_work || ""}`;
+                        if (val === curVal) childOpt.selected = true;
+                        selectEl.appendChild(childOpt);
+                    });
+                }
+            });
         });
     }
+
+    window.resetGanttFilters = function() {
+        ganttSelectedBsc = "";
+        ganttSearchQuery = "";
+        ganttFilterNhom = "";
+        ganttFilterStatus = "";
+        const bscSelect = document.getElementById("gantt-select-bsc");
+        if (bscSelect) bscSelect.value = "";
+        const searchInput = document.getElementById("gantt-search-input");
+        if (searchInput) searchInput.value = "";
+        const nhomSelect = document.getElementById("gantt-filter-nhom");
+        if (nhomSelect) nhomSelect.value = "";
+        const statusSelect = document.getElementById("gantt-filter-status");
+        if (statusSelect) statusSelect.value = "";
+        renderFullGanttManagementView();
+    };
 
     function parseGanttDateSafe(dStr) {
         if (!dStr) return null;
