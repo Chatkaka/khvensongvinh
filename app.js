@@ -342,7 +342,20 @@ document.addEventListener("DOMContentLoaded", () => {
         initApp();
     }
 
-    function restructureMasterData(masterArray) {
+    
+    // Helper function for 3-Level Search across all books & views
+    function getBscPackageName(maBsc) {
+        if (!maBsc) return "";
+        const strBsc = String(maBsc).trim().toLowerCase();
+        if (!strBsc) return "";
+        const pkg = db.master.find(r => r && String(r.ma_bsc || "").trim().toLowerCase() === strBsc);
+        if (pkg) {
+            return `${pkg.ma_bsc} ${pkg.hang_muc_work || ""} ${pkg.nhom_ct || ""} ${pkg.goi_thau_pl || ""}`.toLowerCase();
+        }
+        return "";
+    }
+
+function restructureMasterData(masterArray) {
         if (!masterArray || masterArray.length === 0) return [];
         
         const packages = [];
@@ -2594,10 +2607,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 return matchesGroup && matchesPl;
             }
             const row = item.row_ref;
-            const textMatch = 
+            const pkgName = getBscPackageName(row.ma_bsc || item.parentId || "");
+            const textMatch = !search || 
                 String(row.ma_bsc || "").toLowerCase().includes(search) || 
                 String(row.hang_muc_work || "").toLowerCase().includes(search) ||
-                String(row.phu_trach || "").toLowerCase().includes(search);
+                String(row.tt || "").toLowerCase().includes(search) ||
+                String(row.nhom_ct || "").toLowerCase().includes(search) ||
+                String(row.goi_thau_pl || "").toLowerCase().includes(search) ||
+                String(row.phu_trach || "").toLowerCase().includes(search) ||
+                String(row.dieu_kien_du || "").toLowerCase().includes(search) ||
+                String(row.qa_danh_gia_thang || "").toLowerCase().includes(search) ||
+                String(row.tc_danh_gia_thang || "").toLowerCase().includes(search) ||
+                pkgName.includes(search);
             const groupMatch = groupFilter === "" || getRowGroup(item) === groupFilter;
             const plMatch = plFilter === "" || getRowPl(item) === plFilter;
             
@@ -3908,8 +3929,20 @@ function openEditModalForm(rowIdx) {
 
         db.s01.forEach((row, index) => {
             if (!row) return;
-            const bsc = String(row['Mã BSC']);
-            if (search && !bsc.toLowerCase().includes(search)) return;
+                        const bsc = String(row['Mã BSC']);
+            if (search) {
+                const pkgName = getBscPackageName(bsc);
+                const textMatch = 
+                    bsc.toLowerCase().includes(search) ||
+                    pkgName.includes(search) ||
+                    String(row['Hạng mục'] || "").toLowerCase().includes(search) ||
+                    String(row['Loại hồ sơ'] || "").toLowerCase().includes(search) ||
+                    String(row['Tên sản phẩm / Số hiệu'] || "").toLowerCase().includes(search) ||
+                    String(row['Người lập'] || "").toLowerCase().includes(search) ||
+                    String(row['Người duyệt'] || "").toLowerCase().includes(search) ||
+                    String(row['LINK lưu trữ'] || "").toLowerCase().includes(search);
+                if (!textMatch) return;
+            }
 
             const tr = document.createElement("tr");
             
@@ -4219,7 +4252,23 @@ function openEditModalForm(rowIdx) {
             }
 
             const bsc = String(row['Mã BSC']);
-            if (search && !bsc.toLowerCase().includes(search)) return;
+                        // 3-Level Search for Sổ 01
+            if (search) {
+                const pkgName = getBscPackageName(row['Mã BSC']);
+                const textMatch = 
+                    bsc.toLowerCase().includes(search) ||
+                    pkgName.includes(search) ||
+                    String(row['Hạng mục'] || "").toLowerCase().includes(search) ||
+                    String(row['Loại tài liệu'] || "").toLowerCase().includes(search) ||
+                    String(row['Tháng'] || "").toLowerCase().includes(search) ||
+                    String(row['Nội dung chính'] || "").toLowerCase().includes(search) ||
+                    String(row['Đạt YCKT CĐT'] || "").toLowerCase().includes(search) ||
+                    String(row['Người lập'] || "").toLowerCase().includes(search) ||
+                    String(row['tvgs_comment'] || "").toLowerCase().includes(search) ||
+                    String(row['banqlda_comment'] || "").toLowerCase().includes(search) ||
+                    String(row['cdt_comment'] || "").toLowerCase().includes(search);
+                if (!textMatch) return;
+            }
 
             const tr = document.createElement("tr");
             
@@ -4370,8 +4419,22 @@ function openEditModalForm(rowIdx) {
             // Filter pending if active
             if (s03FilterPending && row['TT duyệt'] === 'Đã duyệt') return;
 
-            const bsc = String(row['Mã BSC']);
-            if (search && !bsc.toLowerCase().includes(search)) return;
+                        const bsc = String(row['Mã BSC']);
+            if (search) {
+                const pkgName = getBscPackageName(bsc);
+                const textMatch = 
+                    bsc.toLowerCase().includes(search) ||
+                    pkgName.includes(search) ||
+                    String(row['Hạng mục'] || "").toLowerCase().includes(search) ||
+                    String(row['Mã PS'] || "").toLowerCase().includes(search) ||
+                    String(row['Loại'] || "").toLowerCase().includes(search) ||
+                    String(row['Mô tả'] || "").toLowerCase().includes(search) ||
+                    String(row['Nguyên nhân'] || "").toLowerCase().includes(search) ||
+                    String(row['Đề xuất xử lý'] || "").toLowerCase().includes(search) ||
+                    String(row['Nội dung điều chỉnh'] || "").toLowerCase().includes(search) ||
+                    String(row['Ghi chú'] || "").toLowerCase().includes(search);
+                if (!textMatch) return;
+            }
 
             const tr = document.createElement("tr");
             const valPs = parseFloat(row['Giá trị (tỷ)'] || 0);
@@ -4513,8 +4576,23 @@ function openEditModalForm(rowIdx) {
             // Filter pending if active
             if (s04FilterPending && row['TT duyệt'] === 'Đã duyệt') return;
 
-            const bsc = String(row['Mã BSC']);
-            if (search && !bsc.toLowerCase().includes(search)) return;
+                        const bsc = String(row['Mã BSC']);
+            if (search) {
+                const pkgName = getBscPackageName(bsc);
+                const textMatch = 
+                    bsc.toLowerCase().includes(search) ||
+                    pkgName.includes(search) ||
+                    String(row['Hạng mục'] || "").toLowerCase().includes(search) ||
+                    String(row['Mã YC'] || "").toLowerCase().includes(search) ||
+                    String(row['Loại YC'] || "").toLowerCase().includes(search) ||
+                    String(row['Trong/Target Ngoài HĐCU'] || row['Trong/Ngoài HĐCU'] || "").toLowerCase().includes(search) ||
+                    String(row['Vật tư/Thiết bị'] || "").toLowerCase().includes(search) ||
+                    String(row['Đặc tả KT / Lý do'] || "").toLowerCase().includes(search) ||
+                    String(row['ĐVT'] || "").toLowerCase().includes(search) ||
+                    String(row['TT cung ứng'] || "").toLowerCase().includes(search) ||
+                    String(row['Ghi chú'] || "").toLowerCase().includes(search);
+                if (!textMatch) return;
+            }
 
             const tr = document.createElement("tr");
             const valCu = parseFloat(row['Giá trị (tỷ)'] || 0);
@@ -4661,8 +4739,23 @@ function openEditModalForm(rowIdx) {
 
         db.s05.forEach((row, index) => {
             if (!row) return;
-            const bsc = String(row['Mã BSC']);
-            if (search && !bsc.toLowerCase().includes(search)) return;
+                        const bsc = String(row['Mã BSC']);
+            if (search) {
+                const pkgName = getBscPackageName(bsc);
+                const textMatch = 
+                    bsc.toLowerCase().includes(search) ||
+                    pkgName.includes(search) ||
+                    String(row['Hạng mục'] || "").toLowerCase().includes(search) ||
+                    String(row['TT thực hiện'] || "").toLowerCase().includes(search) ||
+                    String(row['TT duyệt'] || "").toLowerCase().includes(search) ||
+                    String(row['Nguyên nhân'] || "").toLowerCase().includes(search) ||
+                    String(row['Giải pháp bù'] || "").toLowerCase().includes(search) ||
+                    String(row['Chi tiết giải pháp'] || row['Chi tiết phương án'] || "").toLowerCase().includes(search) ||
+                    String(row['KQ thực hiện bù'] || "").toLowerCase().includes(search) ||
+                    String(row['Mốc cam kết HT'] || "").toLowerCase().includes(search) ||
+                    String(row['Ghi chú'] || "").toLowerCase().includes(search);
+                if (!textMatch) return;
+            }
 
             const tr = document.createElement("tr");
             const delayDays = parseInt(row['Mức chậm (ngày)'] || 0);
@@ -8339,19 +8432,38 @@ dropzone.addEventListener("click", () => fileInput.click());
             }
         }
 
-        // Filter by Search Query
+        // Filter by 3-Level Search Query (Level 1: Gói/Nhóm, Level 2: Hạng mục, Level 3: Chi tiết/Mốc)
         if (ganttSearchQuery) {
             const q = ganttSearchQuery.toLowerCase();
             displayPackages = displayPackages.filter(pkg => {
                 const p = pkg.parent;
                 const matchParent = String(p.ma_bsc || "").toLowerCase().includes(q) ||
                                     String(p.hang_muc_work || "").toLowerCase().includes(q) ||
-                                    String(p.phu_trach || "").toLowerCase().includes(q);
+                                    String(p.nhom_ct || "").toLowerCase().includes(q) ||
+                                    String(p.goi_thau_pl || "").toLowerCase().includes(q) ||
+                                    String(p.phu_trach || "").toLowerCase().includes(q) ||
+                                    String(p.tt_khtk || "").toLowerCase().includes(q) ||
+                                    String(p.tt_lcnt || "").toLowerCase().includes(q) ||
+                                    String(p.tt_ky_hdcu || "").toLowerCase().includes(q) ||
+                                    String(p.dieu_kien_du || "").toLowerCase().includes(q);
                 const matchChild = pkg.children && pkg.children.some(c => 
                     String(c.hang_muc_work || "").toLowerCase().includes(q) ||
-                    String(c.tt || "").toLowerCase().includes(q)
+                    String(c.tt || "").toLowerCase().includes(q) ||
+                    String(c.phu_trach || "").toLowerCase().includes(q) ||
+                    String(c.progress_status || "").toLowerCase().includes(q)
                 );
-                return matchParent || matchChild;
+                const matchMilestones = 
+                    "1. kh hstktc phê duyệt hồ sơ thiết kế thi công".includes(q) ||
+                    "2. kh lcnt kế hoạch lựa chọn nhà thầu".includes(q) ||
+                    "3. kh ký hdcu kế hoạch ký hợp đồng cung ứng".includes(q) ||
+                    "4. ngày bd khởi công mốc bắt đầu khởi công".includes(q);
+
+                const isMatch = matchParent || matchChild || matchMilestones;
+                // Auto uncollapse packages that match search so the user sees the matching item!
+                if (isMatch && ganttCollapsedPackages.has(p.ma_bsc)) {
+                    ganttCollapsedPackages.delete(p.ma_bsc);
+                }
+                return isMatch;
             });
         }
 
