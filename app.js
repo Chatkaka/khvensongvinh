@@ -360,21 +360,32 @@ document.addEventListener("DOMContentLoaded", () => {
         return "";
     }
 
+
+    // Bulletproof Master Data Flattening (Handles Flat, Single-Nested, Multi-Nested DB structures)
+    function getFlatMasterRows(masterInput) {
+        if (!masterInput || !Array.isArray(masterInput) || masterInput.length === 0) return [];
+        const flatList = [];
+        
+        function extractRows(item) {
+            if (!item || typeof item !== 'object') return;
+            if (item.parent) {
+                extractRows(item.parent);
+                if (item.children && Array.isArray(item.children)) {
+                    item.children.forEach(c => extractRows(c));
+                }
+            } else if (item.ma_bsc !== undefined || item.tt !== undefined || item.hang_muc_work !== undefined) {
+                flatList.push(item);
+            }
+        }
+
+        masterInput.forEach(item => extractRows(item));
+        return flatList;
+    }
+
 function restructureMasterData(masterArray) {
         if (!masterArray || masterArray.length === 0) return [];
         
-        const flatRows = [];
-        masterArray.forEach(item => {
-            if (!item) return;
-            if (item.parent) {
-                flatRows.push(item.parent);
-                if (item.children && Array.isArray(item.children)) {
-                    item.children.forEach(c => flatRows.push(c));
-                }
-            } else {
-                flatRows.push(item);
-            }
-        });
+        const flatRows = getFlatMasterRows(masterArray);
 
         const packages = [];
         let currentPackage = null;
@@ -498,8 +509,9 @@ function restructureMasterData(masterArray) {
         if (!db.master) {
             db.master = [];
         } else {
-
-            db.master = restructureMasterData(db.master);
+            // Force clean and flatten master before restructuring
+            const cleanFlat = getFlatMasterRows(db.master);
+            db.master = restructureMasterData(cleanFlat.length > 0 ? cleanFlat : db.master);
         }
 
         if (!db.s01) db.s01 = [];
