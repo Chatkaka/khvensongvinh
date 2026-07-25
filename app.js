@@ -8438,28 +8438,23 @@ dropzone.addEventListener("click", () => fileInput.click());
         // Dropdown selection filter (PL, Mã BSC, or Child item)
         if (ganttSelectedBsc) {
             if (ganttSelectedBsc.startsWith("PL::")) {
-                // User selected a PL group (e.g. PL02, PL16)
                 const selectedPl = ganttSelectedBsc.replace("PL::", "").trim().toLowerCase();
                 displayPackages = displayPackages.filter(pkg => {
                     const pl = String(pkg.parent.goi_thau_pl || "").trim().toLowerCase();
                     return pl === selectedPl;
                 });
-
-                // Auto UNCOLLAPSE all packages in this PL so all level-2 child work items show!
                 displayPackages.forEach(pkg => {
                     if (pkg.parent && pkg.parent.ma_bsc) {
                         ganttCollapsedPackages.delete(pkg.parent.ma_bsc);
                     }
                 });
             } else if (ganttSelectedBsc.includes("||")) {
-                // Child item selected
                 const [parentBsc, childTt] = ganttSelectedBsc.split("||");
                 displayPackages = displayPackages.filter(pkg => 
                     String(pkg.parent.ma_bsc || "").trim() === parentBsc
                 );
                 ganttCollapsedPackages.delete(parentBsc);
             } else {
-                // Single Parent package selected
                 displayPackages = displayPackages.filter(pkg => 
                     String(pkg.parent.ma_bsc || "").trim() === ganttSelectedBsc
                 );
@@ -8467,7 +8462,7 @@ dropzone.addEventListener("click", () => fileInput.click());
             }
         }
 
-        // Filter by Quick Search Query (Matching PL Name, BSC, Package, Hạng mục cấp 2, Milestones)
+        // Filter by Quick Search Query
         if (ganttSearchQuery) {
             const q = ganttSearchQuery.toLowerCase();
             displayPackages = displayPackages.filter(pkg => {
@@ -8494,7 +8489,6 @@ dropzone.addEventListener("click", () => fileInput.click());
                     "4. ngày bd khởi công mốc bắt đầu khởi công".includes(q);
 
                 const isMatch = matchPl || matchParent || matchChild || matchMilestones;
-                // Auto uncollapse matching package so child work items show!
                 if (isMatch && ganttCollapsedPackages.has(p.ma_bsc)) {
                     ganttCollapsedPackages.delete(p.ma_bsc);
                 }
@@ -8507,7 +8501,7 @@ dropzone.addEventListener("click", () => fileInput.click());
             displayPackages = displayPackages.filter(pkg => pkg.parent.nhom_ct === ganttFilterNhom);
         }
 
-        // Filter by Status (Only if explicitly selected)
+        // Filter by Status
         if (ganttFilterStatus) {
             displayPackages = displayPackages.filter(pkg => {
                 const status = calculatePackageGanttStatus(pkg.parent);
@@ -8531,12 +8525,28 @@ dropzone.addEventListener("click", () => fileInput.click());
 
         const treeRows = [];
         let allDates = [];
+        const seenGrandParents = new Set();
 
         displayPackages.forEach(pkg => {
             const p = pkg.parent;
             const isCollapsed = ganttCollapsedPackages.has(p.ma_bsc);
+            const plGroup = p.goi_thau_pl ? `PL${p.goi_thau_pl.replace(/[^0-9]/g,'') || p.goi_thau_pl}` : "PL";
 
-            // Sub milestones for Package:
+            // Add Grand Parent PL Group Row if new
+            const grandParentKey = `${p.nhom_ct}_${p.goi_thau_pl}`;
+            if (!seenGrandParents.has(grandParentKey)) {
+                seenGrandParents.add(grandParentKey);
+                treeRows.push({
+                    type: 'grand_parent',
+                    tt: '',
+                    nhom_ct: p.nhom_ct || "Dự án",
+                    ma_bsc: '',
+                    title: `Gói thầu ${p.nhom_ct || ""} (${p.goi_thau_pl || "PL"})`,
+                    color: '#f59e0b'
+                });
+            }
+
+            // Dates for Package Milestones:
             const m1DateStr = p.kh_phat_hanh_hstktc || p.kh_pd_khtk || "";
             const m1Date = parseGanttDateSafe(m1DateStr);
             
@@ -8575,12 +8585,13 @@ dropzone.addEventListener("click", () => fileInput.click());
                 prevTime = d.getTime();
             });
 
-            // Add Parent Package Row (Column: NỘI DUNG CÔNG VIỆC)
-            const plTag = p.goi_thau_pl ? `[${p.goi_thau_pl}] ` : "";
+            // Add Parent Package Row (Columns: TT | NHÓM CÔNG TRÌNH | MÃ BSC | HẠNG MỤC / CÔNG VIỆC)
             treeRows.push({
                 type: 'parent',
-                ma_bsc: p.ma_bsc,
-                title: `📦 ${plTag}${p.ma_bsc} - ${p.hang_muc_work}`,
+                tt: p.tt || '',
+                nhom_ct: p.nhom_ct || '',
+                ma_bsc: p.ma_bsc || '',
+                title: p.hang_muc_work || '',
                 person: p.phu_trach || "BQLDA",
                 startDate: startDate,
                 endDate: endDate,
@@ -8590,69 +8601,155 @@ dropzone.addEventListener("click", () => fileInput.click());
                 seqWarning: seqWarning
             });
 
-            // Add 4 Milestone Rows under the Package (Cột: Nội dung công việc)
             if (!isCollapsed) {
-                treeRows.push({
-                    type: 'child_milestone',
-                    mType: 1,
-                    parentBsc: p.ma_bsc,
-                    title: "1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
-                    person: p.phu_trach || "KTKH/QLTK",
-                    date: m1Date || new Date(startDate.getTime() + 15*86400000),
-                    dateStr: m1DateStr,
-                    status: p.tt_khtk || p.tt_hstktc || (m1DateStr ? "Đã lập KH" : "Chờ phê duyệt"),
-                    color: "#10b981"
-                });
-                treeRows.push({
-                    type: 'child_milestone',
-                    mType: 2,
-                    parentBsc: p.ma_bsc,
-                    title: "2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
-                    person: p.phu_trach || "Ban KTKH",
-                    date: m2Date || new Date(startDate.getTime() + 45*86400000),
-                    dateStr: m2DateStr,
-                    status: p.tt_lcnt || (m2DateStr ? "Đã lập KH" : "Chờ LCNT"),
-                    color: "#f59e0b"
-                });
-                treeRows.push({
-                    type: 'child_milestone',
-                    mType: 3,
-                    parentBsc: p.ma_bsc,
-                    title: "3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
-                    person: p.phu_trach || "Phòng Cung ứng",
-                    date: m3Date || new Date(startDate.getTime() + 75*86400000),
-                    dateStr: m3DateStr,
-                    status: p.tt_ky_hdcu || (m3DateStr ? "Đã ký" : "Chờ ký HĐ"),
-                    color: "#8b5cf6"
-                });
-                treeRows.push({
-                    type: 'child_milestone',
-                    mType: 4,
-                    parentBsc: p.ma_bsc,
-                    title: "4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
-                    person: p.phu_trach || "BanQLDA",
-                    date: m4Date || new Date(startDate.getTime() + 90*86400000),
-                    dateStr: m4DateStr,
-                    status: p.dieu_kien_du || (m4DateStr ? "Đã khởi công" : "Thiếu ĐK KC"),
-                    color: "#ef4444"
-                });
-
-                // Add Child Work Items (Hạng mục/Công việc cấp 2)
+                // Render Level-2 Child Items or Level-2 Sub-packages
                 if (pkg.children && pkg.children.length > 0) {
                     pkg.children.forEach(c => {
                         const cDate = parseGanttDateSafe(c.ngay_bd_khoi_cong || c.kh_phat_hanh_hstktc) || new Date(startDate.getTime() + 30*86400000);
                         allDates.push(cDate);
+
+                        // Add Level-2 Child Row
                         treeRows.push({
                             type: 'child_work',
                             parentBsc: p.ma_bsc,
-                            tt: c.tt,
-                            title: `└─ [Hạng mục cấp 2 - ${c.tt}] ${c.hang_muc_work}`,
+                            tt: c.tt || '',
+                            nhom_ct: c.nhom_ct || p.nhom_ct || '',
+                            ma_bsc: c.ma_bsc || '',
+                            title: c.hang_muc_work || '',
                             person: c.phu_trach || p.phu_trach || "",
                             date: cDate,
-                            dateStr: c.ngay_bd_khoi_cong || c.kh_phat_hanh_hstktc || "",
                             status: c.progress_status || c.dieu_kien_du || "Đang thực hiện",
                             color: "#38bdf8"
                         });
+
+                        // Add 4 Level-3 Milestone Rows under each Level-2 Child Item
+                        const cm1Str = c.kh_phat_hanh_hstktc || m1DateStr;
+                        const cm1Date = parseGanttDateSafe(cm1Str) || m1Date || new Date(startDate.getTime() + 15*86400000);
+                        
+                        const cm2Str = c.kh_lcnt || m2DateStr;
+                        const cm2Date = parseGanttDateSafe(cm2Str) || m2Date || new Date(startDate.getTime() + 45*86400000);
+
+                        const cm3Str = c.kh_ky_hdcu || m3DateStr;
+                        const cm3Date = parseGanttDateSafe(cm3Str) || m3Date || new Date(startDate.getTime() + 75*86400000);
+
+                        const cm4Str = c.ngay_bd_khoi_cong || m4DateStr;
+                        const cm4Date = parseGanttDateSafe(cm4Str) || m4Date || new Date(startDate.getTime() + 90*86400000);
+
+                        allDates.push(cm1Date, cm2Date, cm3Date, cm4Date);
+
+                        treeRows.push({
+                            type: 'level3_milestone',
+                            mType: 1,
+                            parentBsc: p.ma_bsc,
+                            childTt: c.tt,
+                            tt: '',
+                            nhom_ct: c.nhom_ct || p.nhom_ct || '',
+                            ma_bsc: '',
+                            title: "🟢 1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
+                            date: cm1Date,
+                            dateStr: cm1Str,
+                            status: c.tt_khtk || p.tt_khtk || (cm1Str ? "Đã lập KH" : "Chờ phê duyệt"),
+                            color: "#10b981"
+                        });
+
+                        treeRows.push({
+                            type: 'level3_milestone',
+                            mType: 2,
+                            parentBsc: p.ma_bsc,
+                            childTt: c.tt,
+                            tt: '',
+                            nhom_ct: c.nhom_ct || p.nhom_ct || '',
+                            ma_bsc: '',
+                            title: "🟠 2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
+                            date: cm2Date,
+                            dateStr: cm2Str,
+                            status: c.tt_lcnt || p.tt_lcnt || (cm2Str ? "Đã lập KH" : "Chờ LCNT"),
+                            color: "#f59e0b"
+                        });
+
+                        treeRows.push({
+                            type: 'level3_milestone',
+                            mType: 3,
+                            parentBsc: p.ma_bsc,
+                            childTt: c.tt,
+                            tt: '',
+                            nhom_ct: c.nhom_ct || p.nhom_ct || '',
+                            ma_bsc: '',
+                            title: "🟣 3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
+                            date: cm3Date,
+                            dateStr: cm3Str,
+                            status: c.tt_ky_hdcu || p.tt_ky_hdcu || (cm3Str ? "Đã ký" : "Chờ ký HĐ"),
+                            color: "#8b5cf6"
+                        });
+
+                        treeRows.push({
+                            type: 'level3_milestone',
+                            mType: 4,
+                            parentBsc: p.ma_bsc,
+                            childTt: c.tt,
+                            tt: '',
+                            nhom_ct: c.nhom_ct || p.nhom_ct || '',
+                            ma_bsc: '',
+                            title: "🔴 4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
+                            date: cm4Date,
+                            dateStr: cm4Str,
+                            status: c.dieu_kien_du || p.dieu_kien_du || (cm4Str ? "Đã khởi công" : "Thiếu ĐK KC"),
+                            color: "#ef4444"
+                        });
+                    });
+                } else {
+                    // Add 4 Level-3 Milestone Rows under Package directly if no level-2 children
+                    treeRows.push({
+                        type: 'level3_milestone',
+                        mType: 1,
+                        parentBsc: p.ma_bsc,
+                        tt: '',
+                        nhom_ct: p.nhom_ct || '',
+                        ma_bsc: '',
+                        title: "🟢 1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
+                        date: m1Date || new Date(startDate.getTime() + 15*86400000),
+                        dateStr: m1DateStr,
+                        status: p.tt_khtk || p.tt_hstktc || (m1DateStr ? "Đã lập KH" : "Chờ phê duyệt"),
+                        color: "#10b981"
+                    });
+                    treeRows.push({
+                        type: 'level3_milestone',
+                        mType: 2,
+                        parentBsc: p.ma_bsc,
+                        tt: '',
+                        nhom_ct: p.nhom_ct || '',
+                        ma_bsc: '',
+                        title: "🟠 2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
+                        date: m2Date || new Date(startDate.getTime() + 45*86400000),
+                        dateStr: m2DateStr,
+                        status: p.tt_lcnt || (m2DateStr ? "Đã lập KH" : "Chờ LCNT"),
+                        color: "#f59e0b"
+                    });
+                    treeRows.push({
+                        type: 'level3_milestone',
+                        mType: 3,
+                        parentBsc: p.ma_bsc,
+                        tt: '',
+                        nhom_ct: p.nhom_ct || '',
+                        ma_bsc: '',
+                        title: "🟣 3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
+                        date: m3Date || new Date(startDate.getTime() + 75*86400000),
+                        dateStr: m3DateStr,
+                        status: p.tt_ky_hdcu || (m3DateStr ? "Đã ký" : "Chờ ký HĐ"),
+                        color: "#8b5cf6"
+                    });
+                    treeRows.push({
+                        type: 'level3_milestone',
+                        mType: 4,
+                        parentBsc: p.ma_bsc,
+                        tt: '',
+                        nhom_ct: p.nhom_ct || '',
+                        ma_bsc: '',
+                        title: "🔴 4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
+                        date: m4Date || new Date(startDate.getTime() + 90*86400000),
+                        dateStr: m4DateStr,
+                        status: p.dieu_kien_du || (m4DateStr ? "Đã khởi công" : "Thiếu ĐK KC"),
+                        color: "#ef4444"
                     });
                 }
             }
@@ -8685,61 +8782,70 @@ dropzone.addEventListener("click", () => fileInput.click());
         const headerHeight = 50;
         const ganttHeight = headerHeight + (treeRows.length * rowHeight);
 
-        // Render Split View HTML (Left: NỘI DUNG CÔNG VIỆC, Right: DÒNG THỜI GIAN / SƠ ĐỒ NGANG)
+        // Render Split View HTML (Exact 4 Columns matching user's screenshot)
         let html = `
             <div class="gantt-left-panel">
                 <table class="gantt-left-table">
                     <thead>
                         <tr>
-                            <th style="width: 280px; background: #1f2937; color: #38bdf8;">NỘI DUNG CÔNG VIỆC</th>
-                            <th style="width: 90px; background: #1f2937;">PHỤ TRÁCH</th>
-                            <th style="width: 85px; background: #1f2937;">TRẠNG THÁI</th>
-                            <th style="width: 60px; text-align: center; background: #1f2937;">TIẾN ĐỘ</th>
+                            <th style="width: 50px; text-align: center; background: #1f2937;">TT</th>
+                            <th style="width: 140px; background: #1f2937;">NHÓM CÔNG TRÌNH</th>
+                            <th style="width: 180px; background: #1f2937;">MÃ BSC</th>
+                            <th style="width: 280px; background: #1f2937; color: #38bdf8;">HẠNG MỤC / CÔNG VIỆC</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
 
         treeRows.forEach((row, idx) => {
-            if (row.type === 'parent') {
-                const badgeClass = getGanttStatusBadgeClass(row.status);
+            if (row.type === 'grand_parent') {
+                html += `
+                    <tr class="row-grand-parent-gantt" style="background-color: #27272a; font-weight: 700; color: #f59e0b;" data-row-idx="${idx}">
+                        <td style="text-align: center;">${escapeHtml(row.tt)}</td>
+                        <td style="color: #f59e0b;">${escapeHtml(row.nhom_ct)}</td>
+                        <td></td>
+                        <td style="color: #f59e0b;">
+                            <span class="gantt-tree-toggle" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;"><i class="fa-solid fa-minus"></i></span>
+                            ${escapeHtml(row.title)}
+                        </td>
+                    </tr>
+                `;
+            } else if (row.type === 'parent') {
                 const toggleIcon = row.isCollapsed ? '<i class="fa-solid fa-plus"></i>' : '<i class="fa-solid fa-minus"></i>';
                 html += `
-                    <tr class="row-parent-gantt" data-row-idx="${idx}">
+                    <tr class="row-parent-gantt" style="background-color: #1e293b;" data-row-idx="${idx}">
+                        <td style="text-align: center; font-weight: 700; color: #93c5fd;">${escapeHtml(row.tt)}</td>
+                        <td>${escapeHtml(row.nhom_ct)}</td>
+                        <td style="font-weight: 700; color: #38bdf8;">${escapeHtml(row.ma_bsc)}</td>
                         <td title="${escapeHtml(row.title)}">
                             <span class="gantt-tree-toggle" onclick="toggleGanttPackageCollapse('${row.ma_bsc}')">${toggleIcon}</span>
                             <span style="font-weight: 700; color: #93c5fd;">${escapeHtml(row.title)}</span>
                             ${row.seqWarning ? '<span title="Cảnh báo Poka-Yoke: Chuỗi mốc tiến độ bị ngược ngày!" style="color:#ef4444; margin-left:4px;"><i class="fa-solid fa-triangle-exclamation"></i></span>' : ''}
                         </td>
-                        <td>${escapeHtml(row.person)}</td>
-                        <td><span class="badge ${badgeClass}">${escapeHtml(row.status)}</span></td>
-                        <td style="text-align: center; font-weight:700; color:#38bdf8;">${row.progress}%</td>
-                    </tr>
-                `;
-            } else if (row.type === 'child_milestone') {
-                const badgeClass = getGanttStatusBadgeClass(row.status);
-                const dateDisplay = row.date ? formatDateDMY(row.date) : "--/--/----";
-                html += `
-                    <tr class="row-child-gantt" data-row-idx="${idx}">
-                        <td style="padding-left: 24px;" title="${escapeHtml(row.title)}">
-                            <span style="color:${row.color}; font-weight:600;">${escapeHtml(row.title)}</span>
-                        </td>
-                        <td><span style="color:var(--text-muted); font-size:0.75rem;">${escapeHtml(row.person)}</span></td>
-                        <td><span class="badge ${badgeClass}">${escapeHtml(row.status)}</span></td>
-                        <td style="text-align: center; font-size:0.75rem; color:var(--text-muted);">${dateDisplay}</td>
                     </tr>
                 `;
             } else if (row.type === 'child_work') {
-                const badgeClass = getGanttStatusBadgeClass(row.status);
-                const dateDisplay = row.date ? formatDateDMY(row.date) : "--/--/----";
                 html += `
                     <tr class="row-child-gantt" style="background-color: rgba(56, 189, 248, 0.04);" data-row-idx="${idx}">
-                        <td style="padding-left: 36px;" title="${escapeHtml(row.title)}">
-                            <span style="color: #e2e8f0; font-weight: 500;">${escapeHtml(row.title)}</span>
+                        <td style="text-align: center; font-weight: 600; color: #cbd5e1;">${escapeHtml(row.tt)}</td>
+                        <td>${escapeHtml(row.nhom_ct)}</td>
+                        <td>${escapeHtml(row.ma_bsc)}</td>
+                        <td style="padding-left: 20px;" title="${escapeHtml(row.title)}">
+                            <span class="gantt-tree-toggle" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;"><i class="fa-solid fa-plus"></i></span>
+                            <span style="color: #e2e8f0; font-weight: 600;">${escapeHtml(row.title)}</span>
                         </td>
-                        <td><span style="color:var(--text-muted); font-size:0.75rem;">${escapeHtml(row.person)}</span></td>
-                        <td><span class="badge ${badgeClass}">${escapeHtml(row.status)}</span></td>
-                        <td style="text-align: center; font-size:0.75rem; color:#38bdf8;">${dateDisplay}</td>
+                    </tr>
+                `;
+            } else if (row.type === 'level3_milestone') {
+                const dateDisplay = row.date ? formatDateDMY(row.date) : "--/--/----";
+                html += `
+                    <tr class="row-level3-gantt" style="background-color: rgba(15, 23, 42, 0.6);" data-row-idx="${idx}">
+                        <td style="text-align: center; font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(row.tt)}</td>
+                        <td style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(row.nhom_ct)}</td>
+                        <td style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(row.ma_bsc)}</td>
+                        <td style="padding-left: 38px;" title="${escapeHtml(row.title)}">
+                            <span style="color:${row.color}; font-weight:600; font-size: 0.8rem;">${escapeHtml(row.title)}</span>
+                        </td>
                     </tr>
                 `;
             }
@@ -9044,7 +9150,10 @@ dropzone.addEventListener("click", () => fileInput.click());
 
             svg += `<line x1="0" y1="${y + rowHeight}" x2="${ganttWidth}" y2="${y + rowHeight}" class="gantt-row-line" />`;
 
-            if (row.type === 'parent') {
+            if (row.type === 'grand_parent') {
+                // Background accent for Grand Parent group row
+                svg += `<rect x="0" y="${y}" width="${ganttWidth}" height="${rowHeight}" fill="rgba(245, 158, 11, 0.05)" />`;
+            } else if (row.type === 'parent') {
                 if (row.startDate && row.endDate) {
                     const x1 = Math.max(0, ((row.startDate.getTime() - minTime) / totalSpanMs) * ganttWidth);
                     const x2 = Math.min(ganttWidth, ((row.endDate.getTime() - minTime) / totalSpanMs) * ganttWidth);
@@ -9056,10 +9165,20 @@ dropzone.addEventListener("click", () => fileInput.click());
                         <text x="${x1 + 8}" y="${y + 23}" fill="#ffffff" font-size="10" font-weight="700" pointer-events="none">${escapeHtml(row.ma_bsc)} (${row.progress}%)</text>
                     `;
                 }
-            } else if (row.type === 'child_milestone') {
+            } else if (row.type === 'child_work') {
                 if (row.date && !isNaN(row.date)) {
                     const x = ((row.date.getTime() - minTime) / totalSpanMs) * ganttWidth;
-                    const key = `${row.parentBsc}_m${row.mType}`;
+                    const barWidth = 40;
+                    svg += `
+                        <rect x="${x}" y="${y + 12}" width="${barWidth}" height="14" fill="#38bdf8" rx="3" ry="3" opacity="0.85"
+                              data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn / Ngày KC: ${formatDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
+                        <text x="${x + barWidth + 6}" y="${y + 23}" fill="#38bdf8" font-size="9.5" font-weight="600">${formatDateDMY(row.date)}</text>
+                    `;
+                }
+            } else if (row.type === 'level3_milestone') {
+                if (row.date && !isNaN(row.date)) {
+                    const x = ((row.date.getTime() - minTime) / totalSpanMs) * ganttWidth;
+                    const key = `${row.parentBsc}_${row.childTt || 'pkg'}_m${row.mType}`;
                     milestoneCoords[key] = { x: x, y: y + 19 };
 
                     let barClass = `gantt-bar-m${row.mType}`;
@@ -9081,27 +9200,18 @@ dropzone.addEventListener("click", () => fileInput.click());
                         `;
                     }
                 }
-            } else if (row.type === 'child_work') {
-                if (row.date && !isNaN(row.date)) {
-                    const x = ((row.date.getTime() - minTime) / totalSpanMs) * ganttWidth;
-                    const barWidth = 35;
-                    svg += `
-                        <rect x="${x}" y="${y + 12}" width="${barWidth}" height="14" fill="#38bdf8" rx="3" ry="3" opacity="0.85"
-                              data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn / Ngày KC: ${formatDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
-                        <text x="${x + barWidth + 6}" y="${y + 23}" fill="#38bdf8" font-size="9.5" font-weight="600">${formatDateDMY(row.date)}</text>
-                    `;
-                }
             }
         });
 
-        // Connector Arrows between 1 -> 2 -> 3 -> 4
+        // Connector Arrows between 1 -> 2 -> 3 -> 4 for level-3 milestones
         treeRows.forEach(row => {
-            if (row.type === 'parent' && !row.isCollapsed) {
-                const bsc = row.ma_bsc;
-                const m1 = milestoneCoords[`${bsc}_m1`];
-                const m2 = milestoneCoords[`${bsc}_m2`];
-                const m3 = milestoneCoords[`${bsc}_m3`];
-                const m4 = milestoneCoords[`${bsc}_m4`];
+            if (row.type === 'child_work') {
+                const bsc = row.parentBsc;
+                const tt = row.tt;
+                const m1 = milestoneCoords[`${bsc}_${tt}_m1`];
+                const m2 = milestoneCoords[`${bsc}_${tt}_m2`];
+                const m3 = milestoneCoords[`${bsc}_${tt}_m3`];
+                const m4 = milestoneCoords[`${bsc}_${tt}_m4`];
 
                 const pairs = [
                     { from: m1, to: m2 },
@@ -9120,7 +9230,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         const marker = isWarn ? "url(#gantt-arrowhead-warn)" : "url(#gantt-arrowhead)";
                         const arrowClass = isWarn ? "gantt-dependency-arrow warning-seq" : "gantt-dependency-arrow";
 
-                        const midX = x1 + Math.max(15, (x2 - x1) / 2);
+                        const midX = x1 + Math.max(12, (x2 - x1) / 2);
                         const pathD = `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
 
                         svg += `<path d="${pathD}" class="${arrowClass}" marker-end="${marker}" />`;
