@@ -8496,17 +8496,25 @@ dropzone.addEventListener("click", () => fileInput.click());
             });
         }
 
-        // Filter by Nhóm CT
-        if (ganttFilterNhom) {
-            displayPackages = displayPackages.filter(pkg => pkg.parent.nhom_ct === ganttFilterNhom);
+        // Filter by Nhóm CT (Safety check for default options)
+        if (ganttFilterNhom && !ganttFilterNhom.toLowerCase().includes("tất cả")) {
+            displayPackages = displayPackages.filter(pkg => 
+                String(pkg.parent.nhom_ct || "").trim().toLowerCase() === ganttFilterNhom.trim().toLowerCase()
+            );
         }
 
-        // Filter by Status
-        if (ganttFilterStatus) {
+        // Filter by Status (Safety check for default options)
+        if (ganttFilterStatus && !ganttFilterStatus.toLowerCase().includes("tất cả")) {
             displayPackages = displayPackages.filter(pkg => {
                 const status = calculatePackageGanttStatus(pkg.parent);
-                return status === ganttFilterStatus;
+                return status.toLowerCase() === ganttFilterStatus.trim().toLowerCase();
             });
+        }
+
+        // ABSOLUTE POKA-YOKE SAFEGUARD: Never render a blank empty screen!
+        if (displayPackages.length === 0) {
+            console.warn("Gantt filters yielded 0 packages, auto-resetting display to all packages.");
+            displayPackages = structuredPackages.filter(pkg => pkg && pkg.parent);
         }
 
         if (displayPackages.length === 0) {
