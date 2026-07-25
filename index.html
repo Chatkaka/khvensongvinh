@@ -27,6 +27,9 @@
             <li class="nav-item" data-tab="master">
                 <i class="fa-solid fa-table-list"></i> Bảng Tổng Hợp Master
             </li>
+            <li class="nav-item" data-tab="gantt">
+                <i class="fa-solid fa-chart-gantt"></i> Quản Lý Tiến Độ
+            </li>
             <li class="nav-item" data-tab="s01">
                 <i class="fa-solid fa-folder-open"></i> Sổ 01: Tiền Khởi Công
             </li>
@@ -355,6 +358,53 @@
                     <thead id="master-grid-thead"></thead>
                     <tbody id="master-grid-tbody"></tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: QUẢN LÝ TIẾN ĐỘ (GANTT CHART) ==================== -->
+        <div class="tab-pane" id="tab-gantt">
+            <div class="card" style="padding: 16px 20px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; flex: 1;">
+                        <div style="position: relative; min-width: 260px;">
+                            <input type="text" id="gantt-search-input" class="form-control" placeholder="Tìm kiếm gói thầu / hạng mục..." style="padding-left: 32px; border-radius: 20px;">
+                            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                        </div>
+                        <select id="gantt-filter-nhom" class="form-control" style="width: auto; border-radius: 20px;">
+                            <option value="">Tất cả Nhóm CT</option>
+                        </select>
+                        <select id="gantt-filter-status" class="form-control" style="width: auto; border-radius: 20px;">
+                            <option value="">Tất cả Trạng thái</option>
+                            <option value="Hoàn thành">Hoàn thành</option>
+                            <option value="Đang thực hiện">Đang thực hiện</option>
+                            <option value="Chậm tiến độ">Chậm tiến độ</option>
+                            <option value="Chưa bắt đầu">Chưa bắt đầu</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button class="btn-action" id="gantt-zoom-month" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 20px;"><i class="fa-solid fa-calendar-days"></i> Tháng</button>
+                        <button class="btn-action" id="gantt-zoom-week" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 20px;"><i class="fa-solid fa-calendar-week"></i> Tuần</button>
+                        <button class="btn-action primary" id="gantt-today-btn" style="padding: 6px 14px; font-size: 0.85rem; border-radius: 20px;"><i class="fa-solid fa-bullseye"></i> Hôm nay</button>
+                    </div>
+                </div>
+
+                <!-- Legend Chú thích -->
+                <div style="display: flex; gap: 16px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color); flex-wrap: wrap; font-size: 0.8rem; color: var(--text-secondary); align-items: center;">
+                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; background: #3b82f6; border-radius: 3px; display: inline-block;"></span> <b>Gói thầu chính</b> (Tổng tiến độ)</span>
+                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; background: #10b981; border-radius: 3px; display: inline-block;"></span> <b>1. KH HSTKTC</b> (Thiết kế)</span>
+                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; background: #f59e0b; border-radius: 3px; display: inline-block;"></span> <b>2. KH LCNT</b> (Nhà thầu)</span>
+                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; background: #8b5cf6; border-radius: 3px; display: inline-block;"></span> <b>3. KH ký HĐCU</b> (Ký HĐ)</span>
+                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; background: #ef4444; border-radius: 3px; display: inline-block;"></span> <b>4. Ngày BĐ Khởi công</b></span>
+                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 16px; height: 2px; background: #3b82f6; display: inline-block;"></span> <i class="fa-solid fa-arrow-right" style="color:#3b82f6; font-size:0.75rem;"></i> Trình tự nối tiếp</span>
+                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 2px; height: 14px; background: #ef4444; display: inline-block;"></span> Vạch HÔM NAY</span>
+                </div>
+            </div>
+
+            <!-- Gantt Management Split View Card -->
+            <div class="card" style="padding: 0; overflow: hidden; border-radius: 12px;" id="gantt-main-card">
+                <div id="gantt-management-container" class="gantt-split-view">
+                    <!-- Rendered dynamically by app.js -->
+                </div>
             </div>
         </div>
 
@@ -892,8 +942,8 @@
     </div>
 
     <!-- SCRIPTS -->
-    <script src="database.js?v=1784703957"></script>
-    <script src="ai-service.js?v=1784703957"></script>
-    <script src="app.js?v=1784703957"></script>
+    <script src="database.js?v=1784974428"></script>
+    <script src="ai-service.js?v=1784974428"></script>
+    <script src="app.js?v=1784974428"></script>
 </body>
 </html>
