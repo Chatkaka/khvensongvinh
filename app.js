@@ -382,6 +382,59 @@ document.addEventListener("DOMContentLoaded", () => {
         return flatList;
     }
 
+
+    // Master Row Key Normalization Helper (Handles Vietnamese & English Key Aliases)
+    function normalizeMasterRow(r) {
+        if (!r || typeof r !== 'object') return null;
+        if (r._normalized) return r;
+
+        const row = {
+            tt: r.tt || r.TT || r.stt || r.STT || "",
+            ma_bsc: String(r.ma_bsc || r["Mã BSC"] || r.maBsc || "").trim(),
+            goi_thau_pl: String(r.goi_thau_pl || r["Gói thầu PL"] || r["Phân Lộ"] || r.PL || r.pl || "").trim(),
+            nhom_ct: String(r.nhom_ct || r["Nhóm công trình"] || r["Nhóm Công Trình"] || "").trim(),
+            hang_muc_work: String(r.hang_muc_work || r["Hạng mục"] || r["Hạng mục / Công việc"] || r["Hạng Mục / Công Việc"] || "").trim(),
+            phu_trach: String(r.phu_trach || r["Phụ trách"] || r["Người phụ trách"] || "").trim(),
+            ngay_bd_yc: r.ngay_bd_yc || r["Ngày BĐ YC"] || r["Ngày BĐ"] || "",
+            ngay_kt_yc: r.ngay_kt_yc || r["Ngày KT YC"] || r["Ngày KT"] || "",
+            kh_phat_hanh_hstktc: r.kh_phat_hanh_hstktc || r["KH phát hành HSTKTC"] || r.kh_pd_khtk || r["KH PD KHTK"] || "",
+            tt_khtk: r.tt_khtk || r["TT KHTK"] || r.tt_hstktc || r["TT HSTKTC"] || "",
+            kh_lcnt: r.kh_lcnt || r["KH LCNT"] || "",
+            tt_lcnt: r.tt_lcnt || r["TT LCNT"] || "",
+            kh_ky_hdcu: r.kh_ky_hdcu || r["KH ký HĐCU"] || r.kh_ky_hd || "",
+            tt_ky_hdcu: r.tt_ky_hdcu || r["TT ký HĐCU"] || r.tt_hdcu || "",
+            ngay_bd_khoi_cong: r.ngay_bd_khoi_cong || r["Ngày BĐ khởi công"] || r.ngay_khoi_cong || "",
+            dieu_kien_du: r.dieu_kien_du || r["Điều kiện đủ"] || r["ĐK Khởi công"] || "",
+            progress_status: r.progress_status || r["Trạng thái"] || "",
+            _normalized: true
+        };
+        return row;
+    }
+
+    // Bulletproof Master Data Flattening (Handles Flat, Single-Nested, Multi-Nested DB structures)
+    function getFlatMasterRows(masterInput) {
+        if (!masterInput || !Array.isArray(masterInput) || masterInput.length === 0) return [];
+        const flatList = [];
+        
+        function extractRows(item) {
+            if (!item || typeof item !== 'object') return;
+            if (item.parent) {
+                extractRows(item.parent);
+                if (item.children && Array.isArray(item.children)) {
+                    item.children.forEach(c => extractRows(c));
+                }
+            } else {
+                const norm = normalizeMasterRow(item);
+                if (norm && (norm.ma_bsc || norm.tt || norm.hang_muc_work)) {
+                    flatList.push(norm);
+                }
+            }
+        }
+
+        masterInput.forEach(item => extractRows(item));
+        return flatList;
+    }
+
 function restructureMasterData(masterArray) {
         if (!masterArray || masterArray.length === 0) return [];
         
