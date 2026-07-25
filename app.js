@@ -348,9 +348,14 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!maBsc) return "";
         const strBsc = String(maBsc).trim().toLowerCase();
         if (!strBsc) return "";
-        const pkg = db.master.find(r => r && String(r.ma_bsc || "").trim().toLowerCase() === strBsc);
-        if (pkg) {
-            return `${pkg.ma_bsc} ${pkg.hang_muc_work || ""} ${pkg.nhom_ct || ""} ${pkg.goi_thau_pl || ""}`.toLowerCase();
+        const item = db.master.find(r => {
+            if (!r) return false;
+            const row = r.parent ? r.parent : r;
+            return String(row.ma_bsc || "").trim().toLowerCase() === strBsc;
+        });
+        if (item) {
+            const row = item.parent ? item.parent : item;
+            return `${row.ma_bsc} ${row.hang_muc_work || ""} ${row.nhom_ct || ""} ${row.goi_thau_pl || ""}`.toLowerCase();
         }
         return "";
     }
@@ -358,10 +363,23 @@ document.addEventListener("DOMContentLoaded", () => {
 function restructureMasterData(masterArray) {
         if (!masterArray || masterArray.length === 0) return [];
         
+        const flatRows = [];
+        masterArray.forEach(item => {
+            if (!item) return;
+            if (item.parent) {
+                flatRows.push(item.parent);
+                if (item.children && Array.isArray(item.children)) {
+                    item.children.forEach(c => flatRows.push(c));
+                }
+            } else {
+                flatRows.push(item);
+            }
+        });
+
         const packages = [];
         let currentPackage = null;
         
-        masterArray.forEach(row => {
+        flatRows.forEach(row => {
             if (!row) return;
             const bsc = String(row.ma_bsc || "").trim();
             const isParent = bsc !== "";
