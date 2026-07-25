@@ -952,6 +952,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (tabId === 'master') desc = "Bảng điều hành xương sống, chốt chặn điều kiện khởi công";
             if (tabId === 'ai-center') desc = "Trí tuệ nhân tạo Gemini phân tích sức khoẻ dự án và đọc tờ trình tự động";
             if (tabId === 'personnel') desc = "Quản lý danh sách nhân sự, vai trò nhiệm vụ và phân quyền truy cập hệ thống";
+            if (tabId === 'gantt') desc = "Quản lý đường găng tiến độ các mốc Thiết kế, Lựa chọn nhà thầu, Ký HĐ đến Khởi công";
             document.getElementById("active-tab-desc").textContent = desc;
 
             // Render matching tabs
@@ -963,6 +964,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (tabId === 's04') renderS04();
             if (tabId === 's05') renderS05();
             if (tabId === 'personnel') renderPersonnel();
+            if (tabId === 'gantt') renderFullGanttManagementView();
         });
     });
 
@@ -1099,6 +1101,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (tabId === 's04') renderS04();
             if (tabId === 's05') renderS05();
             if (tabId === 'personnel') renderPersonnel();
+            if (tabId === 'gantt') renderFullGanttManagementView();
         }
     }
 
@@ -8278,4 +8281,575 @@ dropzone.addEventListener("click", () => fileInput.click());
     }
 
     initApp();
+
+    // ==========================================================================
+    // 16. TAB QUẢN LÝ TIẾN ĐỘ CÔNG VIỆC (ENTERPRISE GANTT CHART MANAGEMENT)
+    // ==========================================================================
+    let ganttCollapsedPackages = new Set();
+    let ganttSearchQuery = "";
+    let ganttFilterNhom = "";
+    let ganttFilterStatus = "";
+    let ganttZoomMode = "month"; // "month" or "week"
+    let ganttControlsBound = false;
+
+    function renderFullGanttManagementView() {
+        const container = document.getElementById("gantt-management-container");
+        if (!container) return;
+
+        // Populate dropdown filter options for Nhóm CT if not populated
+        const nhomSelect = document.getElementById("gantt-filter-nhom");
+        if (nhomSelect && nhomSelect.options.length <= 1) {
+            const nhomSet = new Set();
+            db.master.forEach(r => {
+                if (r && r.nhom_ct) nhomSet.add(r.nhom_ct);
+            });
+            nhomSet.forEach(nhom => {
+                const opt = document.createElement("option");
+                opt.value = nhom;
+                opt.textContent = nhom;
+                nhomSelect.appendChild(opt);
+            });
+        }
+
+        // Bind filter & control listeners once
+        bindGanttControlsOnce();
+
+        // 1. Gather parent packages from db.master
+        let packages = db.master.filter(r => r && String(r.ma_bsc || "").trim() !== "");
+
+        // Filter by search query
+        if (ganttSearchQuery) {
+            const q = ganttSearchQuery.toLowerCase();
+            packages = packages.filter(p => 
+                String(p.ma_bsc || "").toLowerCase().includes(q) ||
+                String(p.hang_muc_work || "").toLowerCase().includes(q) ||
+                String(p.phu_trach || "").toLowerCase().includes(q)
+            );
+        }
+
+        // Filter by Nhóm CT
+        if (ganttFilterNhom) {
+            packages = packages.filter(p => p.nhom_ct === ganttFilterNhom);
+        }
+
+        // Filter by Status
+        if (ganttFilterStatus) {
+            packages = packages.filter(p => {
+                const status = calculatePackageGanttStatus(p);
+                return status === ganttFilterStatus;
+            });
+        }
+
+        if (packages.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 60px; text-align: center; color: var(--text-muted); width: 100%;">
+                    <i class="fa-solid fa-chart-gantt" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;"></i>
+                    <p style="font-size: 1.1rem; font-weight: 600;">Không tìm thấy gói thầu / hạng mục tiến độ nào phù hợp!</p>
+                    <p style="font-size: 0.85rem;">Vui lòng thử điều chỉnh lại từ khóa tìm kiếm hoặc bộ lọc.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const treeRows = [];
+        let allDates = [];
+
+        packages.forEach(p => {
+            const isCollapsed = ganttCollapsedPackages.has(p.ma_bsc);
+            
+            // Parent dates
+            const startDate = p.ngay_bd_yc ? new Date(p.ngay_bd_yc) : null;
+            const endDate = p.ngay_kt_yc ? new Date(p.ngay_kt_yc) : null;
+
+            if (startDate && !isNaN(startDate)) allDates.push(startDate);
+            if (endDate && !isNaN(endDate)) allDates.push(endDate);
+
+            // Sub milestones:
+            // Milestone 1: KH HSTKTC
+            const m1DateStr = p.kh_phat_hanh_hstktc || p.kh_pd_khtk || "";
+            const m1Date = m1DateStr ? new Date(m1DateStr) : null;
+            const m1Status = p.tt_khtk || p.tt_hstktc || (m1DateStr ? "Đã lập KH" : "Chưa lập");
+            if (m1Date && !isNaN(m1Date)) allDates.push(m1Date);
+
+            // Milestone 2: KH LCNT
+            const m2DateStr = p.kh_lcnt || "";
+            const m2Date = m2DateStr ? new Date(m2DateStr) : null;
+            const m2Status = p.tt_lcnt || (m2DateStr ? "Đã lập KH" : "Chưa chọn");
+            if (m2Date && !isNaN(m2Date)) allDates.push(m2Date);
+
+            // Milestone 3: KH ký HĐCU
+            const m3DateStr = p.kh_ky_hdcu || "";
+            const m3Date = m3DateStr ? new Date(m3DateStr) : null;
+            const m3Status = p.tt_ky_hdcu || (m3DateStr ? "Đã ký" : "Chưa ký");
+            if (m3Date && !isNaN(m3Date)) allDates.push(m3Date);
+
+            // Milestone 4: Ngày BĐ khởi công
+            const m4DateStr = p.ngay_bd_khoi_cong || "";
+            const m4Date = m4DateStr ? new Date(m4DateStr) : null;
+            const m4Status = p.dieu_kien_du || (m4DateStr ? "Đã khởi công" : "Chưa KC");
+            if (m4Date && !isNaN(m4Date)) allDates.push(m4Date);
+
+            // Poka-Yoke check: Is sequence chronologically logical?
+            let seqWarning = false;
+            let prevTime = 0;
+            [m1Date, m2Date, m3Date, m4Date].forEach(d => {
+                if (d && !isNaN(d)) {
+                    if (prevTime > 0 && d.getTime() < prevTime) {
+                        seqWarning = true;
+                    }
+                    prevTime = d.getTime();
+                }
+            });
+
+            // Add parent row
+            treeRows.push({
+                type: 'parent',
+                ma_bsc: p.ma_bsc,
+                title: `${p.ma_bsc} - ${p.hang_muc_work}`,
+                person: p.phu_trach || "",
+                startDate: startDate,
+                endDate: endDate,
+                status: calculatePackageGanttStatus(p),
+                progress: calculatePackageProgress(p),
+                isCollapsed: isCollapsed,
+                seqWarning: seqWarning
+            });
+
+            // Add 4 child milestone rows if not collapsed
+            if (!isCollapsed) {
+                treeRows.push({
+                    type: 'child',
+                    mType: 1,
+                    parentBsc: p.ma_bsc,
+                    title: "1. KH HSTKTC (Phê duyệt Hồ sơ Thiết kế Thi công)",
+                    person: p.phu_trach || "",
+                    date: m1Date,
+                    dateStr: m1DateStr,
+                    status: m1Status,
+                    color: "#10b981"
+                });
+                treeRows.push({
+                    type: 'child',
+                    mType: 2,
+                    parentBsc: p.ma_bsc,
+                    title: "2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
+                    person: p.phu_trach || "",
+                    date: m2Date,
+                    dateStr: m2DateStr,
+                    status: m2Status,
+                    color: "#f59e0b"
+                });
+                treeRows.push({
+                    type: 'child',
+                    mType: 3,
+                    parentBsc: p.ma_bsc,
+                    title: "3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
+                    person: p.phu_trach || "",
+                    date: m3Date,
+                    dateStr: m3DateStr,
+                    status: m3Status,
+                    color: "#8b5cf6"
+                });
+                treeRows.push({
+                    type: 'child',
+                    mType: 4,
+                    parentBsc: p.ma_bsc,
+                    title: "4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
+                    person: p.phu_trach || "",
+                    date: m4Date,
+                    dateStr: m4DateStr,
+                    status: m4Status,
+                    color: "#ef4444"
+                });
+            }
+        });
+
+        // 2. Timeline calculations
+        let minTime = Infinity;
+        let maxTime = -Infinity;
+
+        allDates.forEach(d => {
+            if (d && !isNaN(d)) {
+                minTime = Math.min(minTime, d.getTime());
+                maxTime = Math.max(maxTime, d.getTime());
+            }
+        });
+
+        const nowTime = new Date().getTime();
+        if (minTime === Infinity) minTime = nowTime - (30 * 24 * 60 * 60 * 1000);
+        if (maxTime === -Infinity) maxTime = nowTime + (180 * 24 * 60 * 60 * 1000);
+
+        const paddingStart = 15 * 24 * 60 * 60 * 1000;
+        const paddingEnd = 30 * 24 * 60 * 60 * 1000;
+        minTime -= paddingStart;
+        maxTime += paddingEnd;
+
+        const totalDays = Math.ceil((maxTime - minTime) / (24 * 60 * 60 * 1000));
+        const dayWidth = ganttZoomMode === 'week' ? 18 : 8;
+        const ganttWidth = Math.max(totalDays * dayWidth, 900);
+        const rowHeight = 38;
+        const headerHeight = 50;
+        const ganttHeight = headerHeight + (treeRows.length * rowHeight);
+
+        // Render HTML Split Layout
+        let html = `
+            <div class="gantt-left-panel">
+                <table class="gantt-left-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 240px;">CÔNG VIỆC</th>
+                            <th style="width: 100px;">NGƯỜI THỰC HIỆN</th>
+                            <th style="width: 80px;">TRẠNG THÁI</th>
+                            <th style="width: 60px; text-align: center;">TIẾN ĐỘ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        treeRows.forEach((row, idx) => {
+            if (row.type === 'parent') {
+                const badgeClass = getGanttStatusBadgeClass(row.status);
+                const toggleIcon = row.isCollapsed ? '<i class="fa-solid fa-plus"></i>' : '<i class="fa-solid fa-minus"></i>';
+                html += `
+                    <tr class="row-parent-gantt" data-row-idx="${idx}">
+                        <td title="${escapeHtml(row.title)}">
+                            <span class="gantt-tree-toggle" onclick="toggleGanttPackageCollapse('${row.ma_bsc}')">${toggleIcon}</span>
+                            <span style="font-weight: 700; color: #93c5fd;">${escapeHtml(row.title)}</span>
+                            ${row.seqWarning ? '<span title="Cảnh báo Poka-Yoke: Chuỗi mốc tiến độ bị ngược ngày!" style="color:#ef4444; margin-left:4px;"><i class="fa-solid fa-triangle-exclamation"></i></span>' : ''}
+                        </td>
+                        <td>${escapeHtml(row.person)}</td>
+                        <td><span class="badge ${badgeClass}">${escapeHtml(row.status)}</span></td>
+                        <td style="text-align: center; font-weight:700; color:#38bdf8;">${row.progress}%</td>
+                    </tr>
+                `;
+            } else {
+                const badgeClass = getGanttStatusBadgeClass(row.status);
+                const dateDisplay = row.dateStr ? formatDateDMY(row.dateStr) : "--/--/----";
+                html += `
+                    <tr class="row-child-gantt" data-row-idx="${idx}">
+                        <td style="padding-left: 28px;" title="${escapeHtml(row.title)}">
+                            <span style="color:${row.color}; font-weight:600;">${escapeHtml(row.title)}</span>
+                        </td>
+                        <td><span style="color:var(--text-muted); font-size:0.75rem;">${escapeHtml(row.person)}</span></td>
+                        <td><span class="badge ${badgeClass}">${escapeHtml(row.status)}</span></td>
+                        <td style="text-align: center; font-size:0.75rem; color:var(--text-muted);">${dateDisplay}</td>
+                    </tr>
+                `;
+            }
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="gantt-right-panel" id="gantt-right-scroll-pane">
+                <svg class="gantt-svg" width="${ganttWidth}" height="${ganttHeight}">
+                    <defs>
+                        <marker id="gantt-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                            <polygon points="0 0, 8 4, 0 8" fill="#38bdf8" />
+                        </marker>
+                        <marker id="gantt-arrowhead-warn" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                            <polygon points="0 0, 8 4, 0 8" fill="#ef4444" />
+                        </marker>
+                    </defs>
+                    ${buildGanttSvgContent(treeRows, minTime, maxTime, ganttWidth, ganttHeight, headerHeight, rowHeight, dayWidth)}
+                </svg>
+            </div>
+
+            <div id="gantt-tooltip"></div>
+        `;
+
+        container.innerHTML = html;
+
+        // Sync vertical scroll between left table and right SVG timeline
+        const leftPanel = container.querySelector('.gantt-left-panel');
+        const rightPanel = container.querySelector('.gantt-right-panel');
+        if (leftPanel && rightPanel) {
+            rightPanel.addEventListener('scroll', () => {
+                leftPanel.scrollTop = rightPanel.scrollTop;
+            });
+            leftPanel.addEventListener('scroll', () => {
+                rightPanel.scrollTop = leftPanel.scrollTop;
+            });
+        }
+
+        // Attach SVG interactive tooltips
+        attachGanttInteractiveTooltips();
+    }
+
+    function calculatePackageGanttStatus(p) {
+        if (!p) return "Chưa bắt đầu";
+        if (p.dieu_kien_du === "ĐỦ ĐK" || p.ngay_bd_khoi_cong) {
+            return "Đã khởi công";
+        }
+        if (p.tt_khtk === "Đã duyệt" && p.tt_lcnt === "Đã có KQ" && p.tt_ky_hdcu === "Đã CU") {
+            return "Hoàn thành";
+        }
+        if (p.ngay_kt_yc && new Date(p.ngay_kt_yc).getTime() < new Date().getTime()) {
+            return "Chậm tiến độ";
+        }
+        return "Đang thực hiện";
+    }
+
+    function calculatePackageProgress(p) {
+        let score = 0;
+        if (p.kh_phat_hanh_hstktc || p.kh_pd_khtk) score += 25;
+        if (p.kh_lcnt && (p.tt_lcnt === "Đã có KQ" || p.tt_lcnt === "Đã duyệt")) score += 25;
+        if (p.kh_ky_hdcu && (p.tt_ky_hdcu === "Đã CU" || p.tt_ky_hdcu === "Đã ký")) score += 25;
+        if (p.ngay_bd_khoi_cong || p.dieu_kien_du === "ĐỦ ĐK") score += 25;
+        return score;
+    }
+
+    function getGanttStatusBadgeClass(status) {
+        if (status === "Hoàn thành" || status === "Đã khởi công" || status === "ĐỦ ĐK" || status === "Đã duyệt" || status === "Đã có KQ" || status === "Đã CU" || status === "Đã ký") {
+            return "success";
+        }
+        if (status === "Chậm tiến độ" || status === "Quá hạn" || status === "THIẾU ĐK") {
+            return "danger";
+        }
+        if (status === "Đang thực hiện" || status === "Đã lập KH") {
+            return "info";
+        }
+        return "warning";
+    }
+
+    window.toggleGanttPackageCollapse = function(maBsc) {
+        if (ganttCollapsedPackages.has(maBsc)) {
+            ganttCollapsedPackages.delete(maBsc);
+        } else {
+            ganttCollapsedPackages.add(maBsc);
+        }
+        renderFullGanttManagementView();
+    };
+
+    function bindGanttControlsOnce() {
+        if (ganttControlsBound) return;
+        ganttControlsBound = true;
+
+        const searchInput = document.getElementById("gantt-search-input");
+        if (searchInput) {
+            searchInput.addEventListener("input", (e) => {
+                ganttSearchQuery = e.target.value.trim();
+                renderFullGanttManagementView();
+            });
+        }
+
+        const nhomSelect = document.getElementById("gantt-filter-nhom");
+        if (nhomSelect) {
+            nhomSelect.addEventListener("change", (e) => {
+                ganttFilterNhom = e.target.value;
+                renderFullGanttManagementView();
+            });
+        }
+
+        const statusSelect = document.getElementById("gantt-filter-status");
+        if (statusSelect) {
+            statusSelect.addEventListener("change", (e) => {
+                ganttFilterStatus = e.target.value;
+                renderFullGanttManagementView();
+            });
+        }
+
+        const monthBtn = document.getElementById("gantt-zoom-month");
+        const weekBtn = document.getElementById("gantt-zoom-week");
+        if (monthBtn && weekBtn) {
+            monthBtn.addEventListener("click", () => {
+                ganttZoomMode = "month";
+                monthBtn.classList.add("primary");
+                weekBtn.classList.remove("primary");
+                renderFullGanttManagementView();
+            });
+            weekBtn.addEventListener("click", () => {
+                ganttZoomMode = "week";
+                weekBtn.classList.add("primary");
+                monthBtn.classList.remove("primary");
+                renderFullGanttManagementView();
+            });
+        }
+
+        const todayBtn = document.getElementById("gantt-today-btn");
+        if (todayBtn) {
+            todayBtn.addEventListener("click", () => {
+                const scrollPane = document.getElementById("gantt-right-scroll-pane");
+                const todayEl = document.querySelector(".gantt-today-line");
+                if (scrollPane && todayEl) {
+                    const todayX = parseFloat(todayEl.getAttribute("x1"));
+                    scrollPane.scrollLeft = Math.max(0, todayX - 300);
+                }
+            });
+        }
+    }
+
+    function buildGanttSvgContent(treeRows, minTime, maxTime, ganttWidth, ganttHeight, headerHeight, rowHeight, dayWidth) {
+        let svg = '';
+
+        svg += `<rect x="0" y="0" width="${ganttWidth}" height="${headerHeight}" class="gantt-header-bg" />`;
+
+        const totalSpanMs = maxTime - minTime;
+
+        // Generate Month Grid Columns
+        let currDate = new Date(minTime);
+        currDate.setDate(1);
+        currDate.setHours(0,0,0,0);
+
+        const endDateLimit = new Date(maxTime);
+
+        while (currDate.getTime() <= endDateLimit.getTime()) {
+            const monthStart = currDate.getTime();
+            const monthName = `Tháng ${currDate.getMonth() + 1}/${currDate.getFullYear()}`;
+            
+            const nextMonth = new Date(currDate);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            
+            const xStart = ((monthStart - minTime) / totalSpanMs) * ganttWidth;
+            const xEnd = ((nextMonth.getTime() - minTime) / totalSpanMs) * ganttWidth;
+            const monthWidth = Math.max(0, xEnd - xStart);
+
+            svg += `
+                <rect x="${xStart}" y="0" width="${monthWidth}" height="24" class="gantt-header-month-bg" />
+                <text x="${xStart + 8}" y="17" class="gantt-header-month-text">${monthName}</text>
+                <line x1="${xStart}" y1="0" x2="${xStart}" y2="${ganttHeight}" class="gantt-grid-line-month" />
+            `;
+
+            if (ganttZoomMode === 'week') {
+                let weekDate = new Date(currDate);
+                while (weekDate.getTime() < nextMonth.getTime()) {
+                    const wX = ((weekDate.getTime() - minTime) / totalSpanMs) * ganttWidth;
+                    const weekNum = getGanttWeekNumber(weekDate);
+                    svg += `
+                        <text x="${wX + 4}" y="42" class="gantt-header-text">T${weekNum}</text>
+                        <line x1="${wX}" y1="24" x2="${wX}" y2="${ganttHeight}" class="gantt-grid-line" />
+                    `;
+                    weekDate.setDate(weekDate.getDate() + 7);
+                }
+            }
+
+            currDate = nextMonth;
+        }
+
+        // Today Line
+        const now = new Date().getTime();
+        if (now >= minTime && now <= maxTime) {
+            const todayX = ((now - minTime) / totalSpanMs) * ganttWidth;
+            svg += `
+                <line x1="${todayX}" y1="0" x2="${todayX}" y2="${ganttHeight}" class="gantt-today-line" />
+                <text x="${todayX + 4}" y="16" class="gantt-today-text">HÔM NAY</text>
+            `;
+        }
+
+        const milestoneCoords = {};
+
+        // Render Row Grid Lines, Bars and Milestones
+        treeRows.forEach((row, idx) => {
+            const y = headerHeight + (idx * rowHeight);
+
+            svg += `<line x1="0" y1="${y + rowHeight}" x2="${ganttWidth}" y2="${y + rowHeight}" class="gantt-row-line" />`;
+
+            if (row.type === 'parent') {
+                if (row.startDate && row.endDate) {
+                    const x1 = Math.max(0, ((row.startDate.getTime() - minTime) / totalSpanMs) * ganttWidth);
+                    const x2 = Math.min(ganttWidth, ((row.endDate.getTime() - minTime) / totalSpanMs) * ganttWidth);
+                    const width = Math.max(8, x2 - x1);
+                    
+                    svg += `
+                        <rect x="${x1}" y="${y + 10}" width="${width}" height="18" class="gantt-bar-parent"
+                              data-tip="<b>${escapeHtml(row.title)}</b><br>Thời gian KH: ${formatDateDMY(row.startDate)} ➔ ${formatDateDMY(row.endDate)}<br>Trạng thái: ${escapeHtml(row.status)}<br>Tiến độ: ${row.progress}%" />
+                        <text x="${x1 + 8}" y="${y + 23}" fill="#ffffff" font-size="10" font-weight="700" pointer-events="none">${escapeHtml(row.ma_bsc)} (${row.progress}%)</text>
+                    `;
+                }
+            } else {
+                if (row.date && !isNaN(row.date)) {
+                    const x = ((row.date.getTime() - minTime) / totalSpanMs) * ganttWidth;
+                    const key = `${row.parentBsc}_m${row.mType}`;
+                    milestoneCoords[key] = { x: x, y: y + 19 };
+
+                    let barClass = `gantt-bar-m${row.mType}`;
+                    const barWidth = 40;
+
+                    if (row.mType === 4) {
+                        const dSize = 8;
+                        const points = `${x},${y+19-dSize} ${x+dSize},${y+19} ${x},${y+19+dSize} ${x-dSize},${y+19}`;
+                        svg += `
+                            <polygon points="${points}" class="gantt-milestone-diamond"
+                                     data-tip="<b>${escapeHtml(row.title)}</b><br>Mốc Khởi công: ${formatDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
+                            <text x="${x + 12}" y="${y + 23}" fill="#ef4444" font-size="10" font-weight="700">${formatDateDMY(row.date)}</text>
+                        `;
+                    } else {
+                        svg += `
+                            <rect x="${x}" y="${y + 11}" width="${barWidth}" height="16" class="${barClass}"
+                                  data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn KH: ${formatDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
+                            <text x="${x + barWidth + 6}" y="${y + 23}" fill="${row.color}" font-size="10" font-weight="600">${formatDateDMY(row.date)}</text>
+                        `;
+                    }
+                }
+            }
+        });
+
+        // Connector Arrows between 1 -> 2 -> 3 -> 4
+        treeRows.forEach(row => {
+            if (row.type === 'parent' && !row.isCollapsed) {
+                const bsc = row.ma_bsc;
+                const m1 = milestoneCoords[`${bsc}_m1`];
+                const m2 = milestoneCoords[`${bsc}_m2`];
+                const m3 = milestoneCoords[`${bsc}_m3`];
+                const m4 = milestoneCoords[`${bsc}_m4`];
+
+                const pairs = [
+                    { from: m1, to: m2 },
+                    { from: m2, to: m3 },
+                    { from: m3, to: m4 }
+                ];
+
+                pairs.forEach(pair => {
+                    if (pair.from && pair.to) {
+                        const x1 = pair.from.x + 30;
+                        const y1 = pair.from.y;
+                        const x2 = pair.to.x;
+                        const y2 = pair.to.y;
+
+                        const isWarn = x2 < pair.from.x;
+                        const marker = isWarn ? "url(#gantt-arrowhead-warn)" : "url(#gantt-arrowhead)";
+                        const arrowClass = isWarn ? "gantt-dependency-arrow warning-seq" : "gantt-dependency-arrow";
+
+                        const midX = x1 + Math.max(15, (x2 - x1) / 2);
+                        const pathD = `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
+
+                        svg += `<path d="${pathD}" class="${arrowClass}" marker-end="${marker}" />`;
+                    }
+                });
+            }
+        });
+
+        return svg;
+    }
+
+    function getGanttWeekNumber(d) {
+        const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        const dayNum = date.getUTCDay() || 7;
+        date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+        return Math.ceil((((date - yearStart) / 86400000) + 1)/7);
+    }
+
+    function attachGanttInteractiveTooltips() {
+        const tooltip = document.getElementById("gantt-tooltip");
+        if (!tooltip) return;
+
+        document.querySelectorAll("[data-tip]").forEach(el => {
+            el.addEventListener("mouseenter", (e) => {
+                const tipContent = el.getAttribute("data-tip");
+                tooltip.innerHTML = tipContent;
+                tooltip.style.display = "block";
+            });
+            el.addEventListener("mousemove", (e) => {
+                tooltip.style.left = (e.pageX + 15) + "px";
+                tooltip.style.top = (e.pageY + 15) + "px";
+            });
+            el.addEventListener("mouseleave", () => {
+                tooltip.style.display = "none";
+            });
+        });
+    }
+
 });
