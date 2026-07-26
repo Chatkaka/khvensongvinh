@@ -1243,9 +1243,9 @@ body {
 
 /* Left Panel: Task Tree Table */
 .gantt-left-panel {
-    width: 650px;
-    min-width: 650px;
-    max-width: 650px;
+    width: 855px;
+    min-width: 855px;
+    max-width: 855px;
     border-right: 2px solid var(--border-color);
     background: var(--bg-card);
     overflow-y: auto;
