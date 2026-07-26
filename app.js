@@ -9174,7 +9174,7 @@ dropzone.addEventListener("click", () => fileInput.click());
 
         while (currDate.getTime() <= endDateLimit.getTime()) {
             const monthStart = currDate.getTime();
-            const monthName = `Tháng ${currDate.getMonth() + 1}/${currDate.getFullYear()}`;
+            const monthName = `${currDate.getMonth() + 1}/${currDate.getFullYear().toString().substr(-2)}`;
             
             const nextMonth = new Date(currDate);
             nextMonth.setMonth(nextMonth.getMonth() + 1);
