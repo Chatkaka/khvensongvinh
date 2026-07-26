@@ -8487,22 +8487,54 @@ dropzone.addEventListener("click", () => fileInput.click());
     let ganttZoomMode = "month"; 
     let ganttControlsBound = false;
 
+    function groupMasterIntoPackages(masterArray) {
+        if (!masterArray || masterArray.length === 0) return [];
+        const flatRows = getFlatMasterRows(masterArray);
+        const packages = [];
+        let currentPackage = null;
+        
+        flatRows.forEach(row => {
+            if (!row) return;
+            const bsc = String(row.ma_bsc || "").trim();
+            const isParent = bsc !== "";
+            
+            if (isParent) {
+                currentPackage = {
+                    parent: row,
+                    children: []
+                };
+                packages.push(currentPackage);
+            } else {
+                if (currentPackage) {
+                    currentPackage.children.push(row);
+                } else {
+                    currentPackage = {
+                        parent: row,
+                        children: []
+                    };
+                    packages.push(currentPackage);
+                }
+            }
+        });
+        return packages;
+    }
+
     function populateGanttBscDropdown(structuredPackages) {
         const selectEl = document.getElementById("gantt-select-bsc");
         if (!selectEl) return;
 
         const curVal = ganttSelectedBsc || selectEl.value || "";
 
-        // Extract unique PLs exactly like Tab Bảng Tổng Hợp Master (master-filter-pl)
-        const uniquePls = [...new Set(db.master.map(r => {
-            const p = r.parent ? r.parent : r;
+        // Extract unique PLs (Phụ lục) exactly like Tab Bảng Tổng Hợp Master (master-filter-pl)
+        const uniquePls = [...new Set(structuredPackages.map(pkg => {
+            const p = pkg.parent;
             return p.goi_thau_pl || p["Gói thầu PL"] || p["Phân Lộ"] || p.PL || p.pl;
         }).filter(Boolean))].sort();
 
-        let optionsHtml = `<option value="">-- Tất cả Phân Lộ (PL) (${uniquePls.length} PL) --</option>`;
+        let optionsHtml = `<option value="">-- Tất cả Phụ lục (PL) (${uniquePls.length} PL) --</option>`;
         uniquePls.forEach(pl => {
             const isSel = String(pl).trim() === String(curVal).trim() ? "selected" : "";
-            optionsHtml += `<option value="${escapeHtml(pl)}" ${isSel}>Phân Lộ: ${escapeHtml(pl)}</option>`;
+            optionsHtml += `<option value="${escapeHtml(pl)}" ${isSel}>Phụ lục: ${escapeHtml(pl)}</option>`;
         });
 
         selectEl.innerHTML = optionsHtml;
@@ -8525,8 +8557,8 @@ dropzone.addEventListener("click", () => fileInput.click());
         const container = document.getElementById("gantt-management-container");
         if (!container) return;
 
-        // Structure master data into parent packages & child items
-        const structuredPackages = restructureMasterData(db.master);
+        // Group master data into parent packages & children correctly
+        const structuredPackages = groupMasterIntoPackages(db.master);
 
         // Populate PL Dropdown matching Master Tab exactly
         populateGanttBscDropdown(structuredPackages);
@@ -8535,9 +8567,9 @@ dropzone.addEventListener("click", () => fileInput.click());
         bindGanttControlsOnce();
 
         // Filter packages based on user selection in PL dropdown
-        let displayPackages = structuredPackages.filter(pkg => pkg && pkg.parent);
+        let displayPackages = structuredPackages;
 
-        // Filter by PL selection (Matches Master Tab master-filter-pl exactly)
+        // Filter by PL selection (Phụ lục)
         if (ganttSelectedBsc && ganttSelectedBsc.trim() !== "") {
             const targetPl = ganttSelectedBsc.trim().toLowerCase();
             displayPackages = displayPackages.filter(pkg => {
@@ -8555,7 +8587,7 @@ dropzone.addEventListener("click", () => fileInput.click());
         // ABSOLUTE POKA-YOKE SAFEGUARD: Never render a blank empty screen!
         if (displayPackages.length === 0) {
             console.warn("Gantt filter yielded 0 packages, auto-resetting display to all packages.");
-            displayPackages = structuredPackages.filter(pkg => pkg && pkg.parent);
+            displayPackages = structuredPackages;
         }
 
         const treeRows = [];
