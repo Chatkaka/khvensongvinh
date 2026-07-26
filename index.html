@@ -27,9 +27,7 @@
             <li class="nav-item" data-tab="master">
                 <i class="fa-solid fa-table-list"></i> Bảng Tổng Hợp Master
             </li>
-            <li class="nav-item" data-tab="gantt">
-                <i class="fa-solid fa-chart-gantt"></i> Quản Lý Tiến Độ
-            </li>
+
             <li class="nav-item" data-tab="s01">
                 <i class="fa-solid fa-folder-open"></i> Sổ 01: Tiền Khởi Công
             </li>
@@ -361,28 +359,6 @@
             </div>
         </div>
 
-        <!-- ==================== TAB: QUẢN LÝ TIẾN ĐỘ (GANTT CHART) ==================== -->
-        <div class="tab-pane" id="tab-gantt">
-            <div class="card" style="padding: 16px 20px; margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
-                    <div style="flex: 1; max-width: 650px; position: relative;">
-                        <label style="font-size: 0.8rem; font-weight: 700; color: #38bdf8; margin-bottom: 6px; display: block;">
-                            <i class="fa-solid fa-filter" style="margin-right: 6px;"></i> LỌC TIẾN ĐỘ THEO TẤT CẢ HOẶC THEO CÁC PHỤ LỤC (PL):
-                        </label>
-                        <div class="searchable-select-wrapper" id="gantt-select-bsc-wrapper" style="width: 100%; position: relative;">
-                            <input type="text" id="gantt-select-bsc-search" class="form-control searchable-select-input" placeholder="Gõ ký tự để tìm kiếm Phụ lục (PL)..." autocomplete="off" style="border-radius: 20px; font-weight: 600; background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--color-ai-primary); padding: 10px 18px; width: 100%; font-size: 0.9rem;">
-                            <div class="searchable-select-dropdown" id="gantt-select-bsc-dropdown" style="display: none; background-color: #1f2937; border: 1px solid var(--color-ai-primary); border-radius: 8px; position: absolute; left: 0; right: 0; z-index: 1000; max-height: 250px; overflow-y: auto;"></div>
-                            <input type="hidden" id="gantt-select-bsc" value="">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card" style="padding: 0; overflow: hidden; border-radius: 12px;" id="gantt-main-card">
-                <div id="gantt-management-container" class="gantt-split-view">
-                    <!-- Rendered dynamically by app.js -->
-                </div>
-            </div>
-        </div>
 
         <div class="tab-pane" id="tab-s01">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
@@ -917,8 +893,8 @@
     </div>
 
     <!-- SCRIPTS -->
-    <script src="database.js?v=20260726_v29"></script>
-    <script src="ai-service.js?v=1785080213"></script>
-    <script src="app.js?v=20260726_v29"></script>
+    <script src="database.js?v=20260726_v30"></script>
+    <script src="ai-service.js?v=1785080755"></script>
+    <script src="app.js?v=20260726_v30"></script>
 </body>
 </html>
