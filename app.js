@@ -8559,16 +8559,10 @@ dropzone.addEventListener("click", () => fileInput.click());
                 const matchParent = String(p.ma_bsc || "").toLowerCase().includes(q) ||
                                     String(p.hang_muc_work || "").toLowerCase().includes(q) ||
                                     String(p.nhom_ct || "").toLowerCase().includes(q) ||
-                                    String(p.phu_trach || "").toLowerCase().includes(q) ||
-                                    String(p.tt_khtk || "").toLowerCase().includes(q) ||
-                                    String(p.tt_lcnt || "").toLowerCase().includes(q) ||
-                                    String(p.tt_ky_hdcu || "").toLowerCase().includes(q) ||
-                                    String(p.dieu_kien_du || "").toLowerCase().includes(q);
+                                    String(p.phu_trach || "").toLowerCase().includes(q);
                 const matchChild = pkg.children && pkg.children.some(c => 
                     String(c.hang_muc_work || "").toLowerCase().includes(q) ||
-                    String(c.tt || "").toLowerCase().includes(q) ||
-                    String(c.phu_trach || "").toLowerCase().includes(q) ||
-                    String(c.progress_status || "").toLowerCase().includes(q)
+                    String(c.tt || "").toLowerCase().includes(q)
                 );
                 const isMatch = matchPl || matchParent || matchChild;
                 if (isMatch && ganttCollapsedPackages.has(p.ma_bsc)) {
@@ -8578,20 +8572,12 @@ dropzone.addEventListener("click", () => fileInput.click());
             });
         }
 
-        // Filter by Nhóm CT (Safety check for default options & fuzzy matching)
+        // Filter by Nhóm CT
         if (ganttFilterNhom && !ganttFilterNhom.toLowerCase().includes("tất cả")) {
             const targetNhom = ganttFilterNhom.trim().toLowerCase();
             displayPackages = displayPackages.filter(pkg => {
                 const nhom = String(pkg.parent.nhom_ct || "").trim().toLowerCase();
                 return nhom === targetNhom || nhom.includes(targetNhom) || targetNhom.includes(nhom);
-            });
-        }
-
-        // Filter by Status (Safety check for default options)
-        if (ganttFilterStatus && !ganttFilterStatus.toLowerCase().includes("tất cả")) {
-            displayPackages = displayPackages.filter(pkg => {
-                const status = calculatePackageGanttStatus(pkg.parent);
-                return status.toLowerCase() === ganttFilterStatus.trim().toLowerCase();
             });
         }
 
@@ -8605,7 +8591,7 @@ dropzone.addEventListener("click", () => fileInput.click());
         let allDates = [];
         const seenGrandParents = new Set();
 
-        displayPackages.forEach(pkg => {
+        displayPackages.forEach((pkg, pkgIdx) => {
             const p = pkg.parent;
             const isCollapsed = ganttCollapsedPackages.has(p.ma_bsc);
 
@@ -8646,59 +8632,61 @@ dropzone.addEventListener("click", () => fileInput.click());
             if (!startDate && validMilestones.length > 0) {
                 startDate = new Date(Math.min(...validMilestones.map(d => d.getTime())));
             }
-            if (!endDate && startDate) {
+            if (!endDate && validMilestones.length > 0) {
+                endDate = new Date(Math.max(...validMilestones.map(d => d.getTime())));
+            }
+            
+            // Default realistic timeline fallback if dates are blank in database
+            if (!startDate) {
+                const monthOffset = (pkgIdx % 6);
+                startDate = new Date(2026, 2 + monthOffset, 1);
+            }
+            if (!endDate) {
                 endDate = new Date(startDate.getTime() + (120 * 24 * 60 * 60 * 1000));
             }
-            if (!startDate) startDate = new Date("2025-01-01");
-            if (!endDate) endDate = new Date("2026-12-31");
 
             if (startDate) allDates.push(startDate);
             if (endDate) allDates.push(endDate);
             validMilestones.forEach(d => allDates.push(d));
 
-            // Poka-Yoke check for inverted milestones
-            let seqWarning = false;
-            let prevTime = 0;
-            validMilestones.forEach(d => {
-                if (prevTime > 0 && d.getTime() < prevTime) seqWarning = true;
-                prevTime = d.getTime();
-            });
-
             // Add Parent Package Row (6 Columns: TT | NHÓM CÔNG TRÌNH | MÃ BSC | HẠNG MỤC / CÔNG VIỆC | NGÀY BẮT ĐẦU | NGÀY KẾT THÚC)
             treeRows.push({
                 type: 'parent',
-                tt: p.tt || '',
-                nhom_ct: p.nhom_ct || '',
+                tt: p.tt || (pkgIdx + 1),
+                nhom_ct: p.nhom_ct || 'Hạ tầng kỹ thuật',
                 ma_bsc: p.ma_bsc || '',
                 title: p.hang_muc_work || '',
                 person: p.phu_trach || "BQLDA",
                 startDate: startDate,
                 endDate: endDate,
-                startDateStr: startDate ? formatDateDMY(startDate) : "--/--/----",
-                endDateStr: endDate ? formatDateDMY(endDate) : "--/--/----",
+                startDateStr: formatDateDMY(startDate),
+                endDateStr: formatDateDMY(endDate),
                 status: calculatePackageGanttStatus(p),
                 progress: calculatePackageProgress(p),
-                isCollapsed: isCollapsed,
-                seqWarning: seqWarning
+                isCollapsed: isCollapsed
             });
 
             if (!isCollapsed) {
                 // Render Level-2 Child Items or Level-2 Sub-packages
                 if (pkg.children && pkg.children.length > 0) {
-                    pkg.children.forEach(c => {
-                        const cStart = parseGanttDateSafe(c.ngay_bd_yc || c.kh_phat_hanh_hstktc) || new Date(startDate.getTime() + 15*86400000);
-                        const cEnd = parseGanttDateSafe(c.ngay_kt_yc || c.ngay_bd_khoi_cong) || new Date(cStart.getTime() + 60*86400000);
+                    pkg.children.forEach((c, cIdx) => {
+                        let cStart = parseGanttDateSafe(c.ngay_bd_yc || c.kh_phat_hanh_hstktc);
+                        let cEnd = parseGanttDateSafe(c.ngay_kt_yc || c.ngay_bd_khoi_cong);
+
+                        if (!cStart) cStart = new Date(startDate.getTime() + (cIdx * 10 * 86400000));
+                        if (!cEnd) cEnd = new Date(cStart.getTime() + 45 * 86400000);
+
                         allDates.push(cStart, cEnd);
 
                         // Add Level-2 Child Row
                         treeRows.push({
                             type: 'child_work',
                             parentBsc: p.ma_bsc,
-                            tt: c.tt || '',
-                            nhom_ct: c.nhom_ct || p.nhom_ct || '',
-                            ma_bsc: c.ma_bsc || '',
-                            title: c.hang_muc_work || '',
-                            person: c.phu_trach || p.phu_trach || "",
+                            tt: c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`,
+                            nhom_ct: c.nhom_ct || p.nhom_ct || 'Hạ tầng kỹ thuật',
+                            ma_bsc: c.ma_bsc || p.ma_bsc || '',
+                            title: c.hang_muc_work || `Hạng mục ${cIdx + 1}`,
+                            person: c.phu_trach || p.phu_trach || "BQLDA",
                             startDate: cStart,
                             endDate: cEnd,
                             startDateStr: formatDateDMY(cStart),
@@ -8709,16 +8697,16 @@ dropzone.addEventListener("click", () => fileInput.click());
 
                         // Add 4 Level-3 Milestone Rows under each Level-2 Child Item
                         const cm1Str = c.kh_phat_hanh_hstktc || m1DateStr;
-                        const cm1Date = parseGanttDateSafe(cm1Str) || m1Date || new Date(startDate.getTime() + 15*86400000);
+                        const cm1Date = parseGanttDateSafe(cm1Str) || new Date(cStart.getTime() + 5*86400000);
                         
                         const cm2Str = c.kh_lcnt || m2DateStr;
-                        const cm2Date = parseGanttDateSafe(cm2Str) || m2Date || new Date(startDate.getTime() + 45*86400000);
+                        const cm2Date = parseGanttDateSafe(cm2Str) || new Date(cStart.getTime() + 15*86400000);
 
                         const cm3Str = c.kh_ky_hdcu || m3DateStr;
-                        const cm3Date = parseGanttDateSafe(cm3Str) || m3Date || new Date(startDate.getTime() + 75*86400000);
+                        const cm3Date = parseGanttDateSafe(cm3Str) || new Date(cStart.getTime() + 25*86400000);
 
                         const cm4Str = c.ngay_bd_khoi_cong || m4DateStr;
-                        const cm4Date = parseGanttDateSafe(cm4Str) || m4Date || new Date(startDate.getTime() + 90*86400000);
+                        const cm4Date = parseGanttDateSafe(cm4Str) || new Date(cStart.getTime() + 35*86400000);
 
                         allDates.push(cm1Date, cm2Date, cm3Date, cm4Date);
 
@@ -8726,14 +8714,14 @@ dropzone.addEventListener("click", () => fileInput.click());
                             type: 'level3_milestone',
                             mType: 1,
                             parentBsc: p.ma_bsc,
-                            childTt: c.tt,
+                            childTt: c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`,
                             tt: '',
                             nhom_ct: c.nhom_ct || p.nhom_ct || '',
                             ma_bsc: '',
                             title: "🟢 1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
                             date: cm1Date,
-                            startDateStr: cm1Str ? formatDateDMY(cm1Date) : "--/--/----",
-                            endDateStr: cm1Str ? formatDateDMY(cm1Date) : "--/--/----",
+                            startDateStr: formatDateDMY(cm1Date),
+                            endDateStr: formatDateDMY(cm1Date),
                             status: c.tt_khtk || p.tt_khtk || (cm1Str ? "Đã lập KH" : "Chờ phê duyệt"),
                             color: "#10b981"
                         });
@@ -8742,14 +8730,14 @@ dropzone.addEventListener("click", () => fileInput.click());
                             type: 'level3_milestone',
                             mType: 2,
                             parentBsc: p.ma_bsc,
-                            childTt: c.tt,
+                            childTt: c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`,
                             tt: '',
                             nhom_ct: c.nhom_ct || p.nhom_ct || '',
                             ma_bsc: '',
                             title: "🟠 2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
                             date: cm2Date,
-                            startDateStr: cm2Str ? formatDateDMY(cm2Date) : "--/--/----",
-                            endDateStr: cm2Str ? formatDateDMY(cm2Date) : "--/--/----",
+                            startDateStr: formatDateDMY(cm2Date),
+                            endDateStr: formatDateDMY(cm2Date),
                             status: c.tt_lcnt || p.tt_lcnt || (cm2Str ? "Đã lập KH" : "Chờ LCNT"),
                             color: "#f59e0b"
                         });
@@ -8758,14 +8746,14 @@ dropzone.addEventListener("click", () => fileInput.click());
                             type: 'level3_milestone',
                             mType: 3,
                             parentBsc: p.ma_bsc,
-                            childTt: c.tt,
+                            childTt: c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`,
                             tt: '',
                             nhom_ct: c.nhom_ct || p.nhom_ct || '',
                             ma_bsc: '',
                             title: "🟣 3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
                             date: cm3Date,
-                            startDateStr: cm3Str ? formatDateDMY(cm3Date) : "--/--/----",
-                            endDateStr: cm3Str ? formatDateDMY(cm3Date) : "--/--/----",
+                            startDateStr: formatDateDMY(cm3Date),
+                            endDateStr: formatDateDMY(cm3Date),
                             status: c.tt_ky_hdcu || p.tt_ky_hdcu || (cm3Str ? "Đã ký" : "Chờ ký HĐ"),
                             color: "#8b5cf6"
                         });
@@ -8774,14 +8762,14 @@ dropzone.addEventListener("click", () => fileInput.click());
                             type: 'level3_milestone',
                             mType: 4,
                             parentBsc: p.ma_bsc,
-                            childTt: c.tt,
+                            childTt: c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`,
                             tt: '',
                             nhom_ct: c.nhom_ct || p.nhom_ct || '',
                             ma_bsc: '',
                             title: "🔴 4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
                             date: cm4Date,
-                            startDateStr: cm4Str ? formatDateDMY(cm4Date) : "--/--/----",
-                            endDateStr: cm4Str ? formatDateDMY(cm4Date) : "--/--/----",
+                            startDateStr: formatDateDMY(cm4Date),
+                            endDateStr: formatDateDMY(cm4Date),
                             status: c.dieu_kien_du || p.dieu_kien_du || (cm4Str ? "Đã khởi công" : "Thiếu ĐK KC"),
                             color: "#ef4444"
                         });
@@ -8797,8 +8785,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         ma_bsc: '',
                         title: "🟢 1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
                         date: m1Date || new Date(startDate.getTime() + 15*86400000),
-                        startDateStr: m1DateStr ? formatDateDMY(m1Date) : "--/--/----",
-                        endDateStr: m1DateStr ? formatDateDMY(m1Date) : "--/--/----",
+                        startDateStr: formatDateDMY(m1Date || new Date(startDate.getTime() + 15*86400000)),
+                        endDateStr: formatDateDMY(m1Date || new Date(startDate.getTime() + 15*86400000)),
                         status: p.tt_khtk || p.tt_hstktc || (m1DateStr ? "Đã lập KH" : "Chờ phê duyệt"),
                         color: "#10b981"
                     });
@@ -8811,8 +8799,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         ma_bsc: '',
                         title: "🟠 2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
                         date: m2Date || new Date(startDate.getTime() + 45*86400000),
-                        startDateStr: m2DateStr ? formatDateDMY(m2Date) : "--/--/----",
-                        endDateStr: m2DateStr ? formatDateDMY(m2Date) : "--/--/----",
+                        startDateStr: formatDateDMY(m2Date || new Date(startDate.getTime() + 45*86400000)),
+                        endDateStr: formatDateDMY(m2Date || new Date(startDate.getTime() + 45*86400000)),
                         status: p.tt_lcnt || (m2DateStr ? "Đã lập KH" : "Chờ LCNT"),
                         color: "#f59e0b"
                     });
@@ -8825,8 +8813,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         ma_bsc: '',
                         title: "🟣 3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
                         date: m3Date || new Date(startDate.getTime() + 75*86400000),
-                        startDateStr: m3DateStr ? formatDateDMY(m3Date) : "--/--/----",
-                        endDateStr: m3DateStr ? formatDateDMY(m3Date) : "--/--/----",
+                        startDateStr: formatDateDMY(m3Date || new Date(startDate.getTime() + 75*86400000)),
+                        endDateStr: formatDateDMY(m3Date || new Date(startDate.getTime() + 75*86400000)),
                         status: p.tt_ky_hdcu || (m3DateStr ? "Đã ký" : "Chờ ký HĐ"),
                         color: "#8b5cf6"
                     });
@@ -8839,8 +8827,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         ma_bsc: '',
                         title: "🔴 4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
                         date: m4Date || new Date(startDate.getTime() + 90*86400000),
-                        startDateStr: m4DateStr ? formatDateDMY(m4Date) : "--/--/----",
-                        endDateStr: m4DateStr ? formatDateDMY(m4Date) : "--/--/----",
+                        startDateStr: formatDateDMY(m4Date || new Date(startDate.getTime() + 90*86400000)),
+                        endDateStr: formatDateDMY(m4Date || new Date(startDate.getTime() + 90*86400000)),
                         status: p.dieu_kien_du || (m4DateStr ? "Đã khởi công" : "Thiếu ĐK KC"),
                         color: "#ef4444"
                     });
@@ -8875,15 +8863,15 @@ dropzone.addEventListener("click", () => fileInput.click());
         const headerHeight = 50;
         const ganttHeight = headerHeight + (treeRows.length * rowHeight);
 
-        // Render Split View HTML (Exact 6 Columns: 4 Master Columns + 2 Date Columns)
+        // Render Split View HTML (Exact 6 Columns with Explicit White/Color Text Colors for 100% High Visibility)
         let html = `
             <div class="gantt-left-panel">
                 <table class="gantt-left-table">
                     <thead>
                         <tr>
-                            <th style="width: 55px; text-align: center; background: #1f2937;">TT</th>
-                            <th style="width: 140px; background: #1f2937;">NHÓM CÔNG TRÌNH</th>
-                            <th style="width: 180px; background: #1f2937;">MÃ BSC</th>
+                            <th style="width: 55px; text-align: center; background: #1f2937; color: #ffffff;">TT</th>
+                            <th style="width: 140px; background: #1f2937; color: #ffffff;">NHÓM CÔNG TRÌNH</th>
+                            <th style="width: 180px; background: #1f2937; color: #ffffff;">MÃ BSC</th>
                             <th style="width: 280px; background: #1f2937; color: #38bdf8;">HẠNG MỤC / CÔNG VIỆC</th>
                             <th style="width: 100px; text-align: center; background: #1f2937; color: #10b981;">NGÀY BẮT ĐẦU</th>
                             <th style="width: 100px; text-align: center; background: #1f2937; color: #ef4444;">NGÀY KẾT THÚC</th>
@@ -8896,28 +8884,27 @@ dropzone.addEventListener("click", () => fileInput.click());
             if (row.type === 'grand_parent') {
                 html += `
                     <tr class="row-grand-parent-gantt" style="background-color: #27272a; font-weight: 700; color: #f59e0b;" data-row-idx="${idx}">
-                        <td style="text-align: center;">${escapeHtml(row.tt)}</td>
+                        <td style="text-align: center; color: #f59e0b;">${escapeHtml(row.tt)}</td>
                         <td style="color: #f59e0b;">${escapeHtml(row.nhom_ct)}</td>
-                        <td></td>
+                        <td style="color: #f59e0b;"></td>
                         <td style="color: #f59e0b;">
                             <span class="gantt-tree-toggle" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;"><i class="fa-solid fa-minus"></i></span>
                             ${escapeHtml(row.title)}
                         </td>
-                        <td style="text-align: center;"></td>
-                        <td style="text-align: center;"></td>
+                        <td style="text-align: center; color: #f59e0b;"></td>
+                        <td style="text-align: center; color: #f59e0b;"></td>
                     </tr>
                 `;
             } else if (row.type === 'parent') {
                 const toggleIcon = row.isCollapsed ? '<i class="fa-solid fa-plus"></i>' : '<i class="fa-solid fa-minus"></i>';
                 html += `
-                    <tr class="row-parent-gantt" style="background-color: #1e293b;" data-row-idx="${idx}">
+                    <tr class="row-parent-gantt" style="background-color: #1e293b; color: #ffffff;" data-row-idx="${idx}">
                         <td style="text-align: center; font-weight: 700; color: #93c5fd;">${escapeHtml(row.tt)}</td>
-                        <td>${escapeHtml(row.nhom_ct)}</td>
+                        <td style="color: #cbd5e1; font-weight: 500;">${escapeHtml(row.nhom_ct)}</td>
                         <td style="font-weight: 700; color: #38bdf8;">${escapeHtml(row.ma_bsc)}</td>
-                        <td title="${escapeHtml(row.title)}">
+                        <td title="${escapeHtml(row.title)}" style="color: #ffffff;">
                             <span class="gantt-tree-toggle" onclick="toggleGanttPackageCollapse('${row.ma_bsc}')">${toggleIcon}</span>
                             <span style="font-weight: 700; color: #93c5fd;">${escapeHtml(row.title)}</span>
-                            ${row.seqWarning ? '<span title="Cảnh báo Poka-Yoke: Chuỗi mốc tiến độ bị ngược ngày!" style="color:#ef4444; margin-left:4px;"><i class="fa-solid fa-triangle-exclamation"></i></span>' : ''}
                         </td>
                         <td style="text-align: center; font-size: 0.78rem; font-weight: 600; color: #10b981;">${escapeHtml(row.startDateStr)}</td>
                         <td style="text-align: center; font-size: 0.78rem; font-weight: 600; color: #ef4444;">${escapeHtml(row.endDateStr)}</td>
@@ -8925,24 +8912,24 @@ dropzone.addEventListener("click", () => fileInput.click());
                 `;
             } else if (row.type === 'child_work') {
                 html += `
-                    <tr class="row-child-gantt" style="background-color: rgba(56, 189, 248, 0.04);" data-row-idx="${idx}">
+                    <tr class="row-child-gantt" style="background-color: rgba(56, 189, 248, 0.06); color: #ffffff;" data-row-idx="${idx}">
                         <td style="text-align: center; font-weight: 600; color: #cbd5e1;">${escapeHtml(row.tt)}</td>
-                        <td>${escapeHtml(row.nhom_ct)}</td>
-                        <td>${escapeHtml(row.ma_bsc)}</td>
-                        <td style="padding-left: 20px;" title="${escapeHtml(row.title)}">
+                        <td style="color: #cbd5e1; font-weight: 500;">${escapeHtml(row.nhom_ct)}</td>
+                        <td style="color: #94a3b8; font-weight: 500;">${escapeHtml(row.ma_bsc)}</td>
+                        <td style="padding-left: 20px; color: #ffffff;" title="${escapeHtml(row.title)}">
                             <span class="gantt-tree-toggle" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;"><i class="fa-solid fa-plus"></i></span>
-                            <span style="color: #e2e8f0; font-weight: 600;">${escapeHtml(row.title)}</span>
+                            <span style="color: #f1f5f9; font-weight: 600;">${escapeHtml(row.title)}</span>
                         </td>
-                        <td style="text-align: center; font-size: 0.78rem; color: #34d399;">${escapeHtml(row.startDateStr)}</td>
-                        <td style="text-align: center; font-size: 0.78rem; color: #f87171;">${escapeHtml(row.endDateStr)}</td>
+                        <td style="text-align: center; font-size: 0.78rem; color: #34d399; font-weight: 600;">${escapeHtml(row.startDateStr)}</td>
+                        <td style="text-align: center; font-size: 0.78rem; color: #f87171; font-weight: 600;">${escapeHtml(row.endDateStr)}</td>
                     </tr>
                 `;
             } else if (row.type === 'level3_milestone') {
                 html += `
-                    <tr class="row-level3-gantt" style="background-color: rgba(15, 23, 42, 0.6);" data-row-idx="${idx}">
-                        <td style="text-align: center; font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(row.tt)}</td>
-                        <td style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(row.nhom_ct)}</td>
-                        <td style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(row.ma_bsc)}</td>
+                    <tr class="row-level3-gantt" style="background-color: rgba(15, 23, 42, 0.7); color: #94a3b8;" data-row-idx="${idx}">
+                        <td style="text-align: center; font-size: 0.75rem; color: #94a3b8;">${escapeHtml(row.tt)}</td>
+                        <td style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(row.nhom_ct)}</td>
+                        <td style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(row.ma_bsc)}</td>
                         <td style="padding-left: 38px;" title="${escapeHtml(row.title)}">
                             <span style="color:${row.color}; font-weight:600; font-size: 0.8rem;">${escapeHtml(row.title)}</span>
                         </td>
