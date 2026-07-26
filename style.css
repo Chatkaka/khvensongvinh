@@ -1243,9 +1243,9 @@ body {
 
 /* Left Panel: Task Tree Table */
 .gantt-left-panel {
-    width: 855px;
-    min-width: 855px;
-    max-width: 855px;
+    width: 960px;
+    min-width: 960px;
+    max-width: 960px;
     border-right: 2px solid var(--border-color);
     background: var(--bg-card);
     overflow-y: auto;
@@ -1255,6 +1255,7 @@ body {
 
 .gantt-left-table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
     font-size: 0.8rem;
 }
@@ -1335,6 +1336,11 @@ body {
 .gantt-svg {
     display: block;
     background-color: var(--bg-dark);
+}
+
+.gantt-split-view .gantt-svg {
+    width: auto !important;
+    height: auto !important;
 }
 
 /* Gantt Chart Grid & Header Styling */
