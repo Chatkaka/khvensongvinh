@@ -8375,6 +8375,16 @@ dropzone.addEventListener("click", () => fileInput.click());
     let ganttControlsBound = false;
     let ganttBscDropdownInitialized = false;
 
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     function groupMasterIntoPackages(masterArray) {
         if (!masterArray || masterArray.length === 0) return [];
         const flatRows = getFlatMasterRows(masterArray);
@@ -8533,7 +8543,7 @@ dropzone.addEventListener("click", () => fileInput.click());
 
         const optionsList = [
             { value: "", label: `-- Tất cả Phụ lục (PL) (${uniquePls.length} PL) --` },
-            ...uniquePls.map(pl => ({ value: pl, label: `Phụ lục: ${pl}` }))
+            ...uniquePls.map(pl => ({ value: "PL::" + pl, label: `Phụ lục: ${pl}` }))
         ];
 
         initGanttSearchableSelect("gantt-select-bsc", optionsList, ganttSelectedBsc);
