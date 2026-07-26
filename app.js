@@ -316,6 +316,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
         
+        // POKA-YOKE SAFEGUARD: Force restore from defaultDb if master is empty/missing
+        if (!db || !db.master || db.master.length === 0) {
+            console.warn("Loaded database was empty/corrupted, reverting to defaultDb.");
+            db = JSON.parse(JSON.stringify(defaultDb));
+        }
+
         // Persist DB
         if (isAdminDevice) {
             saveDatabase();
@@ -8289,7 +8295,7 @@ dropzone.addEventListener("click", () => fileInput.click());
 
     function groupMasterIntoPackages(masterArray) {
         if (!masterArray || masterArray.length === 0) return [];
-        const flatRows = getFlatMasterRows(masterArray);
+        const flatRows = masterArray;
         const packages = [];
         let currentPackage = null;
         
