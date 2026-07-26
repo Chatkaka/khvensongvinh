@@ -377,6 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ngay_bd_khoi_cong: r.ngay_bd_khoi_cong || r["Ngày BĐ khởi công"] || r.ngay_khoi_cong || "",
             dieu_kien_du: r.dieu_kien_du || r["Điều kiện đủ"] || r["ĐK Khởi công"] || "",
             progress_status: r.progress_status || r["Trạng thái"] || "",
+            ngay_hoan_thanh: r.ngay_hoan_thanh || r["Ngày hoàn thành"] || r["Hoàn thành"] || r.ngay_ht_tt || "",
             _normalized: true
         };
 
@@ -8687,7 +8688,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                 progress: progress,
                 status: status,
                 collapsed: isCollapsed,
-                hasChildren: pkg.children.length > 0
+                hasChildren: pkg.children.length > 0,
+                ngay_hoan_thanh: p.ngay_hoan_thanh || ""
             });
 
             if (!isCollapsed && pkg.children.length > 0) {
@@ -8705,7 +8707,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         startDate: c.ngay_bd_yc ? new Date(c.ngay_bd_yc) : null,
                         endDate: c.ngay_kt_yc ? new Date(c.ngay_kt_yc) : null,
                         progress: null,
-                        status: ""
+                        status: "",
+                        ngay_hoan_thanh: c.ngay_hoan_thanh || ""
                     });
 
                     // Level 3 Milestones
@@ -8792,10 +8795,11 @@ dropzone.addEventListener("click", () => fileInput.click());
                         <tr>
                             <th style="width: 50px;">TT</th>
                             <th style="width: 140px;">Nhóm công trình</th>
-                            <th style="width: 140px;">Mã BSC</th>
-                            <th style="width: 320px;">Hạng mục / Công việc</th>
+                            <th style="width: 80px;">Mã BSC</th>
+                            <th style="width: 370px;">Hạng mục / Công việc</th>
                             <th style="width: 100px;">Ngày bắt đầu</th>
                             <th style="width: 100px;">Ngày kết thúc</th>
+                            <th style="width: 120px;">Hoàn thành</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -8804,11 +8808,12 @@ dropzone.addEventListener("click", () => fileInput.click());
         treeRows.forEach((row) => {
             if (row.type === 'parent') {
                 const toggleIcon = row.hasChildren ? (row.collapsed ? 'plus' : 'minus') : 'minus';
+                const canEditGantt = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua);
                 html += `
                     <tr class="row-parent-gantt">
                         <td>${escapeHtml(row.tt)}</td>
                         <td>${escapeHtml(row.nhom_ct)}</td>
-                        <td style="color:#f59e0b; font-weight:700;">${escapeHtml(row.ma_bsc)}</td>
+                        <td style="color:#f59e0b; font-weight:700; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(row.ma_bsc)}</td>
                         <td>
                             <button class="gantt-tree-toggle" onclick="toggleGanttCollapse('${row.ma_bsc}')" style="margin-right:8px; cursor:pointer;">
                                 <i class="fa-solid fa-${toggleIcon}"></i>
@@ -8817,9 +8822,15 @@ dropzone.addEventListener("click", () => fileInput.click());
                         </td>
                         <td>${formatGanttDateDMY(row.startDate)}</td>
                         <td>${formatGanttDateDMY(row.endDate)}</td>
+                        <td>
+                            <input type="date" value="${row.ngay_hoan_thanh || ''}" class="gantt-completion-input" data-tt="${row.tt}" 
+                                style="background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-primary); border-radius: 4px; padding: 2px 4px; font-size: 0.8rem; width: 110px;"
+                                ${!canEditGantt ? 'disabled title="Bạn không có quyền sửa!"' : ''}>
+                        </td>
                     </tr>
                 `;
             } else if (row.type === 'child_work') {
+                const canEditGantt = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua);
                 html += `
                     <tr class="row-child-gantt">
                         <td style="padding-left:15px; opacity:0.8;">${escapeHtml(row.tt)}</td>
@@ -8830,6 +8841,11 @@ dropzone.addEventListener("click", () => fileInput.click());
                         </td>
                         <td>${formatGanttDateDMY(row.startDate)}</td>
                         <td>${formatGanttDateDMY(row.endDate)}</td>
+                        <td>
+                            <input type="date" value="${row.ngay_hoan_thanh || ''}" class="gantt-completion-input" data-tt="${row.tt}" 
+                                style="background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-primary); border-radius: 4px; padding: 2px 4px; font-size: 0.8rem; width: 110px;"
+                                ${!canEditGantt ? 'disabled title="Bạn không có quyền sửa!"' : ''}>
+                        </td>
                     </tr>
                 `;
             } else if (row.type === 'level3_milestone') {
@@ -8843,6 +8859,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                             <span style="margin-right:6px;">${indicator}</span>${escapeHtml(row.title)}
                         </td>
                         <td>${formatGanttDateDMY(row.date)}</td>
+                        <td></td>
                         <td></td>
                     </tr>
                 `;
@@ -8882,6 +8899,25 @@ dropzone.addEventListener("click", () => fileInput.click());
         }
 
         attachGanttInteractiveTooltips();
+        
+        // Attach change listeners to completion inputs
+        container.querySelectorAll(".gantt-completion-input").forEach(input => {
+            input.addEventListener("change", (e) => {
+                const tt = e.target.getAttribute("data-tt");
+                const newVal = e.target.value; // "YYYY-MM-DD" or ""
+                
+                // Find and update in db.master
+                const rawRow = db.master.find(r => r && String(r.tt || r.TT) === String(tt));
+                if (rawRow) {
+                    rawRow.ngay_hoan_thanh = newVal;
+                    saveDatabase();
+                    showToast("Tiến độ", `Đã cập nhật ngày hoàn thành cho mục ${tt}`, "success");
+                    
+                    // Re-render Gantt to update view states
+                    renderFullGanttManagementView();
+                }
+            });
+        });
     }
 
     function buildGanttSvgContent(treeRows, minTime, maxTime, ganttWidth, ganttHeight, headerHeight, rowHeight, dayWidth) {
