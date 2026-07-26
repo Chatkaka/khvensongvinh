@@ -364,41 +364,18 @@
         <!-- ==================== TAB: QUẢN LÝ TIẾN ĐỘ (GANTT CHART) ==================== -->
         <div class="tab-pane" id="tab-gantt">
             <div class="card" style="padding: 16px 20px; margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; flex: 1;">
-                        <div style="position: relative; min-width: 320px; flex: 1;">
-                            <select id="gantt-select-bsc" class="form-control" style="border-radius: 20px; font-weight: 600; background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); width: 100%;">
-                                <option value="">-- Tất cả Mã BSC / Gói thầu / Hạng mục --</option>
-                            </select>
-                        </div>
-                        <div style="position: relative; min-width: 200px;">
-                            <input type="text" id="gantt-search-input" class="form-control" placeholder="Tìm kiếm nhanh..." style="padding-left: 32px; border-radius: 20px;">
-                            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                        </div>
-                        <select id="gantt-filter-nhom" class="form-control" style="width: auto; border-radius: 20px;">
-                            <option value="">Tất cả Nhóm CT</option>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                    <div style="flex: 1; max-width: 650px; position: relative;">
+                        <label style="font-size: 0.8rem; font-weight: 700; color: #38bdf8; margin-bottom: 6px; display: block;">
+                            <i class="fa-solid fa-filter" style="margin-right: 6px;"></i> LỌC TIẾN ĐỘ THEO TẤT CẢ HOẶC THEO CÁC PHÂN LỘ (PL) / GÓI THẦU:
+                        </label>
+                        <select id="gantt-select-bsc" class="form-control" style="border-radius: 20px; font-weight: 600; background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--color-ai-primary); padding: 10px 18px; width: 100%; font-size: 0.9rem;">
+                            <option value="">-- Tất cả Phân Lộ (PL) / Mã BSC / Gói thầu --</option>
                         </select>
-                        <select id="gantt-filter-status" class="form-control" style="width: auto; border-radius: 20px;">
-                            <option value="">Tất cả Trạng thái</option>
-                            <option value="Hoàn thành">Hoàn thành</option>
-                            <option value="Đang thực hiện">Đang thực hiện</option>
-                            <option value="Chậm tiến độ">Chậm tiến độ</option>
-                            <option value="Chưa bắt đầu">Chưa bắt đầu</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <button class="btn-action" id="gantt-zoom-month" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 20px;"><i class="fa-solid fa-calendar-days"></i> Tháng</button>
-                        <button class="btn-action" id="gantt-zoom-week" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 20px;"><i class="fa-solid fa-calendar-week"></i> Tuần</button>
-                        <button class="btn-action primary" id="gantt-today-btn" style="padding: 6px 14px; font-size: 0.85rem; border-radius: 20px;"><i class="fa-solid fa-bullseye"></i> Hôm nay</button>
                     </div>
                 </div>
-
-                
             </div>
-
-            <!-- Gantt Management Split View Card -->
-            <div class="card" style="padding: 0; overflow: hidden; border-radius: 12px;" id="gantt-main-card">
-                <div id="gantt-management-container" class="gantt-split-view">
+            <div id="gantt-management-container" class="gantt-split-view">
                     <!-- Rendered dynamically by app.js -->
                 </div>
             </div>
@@ -938,8 +915,8 @@
     </div>
 
     <!-- SCRIPTS -->
-    <script src="database.js?v=20260726_v15"></script>
-    <script src="ai-service.js?v=1785072385"></script>
-    <script src="app.js?v=20260726_v15"></script>
+    <script src="database.js?v=20260726_v16"></script>
+    <script src="ai-service.js?v=1785072841"></script>
+    <script src="app.js?v=20260726_v16"></script>
 </body>
 </html>
