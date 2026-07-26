@@ -1472,4 +1472,18 @@ body {
     backdrop-filter: blur(8px);
 }
 
+/* Custom dropdown background colors - anti-white selection fix */
+#gantt-select-bsc {
+    background-color: #1f2937 !important;
+    color: #f3f4f6 !important;
+}
+
+#gantt-select-bsc option {
+    background-color: #1f2937 !important;
+    color: #f3f4f6 !important;
+    padding: 12px;
+    font-weight: 500;
+}
+
+
 
