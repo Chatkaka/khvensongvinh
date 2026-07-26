@@ -348,7 +348,80 @@ document.addEventListener("DOMContentLoaded", () => {
         initApp();
     }
 
-    function restructureMasterData(masterArray) {
+    
+    // Bulletproof Master Row Normalization Helper (Handles Vietnamese & English Key Aliases + Parent Inheritance)
+    function normalizeMasterRow(r) {
+        if (!r || typeof r !== 'object') return null;
+
+        const row = {
+            tt: r.tt || r.TT || r.stt || r.STT || "",
+            ma_bsc: String(r.ma_bsc || r["Mã BSC"] || r.maBsc || "").trim(),
+            goi_thau_pl: String(r.goi_thau_pl || r["Gói thầu PL"] || r["Phân Lộ"] || r.PL || r.pl || "").trim(),
+            nhom_ct: String(r.nhom_ct || r["Nhóm công trình"] || r["Nhóm Công Trình"] || r["NHÓM CÔNG TRÌNH"] || "").trim(),
+            hang_muc_work: String(r.hang_muc_work || r["Hạng mục"] || r["Hạng mục / Công việc"] || r["Hạng Mục / Công Việc"] || r["Tên hạng mục"] || "").trim(),
+            phu_trach: String(r.phu_trach || r["Phụ trách"] || r["Người phụ trách"] || "").trim(),
+            ngay_bd_yc: r.ngay_bd_yc || r["Ngày BĐ YC"] || r["Ngày BĐ"] || r["NGÀY BẮT ĐẦU"] || r.kh_phat_hanh_hstktc || r.kh_pd_khtk || "",
+            ngay_kt_yc: r.ngay_kt_yc || r["Ngày KT YC"] || r["Ngày KT"] || r["NGÀY KẾT THÚC"] || r.ngay_bd_khoi_cong || "",
+            kh_phat_hanh_hstktc: r.kh_phat_hanh_hstktc || r["KH phát hành HSTKTC"] || r.kh_pd_khtk || r["KH PD KHTK"] || "",
+            tt_khtk: r.tt_khtk || r["TT KHTK"] || r.tt_hstktc || r["TT HSTKTC"] || "",
+            kh_lcnt: r.kh_lcnt || r["KH LCNT"] || "",
+            tt_lcnt: r.tt_lcnt || r["TT LCNT"] || "",
+            kh_ky_hdcu: r.kh_ky_hdcu || r["KH ký HĐCU"] || r.kh_ky_hd || "",
+            tt_ky_hdcu: r.tt_ky_hdcu || r["TT ký HĐCU"] || r.tt_hdcu || "",
+            ngay_bd_khoi_cong: r.ngay_bd_khoi_cong || r["Ngày BĐ khởi công"] || r.ngay_khoi_cong || "",
+            dieu_kien_du: r.dieu_kien_du || r["Điều kiện đủ"] || r["ĐK Khởi công"] || "",
+            progress_status: r.progress_status || r["Trạng thái"] || "",
+            _normalized: true
+        };
+
+        // Fallback for nhom_ct matching ma_bsc prefix
+        if (!row.nhom_ct && row.ma_bsc) {
+            if (row.ma_bsc.includes("HTKT")) row.nhom_ct = "Hạ tầng kỹ thuật";
+            else if (row.ma_bsc.includes("KD")) row.nhom_ct = "Công trình phục vụ KD";
+            else row.nhom_ct = "Xây dựng dân dụng";
+        }
+
+        return row;
+    }
+
+    // Bulletproof Master Data Flattening (Handles Flat, Single-Nested, Multi-Nested DB structures)
+    function getFlatMasterRows(masterInput) {
+        if (!masterInput || !Array.isArray(masterInput) || masterInput.length === 0) return [];
+        const flatList = [];
+        let currentParentNhom = "";
+        
+        function extractRows(item) {
+            if (!item || typeof item !== 'object') return;
+            if (item.parent) {
+                const parentNorm = normalizeMasterRow(item.parent);
+                if (parentNorm) {
+                    currentParentNhom = parentNorm.nhom_ct;
+                    flatList.push(parentNorm);
+                }
+                if (item.children && Array.isArray(item.children)) {
+                    item.children.forEach(c => {
+                        const childNorm = normalizeMasterRow(c);
+                        if (childNorm) {
+                            if (!childNorm.nhom_ct) childNorm.nhom_ct = currentParentNhom;
+                            flatList.push(childNorm);
+                        }
+                    });
+                }
+            } else {
+                const norm = normalizeMasterRow(item);
+                if (norm && (norm.ma_bsc || norm.tt || norm.hang_muc_work)) {
+                    if (norm.ma_bsc) currentParentNhom = norm.nhom_ct;
+                    else if (!norm.nhom_ct) norm.nhom_ct = currentParentNhom;
+                    flatList.push(norm);
+                }
+            }
+        }
+
+        masterInput.forEach(item => extractRows(item));
+        return flatList;
+    }
+
+function restructureMasterData(masterArray) {
         if (!masterArray || masterArray.length === 0) return [];
         
         const packages = [];
@@ -8295,7 +8368,7 @@ dropzone.addEventListener("click", () => fileInput.click());
 
     function groupMasterIntoPackages(masterArray) {
         if (!masterArray || masterArray.length === 0) return [];
-        const flatRows = masterArray;
+        const flatRows = getFlatMasterRows(masterArray);
         const packages = [];
         let currentPackage = null;
         
