@@ -369,9 +369,11 @@
                         <label style="font-size: 0.8rem; font-weight: 700; color: #38bdf8; margin-bottom: 6px; display: block;">
                             <i class="fa-solid fa-filter" style="margin-right: 6px;"></i> LỌC TIẾN ĐỘ THEO TẤT CẢ HOẶC THEO CÁC PHỤ LỤC (PL):
                         </label>
-                        <select id="gantt-select-bsc" class="form-control" style="border-radius: 20px; font-weight: 600; background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--color-ai-primary); padding: 10px 18px; width: 100%; font-size: 0.9rem;">
-                            <option value="">-- Tất cả Phụ lục (PL) --</option>
-                        </select>
+                        <div class="searchable-select-wrapper" id="gantt-select-bsc-wrapper" style="width: 100%; position: relative;">
+                            <input type="text" id="gantt-select-bsc-search" class="form-control searchable-select-input" placeholder="Gõ ký tự để tìm kiếm Phụ lục (PL)..." autocomplete="off" style="border-radius: 20px; font-weight: 600; background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--color-ai-primary); padding: 10px 18px; width: 100%; font-size: 0.9rem;">
+                            <div class="searchable-select-dropdown" id="gantt-select-bsc-dropdown" style="display: none; background-color: #1f2937; border: 1px solid var(--color-ai-primary); border-radius: 8px; position: absolute; left: 0; right: 0; z-index: 1000; max-height: 250px; overflow-y: auto;"></div>
+                            <input type="hidden" id="gantt-select-bsc" value="">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -915,8 +917,8 @@
     </div>
 
     <!-- SCRIPTS -->
-    <script src="database.js?v=20260726_v21"></script>
-    <script src="ai-service.js?v=1785075139"></script>
-    <script src="app.js?v=20260726_v21"></script>
+    <script src="database.js?v=20260726_v22"></script>
+    <script src="ai-service.js?v=1785075866"></script>
+    <script src="app.js?v=20260726_v22"></script>
 </body>
 </html>
