@@ -8486,6 +8486,7 @@ dropzone.addEventListener("click", () => fileInput.click());
     let ganttSelectedBsc = ""; 
     let ganttZoomMode = "month"; 
     let ganttControlsBound = false;
+    let ganttBscDropdownInitialized = false;
 
     function groupMasterIntoPackages(masterArray) {
         if (!masterArray || masterArray.length === 0) return [];
@@ -8519,25 +8520,112 @@ dropzone.addEventListener("click", () => fileInput.click());
         return packages;
     }
 
+    function initGanttSearchableSelect(inputId, optionsList, defaultVal = "") {
+        const wrapper = document.getElementById(inputId + "-wrapper");
+        const searchInput = document.getElementById(inputId + "-search");
+        const dropdown = document.getElementById(inputId + "-dropdown");
+        const hiddenInput = document.getElementById(inputId);
+        
+        if (!wrapper || !searchInput || !dropdown || !hiddenInput) return;
+        
+        let selectedValue = defaultVal;
+        
+        // Find default label
+        const defaultOpt = optionsList.find(opt => opt.value === defaultVal);
+        if (defaultOpt) {
+            searchInput.value = defaultOpt.label;
+        } else {
+            searchInput.value = "";
+        }
+        hiddenInput.value = selectedValue;
+        
+        function renderOptionsList(filterText = "") {
+            const query = filterText.toLowerCase().trim();
+            const filtered = optionsList.filter(opt => opt.label.toLowerCase().includes(query) || opt.value.toLowerCase().includes(query));
+            
+            if (filtered.length === 0) {
+                dropdown.innerHTML = `<div class="searchable-select-no-results">Không tìm thấy kết quả...</div>`;
+                return;
+            }
+            
+            dropdown.innerHTML = filtered.map(opt => {
+                const isSelected = opt.value === selectedValue;
+                return `
+                    <div class="searchable-select-option ${isSelected ? 'selected' : ''}" data-value="${opt.value}" style="background-color: #1f2937; color: #f3f4f6; padding: 10px 14px; cursor: pointer; transition: background 0.15s ease;">
+                        <span>${opt.label}</span>
+                    </div>
+                `;
+            }).join("");
+            
+            dropdown.querySelectorAll(".searchable-select-option").forEach(optEl => {
+                optEl.addEventListener("mousedown", (e) => {
+                    e.preventDefault();
+                    selectedValue = optEl.getAttribute("data-value");
+                    hiddenInput.value = selectedValue;
+                    searchInput.value = optEl.querySelector("span").textContent;
+                    
+                    // Trigger change event
+                    hiddenInput.dispatchEvent(new Event("change"));
+                    
+                    closeDropdown();
+                });
+                
+                // Add hover style
+                optEl.addEventListener("mouseenter", () => {
+                    optEl.style.backgroundColor = "var(--color-ai-primary)";
+                });
+                optEl.addEventListener("mouseleave", () => {
+                    optEl.style.backgroundColor = "#1f2937";
+                });
+            });
+        }
+        
+        function openDropdown() {
+            dropdown.style.display = "block";
+            wrapper.classList.add("open");
+            renderOptionsList(searchInput.value);
+        }
+        
+        function closeDropdown() {
+            dropdown.style.display = "none";
+            wrapper.classList.remove("open");
+            
+            // Revert search text to current selected label if invalid
+            const matched = optionsList.find(opt => opt.label === searchInput.value);
+            if (!matched) {
+                const currentOpt = optionsList.find(opt => opt.value === selectedValue);
+                searchInput.value = currentOpt ? currentOpt.label : "";
+            }
+        }
+        
+        searchInput.addEventListener("focus", openDropdown);
+        searchInput.addEventListener("click", openDropdown);
+        
+        searchInput.addEventListener("input", (e) => {
+            openDropdown();
+            renderOptionsList(e.target.value);
+        });
+        
+        searchInput.addEventListener("blur", () => {
+            setTimeout(closeDropdown, 220);
+        });
+    }
+
     function populateGanttBscDropdown(structuredPackages) {
-        const selectEl = document.getElementById("gantt-select-bsc");
-        if (!selectEl) return;
+        if (ganttBscDropdownInitialized) return;
+        ganttBscDropdownInitialized = true;
 
-        const curVal = ganttSelectedBsc || selectEl.value || "";
-
-        // Extract unique PLs (Phụ lục) exactly like Tab Bảng Tổng Hợp Master (master-filter-pl)
         const uniquePls = [...new Set(structuredPackages.map(pkg => {
             const p = pkg.parent;
             return p.goi_thau_pl || p["Gói thầu PL"] || p["Phân Lộ"] || p.PL || p.pl;
         }).filter(Boolean))].sort();
 
-        let optionsHtml = `<option value="">-- Tất cả Phụ lục (PL) (${uniquePls.length} PL) --</option>`;
-        uniquePls.forEach(pl => {
-            const isSel = String(pl).trim() === String(curVal).trim() ? "selected" : "";
-            optionsHtml += `<option value="${escapeHtml(pl)}" ${isSel}>Phụ lục: ${escapeHtml(pl)}</option>`;
-        });
+        const optionsList = [
+            { value: "", label: `-- Tất cả Phụ lục (PL) (${uniquePls.length} PL) --` },
+            ...uniquePls.map(pl => ({ value: pl, label: `Phụ lục: ${pl}` }))
+        ];
 
-        selectEl.innerHTML = optionsHtml;
+        initGanttSearchableSelect("gantt-select-bsc", optionsList, ganttSelectedBsc);
     }
 
     function bindGanttControlsOnce() {
@@ -8658,7 +8746,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                 type: 'parent',
                 tt: p.tt || (pkgIdx + 1),
                 nhom_ct: parentNhom,
-                ma_bsc: parentBsc,
+                ma_bsc: parentBsc, // LEVEL 1: Thể hiện Mã BSC!
                 title: p.hang_muc_work || `Gói thầu ${parentBsc}`,
                 person: p.phu_trach || "BQLDA",
                 startDate: startDate,
@@ -8684,13 +8772,13 @@ dropzone.addEventListener("click", () => fileInput.click());
 
                         const childTt = c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`;
 
-                        // Add Level-2 Child Row (ALWAYS populated TT, NHÓM CT, MÃ BSC, HẠNG MỤC, NGÀY BĐ, NGÀY KT)
+                        // Add Level-2 Child Row (MÃ BSC: Rỗng theo yêu cầu)
                         treeRows.push({
                             type: 'child_work',
                             parentBsc: parentBsc,
                             tt: childTt,
                             nhom_ct: c.nhom_ct || parentNhom,
-                            ma_bsc: parentBsc,
+                            ma_bsc: "", // LEVEL 2: Rỗng!
                             title: c.hang_muc_work || `Hạng mục ${childTt}`,
                             person: c.phu_trach || p.phu_trach || "BQLDA",
                             startDate: cStart,
@@ -8723,7 +8811,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                             childTt: childTt,
                             tt: `${childTt}.1`,
                             nhom_ct: c.nhom_ct || parentNhom,
-                            ma_bsc: parentBsc,
+                            ma_bsc: "", // LEVEL 3: Rỗng!
                             title: "🟢 1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
                             date: cm1Date,
                             startDateStr: formatDateDMY(cm1Date),
@@ -8739,7 +8827,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                             childTt: childTt,
                             tt: `${childTt}.2`,
                             nhom_ct: c.nhom_ct || parentNhom,
-                            ma_bsc: parentBsc,
+                            ma_bsc: "", // LEVEL 3: Rỗng!
                             title: "🟠 2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
                             date: cm2Date,
                             startDateStr: formatDateDMY(cm2Date),
@@ -8755,7 +8843,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                             childTt: childTt,
                             tt: `${childTt}.3`,
                             nhom_ct: c.nhom_ct || parentNhom,
-                            ma_bsc: parentBsc,
+                            ma_bsc: "", // LEVEL 3: Rỗng!
                             title: "🟣 3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
                             date: cm3Date,
                             startDateStr: formatDateDMY(cm3Date),
@@ -8771,7 +8859,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                             childTt: childTt,
                             tt: `${childTt}.4`,
                             nhom_ct: c.nhom_ct || parentNhom,
-                            ma_bsc: parentBsc,
+                            ma_bsc: "", // LEVEL 3: Rỗng!
                             title: "🔴 4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
                             date: cm4Date,
                             startDateStr: formatDateDMY(cm4Date),
@@ -8790,7 +8878,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         parentBsc: parentBsc,
                         tt: `${pTt}.1`,
                         nhom_ct: parentNhom,
-                        ma_bsc: parentBsc,
+                        ma_bsc: "", // LEVEL 3: Rỗng!
                         title: "🟢 1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
                         date: m1Date || new Date("2026-03-31"),
                         startDateStr: formatDateDMY(m1Date || new Date("2026-03-31")),
@@ -8804,7 +8892,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         parentBsc: parentBsc,
                         tt: `${pTt}.2`,
                         nhom_ct: parentNhom,
-                        ma_bsc: parentBsc,
+                        ma_bsc: "", // LEVEL 3: Rỗng!
                         title: "🟠 2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
                         date: m2Date || new Date("2026-06-30"),
                         startDateStr: formatDateDMY(m2Date || new Date("2026-06-30")),
@@ -8818,7 +8906,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         parentBsc: parentBsc,
                         tt: `${pTt}.3`,
                         nhom_ct: parentNhom,
-                        ma_bsc: parentBsc,
+                        ma_bsc: "", // LEVEL 3: Rỗng!
                         title: "🟣 3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
                         date: m3Date || new Date("2026-08-31"),
                         startDateStr: formatDateDMY(m3Date || new Date("2026-08-31")),
@@ -8832,7 +8920,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         parentBsc: parentBsc,
                         tt: `${pTt}.4`,
                         nhom_ct: parentNhom,
-                        ma_bsc: parentBsc,
+                        ma_bsc: "", // LEVEL 3: Rỗng!
                         title: "🔴 4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
                         date: m4Date || new Date("2026-10-31"),
                         startDateStr: formatDateDMY(m4Date || new Date("2026-10-31")),
@@ -8875,14 +8963,22 @@ dropzone.addEventListener("click", () => fileInput.click());
         let html = `
             <div class="gantt-left-panel">
                 <table class="gantt-left-table">
+                    <colgroup>
+                        <col style="width: 50px;">
+                        <col style="width: 130px;">
+                        <col style="width: 150px;">
+                        <col style="width: 370px;">
+                        <col style="width: 120px;">
+                        <col style="width: 120px;">
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th style="width: 55px; text-align: center; background: #1f2937; color: #ffffff;">TT</th>
-                            <th style="width: 140px; background: #1f2937; color: #ffffff;">NHÓM CÔNG TRÌNH</th>
-                            <th style="width: 180px; background: #1f2937; color: #ffffff;">MÃ BSC</th>
-                            <th style="width: 280px; background: #1f2937; color: #38bdf8;">HẠNG MỤC / CÔNG VIỆC</th>
-                            <th style="width: 100px; text-align: center; background: #1f2937; color: #10b981;">NGÀY BẮT ĐẦU</th>
-                            <th style="width: 100px; text-align: center; background: #1f2937; color: #ef4444;">NGÀY KẾT THÚC</th>
+                            <th style="text-align: center; background: #1f2937; color: #ffffff;">TT</th>
+                            <th style="background: #1f2937; color: #ffffff;">NHÓM CÔNG TRÌNH</th>
+                            <th style="background: #1f2937; color: #ffffff;">MÃ BSC</th>
+                            <th style="background: #1f2937; color: #38bdf8;">HẠNG MỤC / CÔNG VIỆC</th>
+                            <th style="text-align: center; background: #1f2937; color: #10b981;">NGÀY BẮT ĐẦU</th>
+                            <th style="text-align: center; background: #1f2937; color: #ef4444;">NGÀY KẾT THÚC</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -8910,8 +9006,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         <td style="text-align: center; font-weight: 700; color: #93c5fd;">${escapeHtml(row.tt)}</td>
                         <td style="color: #cbd5e1; font-weight: 500;">${escapeHtml(row.nhom_ct)}</td>
                         <td style="font-weight: 700; color: #38bdf8;">${escapeHtml(row.ma_bsc)}</td>
-                        <td title="${escapeHtml(row.title)}" style="color: #ffffff;">
-                            <span class="gantt-tree-toggle" onclick="toggleGanttPackageCollapse('${row.ma_bsc}')">${toggleIcon}</span>
+                        <td title="${escapeHtml(row.title)}" style="color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <span class="gantt-tree-toggle" onclick="toggleGanttPackageCollapse('${row.ma_bsc}')" style="cursor: pointer;">${toggleIcon}</span>
                             <span style="font-weight: 700; color: #93c5fd;">${escapeHtml(row.title)}</span>
                         </td>
                         <td style="text-align: center; font-size: 0.78rem; font-weight: 600; color: #10b981;">${escapeHtml(row.startDateStr)}</td>
@@ -8924,7 +9020,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         <td style="text-align: center; font-weight: 600; color: #cbd5e1;">${escapeHtml(row.tt)}</td>
                         <td style="color: #cbd5e1; font-weight: 500;">${escapeHtml(row.nhom_ct)}</td>
                         <td style="color: #38bdf8; font-weight: 600;">${escapeHtml(row.ma_bsc)}</td>
-                        <td style="padding-left: 20px; color: #ffffff;" title="${escapeHtml(row.title)}">
+                        <td style="padding-left: 20px; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(row.title)}">
                             <span class="gantt-tree-toggle" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;"><i class="fa-solid fa-plus"></i></span>
                             <span style="color: #f1f5f9; font-weight: 600;">${escapeHtml(row.title)}</span>
                         </td>
@@ -8938,7 +9034,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         <td style="text-align: center; font-size: 0.75rem; color: #94a3b8;">${escapeHtml(row.tt)}</td>
                         <td style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(row.nhom_ct)}</td>
                         <td style="font-size: 0.75rem; color: #38bdf8; font-weight: 500;">${escapeHtml(row.ma_bsc)}</td>
-                        <td style="padding-left: 38px;" title="${escapeHtml(row.title)}">
+                        <td style="padding-left: 38px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(row.title)}">
                             <span style="color:${row.color}; font-weight:600; font-size: 0.8rem;">${escapeHtml(row.title)}</span>
                         </td>
                         <td style="text-align: center; font-size: 0.75rem; color: ${row.color}; font-weight: 600;">${escapeHtml(row.startDateStr)}</td>
@@ -8982,6 +9078,94 @@ dropzone.addEventListener("click", () => fileInput.click());
         }
 
         attachGanttInteractiveTooltips();
+    }
+
+    function buildGanttSvgContent(treeRows, minTime, maxTime, ganttWidth, ganttHeight, headerHeight, rowHeight, dayWidth) {
+        let svg = '';
+        svg += `<rect x="0" y="0" width="${ganttWidth}" height="${headerHeight}" class="gantt-header-bg" />`;
+        const totalSpanMs = maxTime - minTime;
+
+        let currDate = new Date(minTime);
+        currDate.setDate(1);
+        currDate.setHours(0,0,0,0);
+        const endDateLimit = new Date(maxTime);
+
+        while (currDate.getTime() <= endDateLimit.getTime()) {
+            const monthStart = currDate.getTime();
+            const monthName = `${currDate.getMonth() + 1}/${currDate.getFullYear().toString().substr(-2)}`;
+            
+            const nextMonth = new Date(currDate);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            
+            const xStart = ((monthStart - minTime) / totalSpanMs) * ganttWidth;
+            const xEnd = ((nextMonth.getTime() - minTime) / totalSpanMs) * ganttWidth;
+            const monthWidth = Math.max(0, xEnd - xStart);
+
+            // Centered Month Text with text-anchor="middle"
+            svg += `
+                <rect x="${xStart}" y="0" width="${monthWidth}" height="24" class="gantt-header-month-bg" />
+                <text x="${xStart + (monthWidth / 2)}" y="17" class="gantt-header-month-text" text-anchor="middle">${monthName}</text>
+                <line x1="${xStart}" y1="0" x2="${xStart}" y2="${ganttHeight}" class="gantt-grid-line-month" />
+            `;
+
+            // Draw vertical week division lines every 7 days across the SVG height
+            let weekDate = new Date(currDate);
+            while (weekDate.getTime() < nextMonth.getTime()) {
+                const wX = ((weekDate.getTime() - minTime) / totalSpanMs) * ganttWidth;
+                const dayOfMonth = weekDate.getDate();
+                if (dayOfMonth > 1) {
+                    svg += `
+                        <text x="${wX + 2}" y="42" class="gantt-header-text" font-size="9" fill="#9ca3af">${dayOfMonth}</text>
+                        <line x1="${wX}" y1="24" x2="${wX}" y2="${ganttHeight}" class="gantt-grid-line" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" />
+                    `;
+                }
+                weekDate.setDate(weekDate.getDate() + 7);
+            }
+            currDate = nextMonth;
+        }
+
+        const now = new Date().getTime();
+        if (now >= minTime && now <= maxTime) {
+            const todayX = ((now - minTime) / totalSpanMs) * ganttWidth;
+            svg += `
+                <line x1="${todayX}" y1="0" x2="${todayX}" y2="${ganttHeight}" class="gantt-today-line" />
+                <text x="${todayX + 4}" y="16" class="gantt-today-text">HÔM NAY</text>
+            `;
+        }
+
+        treeRows.forEach((row, idx) => {
+            const y = headerHeight + (idx * rowHeight);
+            svg += `<line x1="0" y1="${y + rowHeight}" x2="${ganttWidth}" y2="${y + rowHeight}" class="gantt-row-line" />`;
+
+            if (row.type === 'grand_parent') {
+                svg += `<rect x="0" y="${y}" width="${ganttWidth}" height="${rowHeight}" fill="rgba(245, 158, 11, 0.05)" />`;
+            } else if (row.type === 'parent' || row.type === 'child_work') {
+                if (row.startDate && row.endDate) {
+                    const x1 = Math.max(0, ((row.startDate.getTime() - minTime) / totalSpanMs) * ganttWidth);
+                    const x2 = Math.min(ganttWidth, ((row.endDate.getTime() - minTime) / totalSpanMs) * ganttWidth);
+                    const width = Math.max(8, x2 - x1);
+                    const barFill = row.type === 'parent' ? "#10b981" : "#38bdf8";
+                    
+                    svg += `
+                        <rect x="${x1}" y="${y + 10}" width="${width}" height="18" fill="${barFill}" rx="4" ry="4" opacity="0.85"
+                              data-tip="<b>${escapeHtml(row.title)}</b><br>Bắt đầu: ${formatDateDMY(row.startDate)} ➔ Kết thúc: ${formatDateDMY(row.endDate)}" style="cursor: pointer;" />
+                    `;
+                }
+            } else if (row.type === 'level3_milestone') {
+                if (row.date) {
+                    const x = ((row.date.getTime() - minTime) / totalSpanMs) * ganttWidth;
+                    
+                    // Draw a diamond representing the milestone date
+                    svg += `
+                        <path d="M ${x} ${y + 11} L ${x + 8} ${y + 19} L ${x} ${y + 27} L ${x - 8} ${y + 19} Z" 
+                              fill="${row.color}" stroke="#ffffff" stroke-width="1.5"
+                              data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn: ${formatDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" style="cursor: pointer;" />
+                    `;
+                }
+            }
+        });
+
+        return svg;
     }
 
 
