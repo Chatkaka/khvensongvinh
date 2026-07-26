@@ -8543,17 +8543,19 @@ dropzone.addEventListener("click", () => fileInput.click());
         displayPackages.forEach((pkg, pkgIdx) => {
             const p = pkg.parent;
             const isCollapsed = ganttCollapsedPackages.has(p.ma_bsc);
+            const parentBsc = p.ma_bsc || `BSC-${p.tt || pkgIdx+1}`;
+            const parentNhom = p.nhom_ct || 'Hạ tầng kỹ thuật';
 
             // Add Grand Parent PL Group Row if new
-            const grandParentKey = `${p.nhom_ct}_${p.goi_thau_pl}`;
+            const grandParentKey = `${parentNhom}_${p.goi_thau_pl}`;
             if (!seenGrandParents.has(grandParentKey)) {
                 seenGrandParents.add(grandParentKey);
                 treeRows.push({
                     type: 'grand_parent',
                     tt: '',
-                    nhom_ct: p.nhom_ct || "Dự án",
-                    ma_bsc: '',
-                    title: `Gói thầu ${p.nhom_ct || ""} (${p.goi_thau_pl || "PL"})`,
+                    nhom_ct: parentNhom,
+                    ma_bsc: parentBsc,
+                    title: `Gói thầu ${parentNhom} (${p.goi_thau_pl || "PL"})`,
                     startDateStr: '',
                     endDateStr: '',
                     color: '#f59e0b'
@@ -8597,13 +8599,13 @@ dropzone.addEventListener("click", () => fileInput.click());
             if (endDate) allDates.push(endDate);
             validMilestones.forEach(d => allDates.push(d));
 
-            // Add Parent Package Row (6 Columns: TT | NHÓM CÔNG TRÌNH | MÃ BSC | HẠNG MỤC / CÔNG VIỆC | NGÀY BẮT ĐẦU | NGÀY KẾT THÚC)
+            // Add Parent Package Row (Level 1: ALWAYS populated TT, NHÓM CT, MÃ BSC, HẠNG MỤC, NGÀY BĐ, NGÀY KT)
             treeRows.push({
                 type: 'parent',
                 tt: p.tt || (pkgIdx + 1),
-                nhom_ct: p.nhom_ct || 'Hạ tầng kỹ thuật',
-                ma_bsc: p.ma_bsc || '',
-                title: p.hang_muc_work || '',
+                nhom_ct: parentNhom,
+                ma_bsc: parentBsc,
+                title: p.hang_muc_work || `Gói thầu ${parentBsc}`,
                 person: p.phu_trach || "BQLDA",
                 startDate: startDate,
                 endDate: endDate,
@@ -8626,14 +8628,16 @@ dropzone.addEventListener("click", () => fileInput.click());
 
                         allDates.push(cStart, cEnd);
 
-                        // Add Level-2 Child Row
+                        const childTt = c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`;
+
+                        // Add Level-2 Child Row (ALWAYS populated TT, NHÓM CT, MÃ BSC, HẠNG MỤC, NGÀY BĐ, NGÀY KT)
                         treeRows.push({
                             type: 'child_work',
-                            parentBsc: p.ma_bsc,
-                            tt: c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`,
-                            nhom_ct: c.nhom_ct || p.nhom_ct || 'Hạ tầng kỹ thuật',
-                            ma_bsc: c.ma_bsc || p.ma_bsc || '',
-                            title: c.hang_muc_work || `Hạng mục ${cIdx + 1}`,
+                            parentBsc: parentBsc,
+                            tt: childTt,
+                            nhom_ct: c.nhom_ct || parentNhom,
+                            ma_bsc: parentBsc,
+                            title: c.hang_muc_work || `Hạng mục ${childTt}`,
                             person: c.phu_trach || p.phu_trach || "BQLDA",
                             startDate: cStart,
                             endDate: cEnd,
@@ -8661,11 +8665,11 @@ dropzone.addEventListener("click", () => fileInput.click());
                         treeRows.push({
                             type: 'level3_milestone',
                             mType: 1,
-                            parentBsc: p.ma_bsc,
-                            childTt: c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`,
-                            tt: '',
-                            nhom_ct: c.nhom_ct || p.nhom_ct || '',
-                            ma_bsc: '',
+                            parentBsc: parentBsc,
+                            childTt: childTt,
+                            tt: `${childTt}.1`,
+                            nhom_ct: c.nhom_ct || parentNhom,
+                            ma_bsc: parentBsc,
                             title: "🟢 1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
                             date: cm1Date,
                             startDateStr: formatDateDMY(cm1Date),
@@ -8677,11 +8681,11 @@ dropzone.addEventListener("click", () => fileInput.click());
                         treeRows.push({
                             type: 'level3_milestone',
                             mType: 2,
-                            parentBsc: p.ma_bsc,
-                            childTt: c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`,
-                            tt: '',
-                            nhom_ct: c.nhom_ct || p.nhom_ct || '',
-                            ma_bsc: '',
+                            parentBsc: parentBsc,
+                            childTt: childTt,
+                            tt: `${childTt}.2`,
+                            nhom_ct: c.nhom_ct || parentNhom,
+                            ma_bsc: parentBsc,
                             title: "🟠 2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
                             date: cm2Date,
                             startDateStr: formatDateDMY(cm2Date),
@@ -8693,11 +8697,11 @@ dropzone.addEventListener("click", () => fileInput.click());
                         treeRows.push({
                             type: 'level3_milestone',
                             mType: 3,
-                            parentBsc: p.ma_bsc,
-                            childTt: c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`,
-                            tt: '',
-                            nhom_ct: c.nhom_ct || p.nhom_ct || '',
-                            ma_bsc: '',
+                            parentBsc: parentBsc,
+                            childTt: childTt,
+                            tt: `${childTt}.3`,
+                            nhom_ct: c.nhom_ct || parentNhom,
+                            ma_bsc: parentBsc,
                             title: "🟣 3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
                             date: cm3Date,
                             startDateStr: formatDateDMY(cm3Date),
@@ -8709,11 +8713,11 @@ dropzone.addEventListener("click", () => fileInput.click());
                         treeRows.push({
                             type: 'level3_milestone',
                             mType: 4,
-                            parentBsc: p.ma_bsc,
-                            childTt: c.tt || `${p.tt || (pkgIdx + 1)}.${cIdx + 1}`,
-                            tt: '',
-                            nhom_ct: c.nhom_ct || p.nhom_ct || '',
-                            ma_bsc: '',
+                            parentBsc: parentBsc,
+                            childTt: childTt,
+                            tt: `${childTt}.4`,
+                            nhom_ct: c.nhom_ct || parentNhom,
+                            ma_bsc: parentBsc,
                             title: "🔴 4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
                             date: cm4Date,
                             startDateStr: formatDateDMY(cm4Date),
@@ -8724,13 +8728,15 @@ dropzone.addEventListener("click", () => fileInput.click());
                     });
                 } else {
                     // Add 4 Level-3 Milestone Rows under Package directly if no level-2 children
+                    const pTt = p.tt || (pkgIdx + 1);
+
                     treeRows.push({
                         type: 'level3_milestone',
                         mType: 1,
-                        parentBsc: p.ma_bsc,
-                        tt: '',
-                        nhom_ct: p.nhom_ct || '',
-                        ma_bsc: '',
+                        parentBsc: parentBsc,
+                        tt: `${pTt}.1`,
+                        nhom_ct: parentNhom,
+                        ma_bsc: parentBsc,
                         title: "🟢 1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
                         date: m1Date || new Date("2026-03-31"),
                         startDateStr: formatDateDMY(m1Date || new Date("2026-03-31")),
@@ -8741,10 +8747,10 @@ dropzone.addEventListener("click", () => fileInput.click());
                     treeRows.push({
                         type: 'level3_milestone',
                         mType: 2,
-                        parentBsc: p.ma_bsc,
-                        tt: '',
-                        nhom_ct: p.nhom_ct || '',
-                        ma_bsc: '',
+                        parentBsc: parentBsc,
+                        tt: `${pTt}.2`,
+                        nhom_ct: parentNhom,
+                        ma_bsc: parentBsc,
                         title: "🟠 2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
                         date: m2Date || new Date("2026-06-30"),
                         startDateStr: formatDateDMY(m2Date || new Date("2026-06-30")),
@@ -8755,10 +8761,10 @@ dropzone.addEventListener("click", () => fileInput.click());
                     treeRows.push({
                         type: 'level3_milestone',
                         mType: 3,
-                        parentBsc: p.ma_bsc,
-                        tt: '',
-                        nhom_ct: p.nhom_ct || '',
-                        ma_bsc: '',
+                        parentBsc: parentBsc,
+                        tt: `${pTt}.3`,
+                        nhom_ct: parentNhom,
+                        ma_bsc: parentBsc,
                         title: "🟣 3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
                         date: m3Date || new Date("2026-08-31"),
                         startDateStr: formatDateDMY(m3Date || new Date("2026-08-31")),
@@ -8769,10 +8775,10 @@ dropzone.addEventListener("click", () => fileInput.click());
                     treeRows.push({
                         type: 'level3_milestone',
                         mType: 4,
-                        parentBsc: p.ma_bsc,
-                        tt: '',
-                        nhom_ct: p.nhom_ct || '',
-                        ma_bsc: '',
+                        parentBsc: parentBsc,
+                        tt: `${pTt}.4`,
+                        nhom_ct: parentNhom,
+                        ma_bsc: parentBsc,
                         title: "🔴 4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
                         date: m4Date || new Date("2026-10-31"),
                         startDateStr: formatDateDMY(m4Date || new Date("2026-10-31")),
@@ -8811,7 +8817,7 @@ dropzone.addEventListener("click", () => fileInput.click());
         const headerHeight = 50;
         const ganttHeight = headerHeight + (treeRows.length * rowHeight);
 
-        // Render Split View HTML (Exact 6 Columns with Explicit White/Color Cell Styles)
+        // Render Split View HTML (Exact 6 Columns with 100% Populated Data)
         let html = `
             <div class="gantt-left-panel">
                 <table class="gantt-left-table">
@@ -8834,7 +8840,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                     <tr class="row-grand-parent-gantt" style="background-color: #27272a; font-weight: 700; color: #f59e0b;" data-row-idx="${idx}">
                         <td style="text-align: center; color: #f59e0b;">${escapeHtml(row.tt)}</td>
                         <td style="color: #f59e0b;">${escapeHtml(row.nhom_ct)}</td>
-                        <td style="color: #f59e0b;"></td>
+                        <td style="color: #f59e0b;">${escapeHtml(row.ma_bsc)}</td>
                         <td style="color: #f59e0b;">
                             <span class="gantt-tree-toggle" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;"><i class="fa-solid fa-minus"></i></span>
                             ${escapeHtml(row.title)}
@@ -8863,7 +8869,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                     <tr class="row-child-gantt" style="background-color: rgba(56, 189, 248, 0.06); color: #ffffff;" data-row-idx="${idx}">
                         <td style="text-align: center; font-weight: 600; color: #cbd5e1;">${escapeHtml(row.tt)}</td>
                         <td style="color: #cbd5e1; font-weight: 500;">${escapeHtml(row.nhom_ct)}</td>
-                        <td style="color: #94a3b8; font-weight: 500;">${escapeHtml(row.ma_bsc)}</td>
+                        <td style="color: #38bdf8; font-weight: 600;">${escapeHtml(row.ma_bsc)}</td>
                         <td style="padding-left: 20px; color: #ffffff;" title="${escapeHtml(row.title)}">
                             <span class="gantt-tree-toggle" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;"><i class="fa-solid fa-plus"></i></span>
                             <span style="color: #f1f5f9; font-weight: 600;">${escapeHtml(row.title)}</span>
@@ -8877,7 +8883,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                     <tr class="row-level3-gantt" style="background-color: rgba(15, 23, 42, 0.7); color: #94a3b8;" data-row-idx="${idx}">
                         <td style="text-align: center; font-size: 0.75rem; color: #94a3b8;">${escapeHtml(row.tt)}</td>
                         <td style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(row.nhom_ct)}</td>
-                        <td style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(row.ma_bsc)}</td>
+                        <td style="font-size: 0.75rem; color: #38bdf8; font-weight: 500;">${escapeHtml(row.ma_bsc)}</td>
                         <td style="padding-left: 38px;" title="${escapeHtml(row.title)}">
                             <span style="color:${row.color}; font-weight:600; font-size: 0.8rem;">${escapeHtml(row.title)}</span>
                         </td>
