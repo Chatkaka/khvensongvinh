@@ -7717,7 +7717,7 @@ const INITIAL_DATABASE = {
             "goi_thau": "Tất cả các gói"
         }
     ],
-    "last_updated": "2026-07-26 23:02:33",
+    "last_updated": "2026-07-27 06:47:44",
     "telegram_config": {
         "bot_token": "",
         "chat_id": "-1004313859012"
