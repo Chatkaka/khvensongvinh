@@ -9000,8 +9000,3 @@ dropzone.addEventListener("click", () => fileInput.click());
     }
 
 });
-
-
-`
-
----
