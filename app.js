@@ -8484,9 +8484,6 @@ dropzone.addEventListener("click", () => fileInput.click());
     // 16. TAB QUẢN LÝ TIẾN ĐỘ CÔNG VIỆC (ENTERPRISE GANTT CHART MANAGEMENT)
     let ganttCollapsedPackages = new Set();
     let ganttSelectedBsc = ""; 
-    let ganttSearchQuery = "";
-    let ganttFilterNhom = "";
-    let ganttFilterStatus = ""; 
     let ganttZoomMode = "month"; 
     let ganttControlsBound = false;
 
@@ -8497,33 +8494,16 @@ dropzone.addEventListener("click", () => fileInput.click());
         // Structure master data into parent packages & child items
         const structuredPackages = restructureMasterData(db.master);
 
-        // Populate Dropdown for PL / Mã BSC / Gói thầu / Hạng mục
+        // Populate Streamlined Dropdown for PL / Mã BSC / Gói thầu / Hạng mục
         populateGanttBscDropdown(structuredPackages);
-
-        // Populate Nhóm CT Filter
-        const nhomSelect = document.getElementById("gantt-filter-nhom");
-        if (nhomSelect && nhomSelect.options.length <= 1) {
-            const nhomSet = new Set();
-            db.master.forEach(r => {
-                const item = r.parent ? r.parent : r;
-                const norm = normalizeMasterRow(item);
-                if (norm && norm.nhom_ct) nhomSet.add(norm.nhom_ct);
-            });
-            nhomSet.forEach(nhom => {
-                const opt = document.createElement("option");
-                opt.value = nhom;
-                opt.textContent = nhom;
-                nhomSelect.appendChild(opt);
-            });
-        }
 
         // Bind Controls Once
         bindGanttControlsOnce();
 
-        // Filter packages based on user selection
+        // Filter packages based on user selection in PL / Mã BSC dropdown
         let displayPackages = structuredPackages.filter(pkg => pkg && pkg.parent);
 
-        // Dropdown selection filter (PL, Mã BSC, or Child item)
+        // Dropdown selection filter (Tất cả, Phân Lộ PL, Mã BSC, or Child item)
         if (ganttSelectedBsc) {
             if (ganttSelectedBsc.startsWith("PL::")) {
                 const selectedPl = ganttSelectedBsc.replace("PL::", "").trim().toLowerCase();
@@ -8550,40 +8530,9 @@ dropzone.addEventListener("click", () => fileInput.click());
             }
         }
 
-        // Filter by Quick Search Query
-        if (ganttSearchQuery) {
-            const q = ganttSearchQuery.toLowerCase();
-            displayPackages = displayPackages.filter(pkg => {
-                const p = pkg.parent;
-                const matchPl = String(p.goi_thau_pl || "").toLowerCase().includes(q);
-                const matchParent = String(p.ma_bsc || "").toLowerCase().includes(q) ||
-                                    String(p.hang_muc_work || "").toLowerCase().includes(q) ||
-                                    String(p.nhom_ct || "").toLowerCase().includes(q) ||
-                                    String(p.phu_trach || "").toLowerCase().includes(q);
-                const matchChild = pkg.children && pkg.children.some(c => 
-                    String(c.hang_muc_work || "").toLowerCase().includes(q) ||
-                    String(c.tt || "").toLowerCase().includes(q)
-                );
-                const isMatch = matchPl || matchParent || matchChild;
-                if (isMatch && ganttCollapsedPackages.has(p.ma_bsc)) {
-                    ganttCollapsedPackages.delete(p.ma_bsc);
-                }
-                return isMatch;
-            });
-        }
-
-        // Filter by Nhóm CT
-        if (ganttFilterNhom && !ganttFilterNhom.toLowerCase().includes("tất cả")) {
-            const targetNhom = ganttFilterNhom.trim().toLowerCase();
-            displayPackages = displayPackages.filter(pkg => {
-                const nhom = String(pkg.parent.nhom_ct || "").trim().toLowerCase();
-                return nhom === targetNhom || nhom.includes(targetNhom) || targetNhom.includes(nhom);
-            });
-        }
-
         // ABSOLUTE POKA-YOKE SAFEGUARD: Never render a blank empty screen!
         if (displayPackages.length === 0) {
-            console.warn("Gantt filters yielded 0 packages, auto-resetting display to all packages.");
+            console.warn("Gantt filter yielded 0 packages, auto-resetting display to all packages.");
             displayPackages = structuredPackages.filter(pkg => pkg && pkg.parent);
         }
 
@@ -8856,13 +8805,13 @@ dropzone.addEventListener("click", () => fileInput.click());
         maxTime += paddingEnd;
 
         const totalDays = Math.ceil((maxTime - minTime) / (24 * 60 * 60 * 1000));
-        const dayWidth = ganttZoomMode === 'week' ? 18 : 8;
+        const dayWidth = 8;
         const ganttWidth = Math.max(totalDays * dayWidth, 1100);
         const rowHeight = 38;
         const headerHeight = 50;
         const ganttHeight = headerHeight + (treeRows.length * rowHeight);
 
-        // Render Split View HTML (Exact 6 Columns with Explicit White/Color Cell Styles and Exact User Default Dates 01/01/2026 - 31/12/2026)
+        // Render Split View HTML (Exact 6 Columns with Explicit White/Color Cell Styles)
         let html = `
             <div class="gantt-left-panel">
                 <table class="gantt-left-table">
