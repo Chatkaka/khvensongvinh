@@ -8989,4 +8989,346 @@ dropzone.addEventListener("click", () => fileInput.click());
         attachGanttInteractiveTooltips();
     }
 
+
+
+    function populateGanttBscDropdown(structuredPackages) {
+        const selectEl = document.getElementById("gantt-select-bsc");
+        if (!selectEl) return;
+
+        const curVal = selectEl.value || ganttSelectedBsc || "";
+        selectEl.innerHTML = `<option value="">-- Tất cả Phân Lộ (PL) / Mã BSC / Gói thầu (${structuredPackages.length} Gói) --</option>`;
+
+        const plGroups = {};
+        structuredPackages.forEach(pkg => {
+            if (!pkg || !pkg.parent) return;
+            const pl = String(pkg.parent.goi_thau_pl || "Khác").trim();
+            if (!plGroups[pl]) plGroups[pl] = [];
+            plGroups[pl].push(pkg);
+        });
+
+        const sortedPls = Object.keys(plGroups).sort();
+        sortedPls.forEach(pl => {
+            const pkgsInPl = plGroups[pl];
+            const plOpt = document.createElement("option");
+            plOpt.value = `PL::${pl}`;
+            plOpt.textContent = `📁 [NHÓM PL] ${pl} (${pkgsInPl.length} Gói thầu)`;
+            plOpt.style.fontWeight = "bold";
+            plOpt.style.color = "#38bdf8";
+            if (`PL::${pl}` === curVal) plOpt.selected = true;
+            selectEl.appendChild(plOpt);
+
+            pkgsInPl.forEach(pkg => {
+                const p = pkg.parent;
+                const bsc = String(p.ma_bsc || "").trim();
+                const parentOpt = document.createElement("option");
+                parentOpt.value = bsc;
+                parentOpt.textContent = `   📦 [Gói ${pl}] ${bsc} - ${p.hang_muc_work || ""}`;
+                if (bsc === curVal) parentOpt.selected = true;
+                selectEl.appendChild(parentOpt);
+
+                if (pkg.children && pkg.children.length > 0) {
+                    pkg.children.forEach(c => {
+                        const val = `${bsc}||${c.tt}`;
+                        const childOpt = document.createElement("option");
+                        childOpt.value = val;
+                        childOpt.textContent = `      └─ [Hạng mục cấp 2 - ${c.tt}] ${c.hang_muc_work || ""}`;
+                        if (val === curVal) childOpt.selected = true;
+                        selectEl.appendChild(childOpt);
+                    });
+                }
+            });
+        });
+    }
+
+    function bindGanttControlsOnce() {
+        if (ganttControlsBound) return;
+        ganttControlsBound = true;
+
+        const bscSelect = document.getElementById("gantt-select-bsc");
+        if (bscSelect) {
+            bscSelect.addEventListener("change", (e) => {
+                ganttSelectedBsc = e.target.value;
+                ganttFilterStatus = "";
+                const statusSelect = document.getElementById("gantt-filter-status");
+                if (statusSelect) statusSelect.value = "";
+                renderFullGanttManagementView();
+            });
+        }
+
+        const searchInput = document.getElementById("gantt-search-input");
+        if (searchInput) {
+            searchInput.addEventListener("input", (e) => {
+                ganttSearchQuery = e.target.value.trim();
+                renderFullGanttManagementView();
+            });
+        }
+
+        const nhomSelect = document.getElementById("gantt-filter-nhom");
+        if (nhomSelect) {
+            nhomSelect.addEventListener("change", (e) => {
+                ganttFilterNhom = e.target.value;
+                renderFullGanttManagementView();
+            });
+        }
+
+        const statusSelect = document.getElementById("gantt-filter-status");
+        if (statusSelect) {
+            statusSelect.addEventListener("change", (e) => {
+                ganttFilterStatus = e.target.value;
+                renderFullGanttManagementView();
+            });
+        }
+
+        const monthBtn = document.getElementById("gantt-zoom-month");
+        const weekBtn = document.getElementById("gantt-zoom-week");
+        if (monthBtn && weekBtn) {
+            monthBtn.addEventListener("click", () => {
+                ganttZoomMode = "month";
+                monthBtn.classList.add("primary");
+                weekBtn.classList.remove("primary");
+                renderFullGanttManagementView();
+            });
+            weekBtn.addEventListener("click", () => {
+                ganttZoomMode = "week";
+                weekBtn.classList.add("primary");
+                monthBtn.classList.remove("primary");
+                renderFullGanttManagementView();
+            });
+        }
+
+        const todayBtn = document.getElementById("gantt-today-btn");
+        if (todayBtn) {
+            todayBtn.addEventListener("click", () => {
+                const scrollPane = document.getElementById("gantt-right-scroll-pane");
+                const todayEl = document.querySelector(".gantt-today-line");
+                if (scrollPane && todayEl) {
+                    const todayX = parseFloat(todayEl.getAttribute("x1"));
+                    scrollPane.scrollLeft = Math.max(0, todayX - 300);
+                }
+            });
+        }
+    }
+
+    function parseGanttDateSafe(dStr) {
+        if (!dStr) return null;
+        const str = String(dStr).trim();
+        if (!str) return null;
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    function calculatePackageGanttStatus(p) {
+        if (!p) return "Chưa bắt đầu";
+        if (p.dieu_kien_du === "ĐỦ ĐK" || p.ngay_bd_khoi_cong) return "Đã khởi công";
+        if (p.tt_khtk === "Đã duyệt" && p.tt_lcnt === "Đã có KQ" && p.tt_ky_hdcu === "Đã CU") return "Hoàn thành";
+        if (p.ngay_kt_yc && new Date(p.ngay_kt_yc).getTime() < new Date().getTime()) return "Chậm tiến độ";
+        if (!p.kh_phat_hanh_hstktc && !p.kh_pd_khtk && !p.kh_lcnt && !p.kh_ky_hdcu && !p.ngay_bd_khoi_cong) return "Chưa bắt đầu";
+        return "Đang thực hiện";
+    }
+
+    function calculatePackageProgress(p) {
+        let score = 0;
+        if (p.kh_phat_hanh_hstktc || p.kh_pd_khtk) score += 25;
+        if (p.kh_lcnt && (p.tt_lcnt === "Đã có KQ" || p.tt_lcnt === "Đã duyệt")) score += 25;
+        if (p.kh_ky_hdcu && (p.tt_ky_hdcu === "Đã CU" || p.tt_ky_hdcu === "Đã ký")) score += 25;
+        if (p.ngay_bd_khoi_cong || p.dieu_kien_du === "ĐỦ ĐK") score += 25;
+        return score;
+    }
+
+    function getGanttWeekNumber(d) {
+        const date = new Date(d.getTime());
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+        const week1 = new Date(date.getFullYear(), 0, 4);
+        return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    }
+
+    window.resetGanttFilters = function() {
+        ganttSelectedBsc = "";
+        ganttSearchQuery = "";
+        ganttFilterNhom = "";
+        ganttFilterStatus = "";
+        const bscSelect = document.getElementById("gantt-select-bsc");
+        if (bscSelect) bscSelect.value = "";
+        const searchInput = document.getElementById("gantt-search-input");
+        if (searchInput) searchInput.value = "";
+        const nhomSelect = document.getElementById("gantt-filter-nhom");
+        if (nhomSelect) nhomSelect.value = "";
+        const statusSelect = document.getElementById("gantt-filter-status");
+        if (statusSelect) statusSelect.value = "";
+        renderFullGanttManagementView();
+    };
+
+    window.toggleGanttPackageCollapse = function(maBsc) {
+        if (ganttCollapsedPackages.has(maBsc)) ganttCollapsedPackages.delete(maBsc);
+        else ganttCollapsedPackages.add(maBsc);
+        renderFullGanttManagementView();
+    };
+
+    function attachGanttInteractiveTooltips() {
+        const tooltip = document.getElementById("gantt-tooltip");
+        if (!tooltip) return;
+        document.querySelectorAll("[data-tip]").forEach(el => {
+            el.addEventListener("mouseenter", (e) => {
+                tooltip.innerHTML = el.getAttribute("data-tip");
+                tooltip.style.display = "block";
+            });
+            el.addEventListener("mousemove", (e) => {
+                tooltip.style.left = (e.pageX + 12) + "px";
+                tooltip.style.top = (e.pageY + 12) + "px";
+            });
+            el.addEventListener("mouseleave", () => {
+                tooltip.style.display = "none";
+            });
+        });
+    }
+
+    function buildGanttSvgContent(treeRows, minTime, maxTime, ganttWidth, ganttHeight, headerHeight, rowHeight, dayWidth) {
+        let svg = '';
+        svg += `<rect x="0" y="0" width="${ganttWidth}" height="${headerHeight}" class="gantt-header-bg" />`;
+        const totalSpanMs = maxTime - minTime;
+
+        let currDate = new Date(minTime);
+        currDate.setDate(1);
+        currDate.setHours(0,0,0,0);
+        const endDateLimit = new Date(maxTime);
+
+        while (currDate.getTime() <= endDateLimit.getTime()) {
+            const monthStart = currDate.getTime();
+            const monthName = `${currDate.getMonth() + 1}/${currDate.getFullYear().toString().substr(-2)}`;
+            
+            const nextMonth = new Date(currDate);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            
+            const xStart = ((monthStart - minTime) / totalSpanMs) * ganttWidth;
+            const xEnd = ((nextMonth.getTime() - minTime) / totalSpanMs) * ganttWidth;
+            const monthWidth = Math.max(0, xEnd - xStart);
+
+            svg += `
+                <rect x="${xStart}" y="0" width="${monthWidth}" height="24" class="gantt-header-month-bg" />
+                <text x="${xStart + 8}" y="17" class="gantt-header-month-text">${monthName}</text>
+                <line x1="${xStart}" y1="0" x2="${xStart}" y2="${ganttHeight}" class="gantt-grid-line-month" />
+            `;
+
+            if (ganttZoomMode === 'week') {
+                let weekDate = new Date(currDate);
+                while (weekDate.getTime() < nextMonth.getTime()) {
+                    const wX = ((weekDate.getTime() - minTime) / totalSpanMs) * ganttWidth;
+                    const weekNum = getGanttWeekNumber(weekDate);
+                    svg += `
+                        <text x="${wX + 4}" y="42" class="gantt-header-text">T${weekNum}</text>
+                        <line x1="${wX}" y1="24" x2="${wX}" y2="${ganttHeight}" class="gantt-grid-line" />
+                    `;
+                    weekDate.setDate(weekDate.getDate() + 7);
+                }
+            }
+            currDate = nextMonth;
+        }
+
+        const now = new Date().getTime();
+        if (now >= minTime && now <= maxTime) {
+            const todayX = ((now - minTime) / totalSpanMs) * ganttWidth;
+            svg += `
+                <line x1="${todayX}" y1="0" x2="${todayX}" y2="${ganttHeight}" class="gantt-today-line" />
+                <text x="${todayX + 4}" y="16" class="gantt-today-text">HÔM NAY</text>
+            `;
+        }
+
+        const milestoneCoords = {};
+
+        treeRows.forEach((row, idx) => {
+            const y = headerHeight + (idx * rowHeight);
+            svg += `<line x1="0" y1="${y + rowHeight}" x2="${ganttWidth}" y2="${y + rowHeight}" class="gantt-row-line" />`;
+
+            if (row.type === 'grand_parent') {
+                svg += `<rect x="0" y="${y}" width="${ganttWidth}" height="${rowHeight}" fill="rgba(245, 158, 11, 0.05)" />`;
+            } else if (row.type === 'parent' || row.type === 'child_work') {
+                if (row.startDate && row.endDate) {
+                    const x1 = Math.max(0, ((row.startDate.getTime() - minTime) / totalSpanMs) * ganttWidth);
+                    const x2 = Math.min(ganttWidth, ((row.endDate.getTime() - minTime) / totalSpanMs) * ganttWidth);
+                    const width = Math.max(8, x2 - x1);
+                    const barFill = row.type === 'parent' ? "#10b981" : "#38bdf8";
+                    
+                    svg += `
+                        <rect x="${x1}" y="${y + 10}" width="${width}" height="18" fill="${barFill}" rx="4" ry="4" opacity="0.85"
+                              data-tip="<b>${escapeHtml(row.title)}</b><br>Bắt đầu: ${formatDateDMY(row.startDate)} ➔ Kết thúc: ${formatDateDMY(row.endDate)}" />
+                        <text x="${x1 + 8}" y="${y + 23}" fill="#ffffff" font-size="10" font-weight="700" pointer-events="none">${escapeHtml(row.ma_bsc || row.tt)}</text>
+                    `;
+                }
+            } else if (row.type === 'level3_milestone') {
+                if (row.date && !isNaN(row.date)) {
+                    const x = ((row.date.getTime() - minTime) / totalSpanMs) * ganttWidth;
+                    const key = `${row.parentBsc}_${row.childTt || 'pkg'}_m${row.mType}`;
+                    milestoneCoords[key] = { x: x, y: y + 19 };
+
+                    const barWidth = 45;
+                    if (row.mType === 4) {
+                        const dSize = 9;
+                        const points = `${x},${y+19-dSize} ${x+dSize},${y+19} ${x},${y+19+dSize} ${x-dSize},${y+19}`;
+                        svg += `
+                            <polygon points="${points}" fill="#ef4444"
+                                     data-tip="<b>${escapeHtml(row.title)}</b><br>Mốc Khởi công: ${formatDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
+                            <text x="${x + 14}" y="${y + 23}" fill="#ef4444" font-size="10" font-weight="700">${formatDateDMY(row.date)}</text>
+                        `;
+                    } else {
+                        svg += `
+                            <rect x="${x}" y="${y + 11}" width="${barWidth}" height="16" fill="${row.color}" rx="3" ry="3" opacity="0.85"
+                                  data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn KH: ${formatDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
+                            <text x="${x + barWidth + 6}" y="${y + 23}" fill="${row.color}" font-size="10" font-weight="600">${formatDateDMY(row.date)}</text>
+                        `;
+                    }
+                }
+            }
+        });
+
+        treeRows.forEach(row => {
+            if (row.type === 'child_work') {
+                const bsc = row.parentBsc;
+                const tt = row.tt;
+                const m1 = milestoneCoords[`${bsc}_${tt}_m1`];
+                const m2 = milestoneCoords[`${bsc}_${tt}_m2`];
+                const m3 = milestoneCoords[`${bsc}_${tt}_m3`];
+                const m4 = milestoneCoords[`${bsc}_${tt}_m4`];
+
+                const pairs = [
+                    { from: m1, to: m2 },
+                    { from: m2, to: m3 },
+                    { from: m3, to: m4 }
+                ];
+
+                pairs.forEach(pair => {
+                    if (pair.from && pair.to) {
+                        const x1 = pair.from.x + 35;
+                        const y1 = pair.from.y;
+                        const x2 = pair.to.x;
+                        const y2 = pair.to.y;
+
+                        const isWarn = x2 < pair.from.x;
+                        const marker = isWarn ? "url(#gantt-arrowhead-warn)" : "url(#gantt-arrowhead)";
+                        const strokeColor = isWarn ? "#ef4444" : "#38bdf8";
+
+                        const midX = x1 + Math.max(12, (x2 - x1) / 2);
+                        const pathD = `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
+
+                        svg += `<path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="1.5" stroke-dasharray="3,3" marker-end="${marker}" />`;
+                    }
+                });
+            }
+        });
+
+        return svg;
+    }
+
+
+
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
 });
