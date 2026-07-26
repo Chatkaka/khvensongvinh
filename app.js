@@ -8624,7 +8624,7 @@ dropzone.addEventListener("click", () => fileInput.click());
             const m4DateStr = p.ngay_bd_khoi_cong || "";
             const m4Date = parseGanttDateSafe(m4DateStr);
 
-            // Calculate Parent Start & End Dates with Six Sigma Poka-Yoke Fallbacks
+            // Calculate Parent Start & End Dates with Exact User Directive (Default Start: 01/01/2026, Default End: 31/12/2026)
             let startDate = parseGanttDateSafe(p.ngay_bd_yc);
             let endDate = parseGanttDateSafe(p.ngay_kt_yc);
 
@@ -8636,13 +8636,12 @@ dropzone.addEventListener("click", () => fileInput.click());
                 endDate = new Date(Math.max(...validMilestones.map(d => d.getTime())));
             }
             
-            // Default realistic timeline fallback if dates are blank in database
+            // USER DIRECTIVE: Mặc nhiên lấy ngày bắt đầu là 01/01/2026 và ngày kết thúc là 31/12/2026 nếu rỗng
             if (!startDate) {
-                const monthOffset = (pkgIdx % 6);
-                startDate = new Date(2026, 2 + monthOffset, 1);
+                startDate = new Date("2026-01-01");
             }
             if (!endDate) {
-                endDate = new Date(startDate.getTime() + (120 * 24 * 60 * 60 * 1000));
+                endDate = new Date("2026-12-31");
             }
 
             if (startDate) allDates.push(startDate);
@@ -8673,8 +8672,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         let cStart = parseGanttDateSafe(c.ngay_bd_yc || c.kh_phat_hanh_hstktc);
                         let cEnd = parseGanttDateSafe(c.ngay_kt_yc || c.ngay_bd_khoi_cong);
 
-                        if (!cStart) cStart = new Date(startDate.getTime() + (cIdx * 10 * 86400000));
-                        if (!cEnd) cEnd = new Date(cStart.getTime() + 45 * 86400000);
+                        if (!cStart) cStart = new Date("2026-01-01");
+                        if (!cEnd) cEnd = new Date("2026-12-31");
 
                         allDates.push(cStart, cEnd);
 
@@ -8697,16 +8696,16 @@ dropzone.addEventListener("click", () => fileInput.click());
 
                         // Add 4 Level-3 Milestone Rows under each Level-2 Child Item
                         const cm1Str = c.kh_phat_hanh_hstktc || m1DateStr;
-                        const cm1Date = parseGanttDateSafe(cm1Str) || new Date(cStart.getTime() + 5*86400000);
+                        const cm1Date = parseGanttDateSafe(cm1Str) || new Date("2026-03-31");
                         
                         const cm2Str = c.kh_lcnt || m2DateStr;
-                        const cm2Date = parseGanttDateSafe(cm2Str) || new Date(cStart.getTime() + 15*86400000);
+                        const cm2Date = parseGanttDateSafe(cm2Str) || new Date("2026-06-30");
 
                         const cm3Str = c.kh_ky_hdcu || m3DateStr;
-                        const cm3Date = parseGanttDateSafe(cm3Str) || new Date(cStart.getTime() + 25*86400000);
+                        const cm3Date = parseGanttDateSafe(cm3Str) || new Date("2026-08-31");
 
                         const cm4Str = c.ngay_bd_khoi_cong || m4DateStr;
-                        const cm4Date = parseGanttDateSafe(cm4Str) || new Date(cStart.getTime() + 35*86400000);
+                        const cm4Date = parseGanttDateSafe(cm4Str) || new Date("2026-10-31");
 
                         allDates.push(cm1Date, cm2Date, cm3Date, cm4Date);
 
@@ -8784,9 +8783,9 @@ dropzone.addEventListener("click", () => fileInput.click());
                         nhom_ct: p.nhom_ct || '',
                         ma_bsc: '',
                         title: "🟢 1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
-                        date: m1Date || new Date(startDate.getTime() + 15*86400000),
-                        startDateStr: formatDateDMY(m1Date || new Date(startDate.getTime() + 15*86400000)),
-                        endDateStr: formatDateDMY(m1Date || new Date(startDate.getTime() + 15*86400000)),
+                        date: m1Date || new Date("2026-03-31"),
+                        startDateStr: formatDateDMY(m1Date || new Date("2026-03-31")),
+                        endDateStr: formatDateDMY(m1Date || new Date("2026-03-31")),
                         status: p.tt_khtk || p.tt_hstktc || (m1DateStr ? "Đã lập KH" : "Chờ phê duyệt"),
                         color: "#10b981"
                     });
@@ -8798,9 +8797,9 @@ dropzone.addEventListener("click", () => fileInput.click());
                         nhom_ct: p.nhom_ct || '',
                         ma_bsc: '',
                         title: "🟠 2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
-                        date: m2Date || new Date(startDate.getTime() + 45*86400000),
-                        startDateStr: formatDateDMY(m2Date || new Date(startDate.getTime() + 45*86400000)),
-                        endDateStr: formatDateDMY(m2Date || new Date(startDate.getTime() + 45*86400000)),
+                        date: m2Date || new Date("2026-06-30"),
+                        startDateStr: formatDateDMY(m2Date || new Date("2026-06-30")),
+                        endDateStr: formatDateDMY(m2Date || new Date("2026-06-30")),
                         status: p.tt_lcnt || (m2DateStr ? "Đã lập KH" : "Chờ LCNT"),
                         color: "#f59e0b"
                     });
@@ -8812,9 +8811,9 @@ dropzone.addEventListener("click", () => fileInput.click());
                         nhom_ct: p.nhom_ct || '',
                         ma_bsc: '',
                         title: "🟣 3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
-                        date: m3Date || new Date(startDate.getTime() + 75*86400000),
-                        startDateStr: formatDateDMY(m3Date || new Date(startDate.getTime() + 75*86400000)),
-                        endDateStr: formatDateDMY(m3Date || new Date(startDate.getTime() + 75*86400000)),
+                        date: m3Date || new Date("2026-08-31"),
+                        startDateStr: formatDateDMY(m3Date || new Date("2026-08-31")),
+                        endDateStr: formatDateDMY(m3Date || new Date("2026-08-31")),
                         status: p.tt_ky_hdcu || (m3DateStr ? "Đã ký" : "Chờ ký HĐ"),
                         color: "#8b5cf6"
                     });
@@ -8826,9 +8825,9 @@ dropzone.addEventListener("click", () => fileInput.click());
                         nhom_ct: p.nhom_ct || '',
                         ma_bsc: '',
                         title: "🔴 4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
-                        date: m4Date || new Date(startDate.getTime() + 90*86400000),
-                        startDateStr: formatDateDMY(m4Date || new Date(startDate.getTime() + 90*86400000)),
-                        endDateStr: formatDateDMY(m4Date || new Date(startDate.getTime() + 90*86400000)),
+                        date: m4Date || new Date("2026-10-31"),
+                        startDateStr: formatDateDMY(m4Date || new Date("2026-10-31")),
+                        endDateStr: formatDateDMY(m4Date || new Date("2026-10-31")),
                         status: p.dieu_kien_du || (m4DateStr ? "Đã khởi công" : "Thiếu ĐK KC"),
                         color: "#ef4444"
                     });
@@ -8848,8 +8847,8 @@ dropzone.addEventListener("click", () => fileInput.click());
         });
 
         const nowTime = new Date().getTime();
-        if (minTime === Infinity) minTime = nowTime - (30 * 24 * 60 * 60 * 1000);
-        if (maxTime === -Infinity) maxTime = nowTime + (180 * 24 * 60 * 60 * 1000);
+        if (minTime === Infinity) minTime = new Date("2026-01-01").getTime();
+        if (maxTime === -Infinity) maxTime = new Date("2026-12-31").getTime();
 
         const paddingStart = 15 * 24 * 60 * 60 * 1000;
         const paddingEnd = 30 * 24 * 60 * 60 * 1000;
@@ -8863,7 +8862,7 @@ dropzone.addEventListener("click", () => fileInput.click());
         const headerHeight = 50;
         const ganttHeight = headerHeight + (treeRows.length * rowHeight);
 
-        // Render Split View HTML (Exact 6 Columns with Explicit White/Color Text Colors for 100% High Visibility)
+        // Render Split View HTML (Exact 6 Columns with Explicit White/Color Cell Styles and Exact User Default Dates 01/01/2026 - 31/12/2026)
         let html = `
             <div class="gantt-left-panel">
                 <table class="gantt-left-table">
