@@ -8520,6 +8520,23 @@ dropzone.addEventListener("click", () => fileInput.click());
         return packages;
     }
 
+    function formatGanttDateDMY(date) {
+        if (!date) return "";
+        if (date instanceof Date) {
+            if (isNaN(date.getTime())) return "";
+            const dd = String(date.getDate()).padStart(2, '0');
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const yyyy = date.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        }
+        // If YYYY-MM-DD string
+        const parts = String(date).trim().split("-");
+        if (parts.length === 3 && parts[0].length === 4) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return date;
+    }
+
     function initGanttSearchableSelect(inputId, optionsList, defaultVal = "") {
         const wrapper = document.getElementById(inputId + "-wrapper");
         const searchInput = document.getElementById(inputId + "-search");
@@ -8751,8 +8768,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                 person: p.phu_trach || "BQLDA",
                 startDate: startDate,
                 endDate: endDate,
-                startDateStr: formatDateDMY(startDate),
-                endDateStr: formatDateDMY(endDate),
+                startDateStr: formatGanttDateDMY(startDate),
+                endDateStr: formatGanttDateDMY(endDate),
                 status: calculatePackageGanttStatus(p),
                 progress: calculatePackageProgress(p),
                 isCollapsed: isCollapsed
@@ -8783,8 +8800,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                             person: c.phu_trach || p.phu_trach || "BQLDA",
                             startDate: cStart,
                             endDate: cEnd,
-                            startDateStr: formatDateDMY(cStart),
-                            endDateStr: formatDateDMY(cEnd),
+                            startDateStr: formatGanttDateDMY(cStart),
+                            endDateStr: formatGanttDateDMY(cEnd),
                             status: c.progress_status || c.dieu_kien_du || "Đang thực hiện",
                             color: "#38bdf8"
                         });
@@ -8814,8 +8831,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                             ma_bsc: "", // LEVEL 3: Rỗng!
                             title: "🟢 1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
                             date: cm1Date,
-                            startDateStr: formatDateDMY(cm1Date),
-                            endDateStr: formatDateDMY(cm1Date),
+                            startDateStr: formatGanttDateDMY(cm1Date),
+                            endDateStr: formatGanttDateDMY(cm1Date),
                             status: c.tt_khtk || p.tt_khtk || (cm1Str ? "Đã lập KH" : "Chờ phê duyệt"),
                             color: "#10b981"
                         });
@@ -8830,8 +8847,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                             ma_bsc: "", // LEVEL 3: Rỗng!
                             title: "🟠 2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
                             date: cm2Date,
-                            startDateStr: formatDateDMY(cm2Date),
-                            endDateStr: formatDateDMY(cm2Date),
+                            startDateStr: formatGanttDateDMY(cm2Date),
+                            endDateStr: formatGanttDateDMY(cm2Date),
                             status: c.tt_lcnt || p.tt_lcnt || (cm2Str ? "Đã lập KH" : "Chờ LCNT"),
                             color: "#f59e0b"
                         });
@@ -8846,8 +8863,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                             ma_bsc: "", // LEVEL 3: Rỗng!
                             title: "🟣 3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
                             date: cm3Date,
-                            startDateStr: formatDateDMY(cm3Date),
-                            endDateStr: formatDateDMY(cm3Date),
+                            startDateStr: formatGanttDateDMY(cm3Date),
+                            endDateStr: formatGanttDateDMY(cm3Date),
                             status: c.tt_ky_hdcu || p.tt_ky_hdcu || (cm3Str ? "Đã ký" : "Chờ ký HĐ"),
                             color: "#8b5cf6"
                         });
@@ -8862,8 +8879,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                             ma_bsc: "", // LEVEL 3: Rỗng!
                             title: "🔴 4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
                             date: cm4Date,
-                            startDateStr: formatDateDMY(cm4Date),
-                            endDateStr: formatDateDMY(cm4Date),
+                            startDateStr: formatGanttDateDMY(cm4Date),
+                            endDateStr: formatGanttDateDMY(cm4Date),
                             status: c.dieu_kien_du || p.dieu_kien_du || (cm4Str ? "Đã khởi công" : "Thiếu ĐK KC"),
                             color: "#ef4444"
                         });
@@ -8881,8 +8898,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         ma_bsc: "", // LEVEL 3: Rỗng!
                         title: "🟢 1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
                         date: m1Date || new Date("2026-03-31"),
-                        startDateStr: formatDateDMY(m1Date || new Date("2026-03-31")),
-                        endDateStr: formatDateDMY(m1Date || new Date("2026-03-31")),
+                        startDateStr: formatGanttDateDMY(m1Date || new Date("2026-03-31")),
+                        endDateStr: formatGanttDateDMY(m1Date || new Date("2026-03-31")),
                         status: p.tt_khtk || p.tt_hstktc || (m1DateStr ? "Đã lập KH" : "Chờ phê duyệt"),
                         color: "#10b981"
                     });
@@ -8895,8 +8912,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         ma_bsc: "", // LEVEL 3: Rỗng!
                         title: "🟠 2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
                         date: m2Date || new Date("2026-06-30"),
-                        startDateStr: formatDateDMY(m2Date || new Date("2026-06-30")),
-                        endDateStr: formatDateDMY(m2Date || new Date("2026-06-30")),
+                        startDateStr: formatGanttDateDMY(m2Date || new Date("2026-06-30")),
+                        endDateStr: formatGanttDateDMY(m2Date || new Date("2026-06-30")),
                         status: p.tt_lcnt || (m2DateStr ? "Đã lập KH" : "Chờ LCNT"),
                         color: "#f59e0b"
                     });
@@ -8909,8 +8926,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         ma_bsc: "", // LEVEL 3: Rỗng!
                         title: "🟣 3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng)",
                         date: m3Date || new Date("2026-08-31"),
-                        startDateStr: formatDateDMY(m3Date || new Date("2026-08-31")),
-                        endDateStr: formatDateDMY(m3Date || new Date("2026-08-31")),
+                        startDateStr: formatGanttDateDMY(m3Date || new Date("2026-08-31")),
+                        endDateStr: formatGanttDateDMY(m3Date || new Date("2026-08-31")),
                         status: p.tt_ky_hdcu || (m3DateStr ? "Đã ký" : "Chờ ký HĐ"),
                         color: "#8b5cf6"
                     });
@@ -8923,8 +8940,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         ma_bsc: "", // LEVEL 3: Rỗng!
                         title: "🔴 4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
                         date: m4Date || new Date("2026-10-31"),
-                        startDateStr: formatDateDMY(m4Date || new Date("2026-10-31")),
-                        endDateStr: formatDateDMY(m4Date || new Date("2026-10-31")),
+                        startDateStr: formatGanttDateDMY(m4Date || new Date("2026-10-31")),
+                        endDateStr: formatGanttDateDMY(m4Date || new Date("2026-10-31")),
                         status: p.dieu_kien_du || (m4DateStr ? "Đã khởi công" : "Thiếu ĐK KC"),
                         color: "#ef4444"
                     });
@@ -9148,7 +9165,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                     
                     svg += `
                         <rect x="${x1}" y="${y + 10}" width="${width}" height="18" fill="${barFill}" rx="4" ry="4" opacity="0.85"
-                              data-tip="<b>${escapeHtml(row.title)}</b><br>Bắt đầu: ${formatDateDMY(row.startDate)} ➔ Kết thúc: ${formatDateDMY(row.endDate)}" style="cursor: pointer;" />
+                              data-tip="<b>${escapeHtml(row.title)}</b><br>Bắt đầu: ${formatGanttDateDMY(row.startDate)} ➔ Kết thúc: ${formatGanttDateDMY(row.endDate)}" style="cursor: pointer;" />
                     `;
                 }
             } else if (row.type === 'level3_milestone') {
@@ -9159,7 +9176,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                     svg += `
                         <path d="M ${x} ${y + 11} L ${x + 8} ${y + 19} L ${x} ${y + 27} L ${x - 8} ${y + 19} Z" 
                               fill="${row.color}" stroke="#ffffff" stroke-width="1.5"
-                              data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn: ${formatDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" style="cursor: pointer;" />
+                              data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn: ${formatGanttDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" style="cursor: pointer;" />
                     `;
                 }
             }
