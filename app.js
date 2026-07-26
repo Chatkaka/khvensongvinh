@@ -8487,6 +8487,40 @@ dropzone.addEventListener("click", () => fileInput.click());
     let ganttZoomMode = "month"; 
     let ganttControlsBound = false;
 
+    function populateGanttBscDropdown(structuredPackages) {
+        const selectEl = document.getElementById("gantt-select-bsc");
+        if (!selectEl) return;
+
+        const curVal = ganttSelectedBsc || selectEl.value || "";
+
+        // Extract unique PLs exactly like Tab Bảng Tổng Hợp Master (master-filter-pl)
+        const uniquePls = [...new Set(db.master.map(r => {
+            const p = r.parent ? r.parent : r;
+            return p.goi_thau_pl || p["Gói thầu PL"] || p["Phân Lộ"] || p.PL || p.pl;
+        }).filter(Boolean))].sort();
+
+        let optionsHtml = `<option value="">-- Tất cả Phân Lộ (PL) (${uniquePls.length} PL) --</option>`;
+        uniquePls.forEach(pl => {
+            const isSel = String(pl).trim() === String(curVal).trim() ? "selected" : "";
+            optionsHtml += `<option value="${escapeHtml(pl)}" ${isSel}>Phân Lộ: ${escapeHtml(pl)}</option>`;
+        });
+
+        selectEl.innerHTML = optionsHtml;
+    }
+
+    function bindGanttControlsOnce() {
+        if (ganttControlsBound) return;
+        ganttControlsBound = true;
+
+        const bscSelect = document.getElementById("gantt-select-bsc");
+        if (bscSelect) {
+            bscSelect.addEventListener("change", (e) => {
+                ganttSelectedBsc = e.target.value;
+                renderFullGanttManagementView();
+            });
+        }
+    }
+
     function renderFullGanttManagementView() {
         const container = document.getElementById("gantt-management-container");
         if (!container) return;
@@ -8494,40 +8528,28 @@ dropzone.addEventListener("click", () => fileInput.click());
         // Structure master data into parent packages & child items
         const structuredPackages = restructureMasterData(db.master);
 
-        // Populate Streamlined Dropdown for PL / Mã BSC / Gói thầu / Hạng mục
+        // Populate PL Dropdown matching Master Tab exactly
         populateGanttBscDropdown(structuredPackages);
 
         // Bind Controls Once
         bindGanttControlsOnce();
 
-        // Filter packages based on user selection in PL / Mã BSC dropdown
+        // Filter packages based on user selection in PL dropdown
         let displayPackages = structuredPackages.filter(pkg => pkg && pkg.parent);
 
-        // Dropdown selection filter (Tất cả, Phân Lộ PL, Mã BSC, or Child item)
-        if (ganttSelectedBsc) {
-            if (ganttSelectedBsc.startsWith("PL::")) {
-                const selectedPl = ganttSelectedBsc.replace("PL::", "").trim().toLowerCase();
-                displayPackages = displayPackages.filter(pkg => {
-                    const pl = String(pkg.parent.goi_thau_pl || "").trim().toLowerCase();
-                    return pl === selectedPl;
-                });
-                displayPackages.forEach(pkg => {
-                    if (pkg.parent && pkg.parent.ma_bsc) {
-                        ganttCollapsedPackages.delete(pkg.parent.ma_bsc);
-                    }
-                });
-            } else if (ganttSelectedBsc.includes("||")) {
-                const [parentBsc, childTt] = ganttSelectedBsc.split("||");
-                displayPackages = displayPackages.filter(pkg => 
-                    String(pkg.parent.ma_bsc || "").trim() === parentBsc
-                );
-                ganttCollapsedPackages.delete(parentBsc);
-            } else {
-                displayPackages = displayPackages.filter(pkg => 
-                    String(pkg.parent.ma_bsc || "").trim() === ganttSelectedBsc
-                );
-                ganttCollapsedPackages.delete(ganttSelectedBsc);
-            }
+        // Filter by PL selection (Matches Master Tab master-filter-pl exactly)
+        if (ganttSelectedBsc && ganttSelectedBsc.trim() !== "") {
+            const targetPl = ganttSelectedBsc.trim().toLowerCase();
+            displayPackages = displayPackages.filter(pkg => {
+                const pl = String(pkg.parent.goi_thau_pl || "").trim().toLowerCase();
+                return pl === targetPl || pl.includes(targetPl) || targetPl.includes(pl);
+            });
+            // Automatically uncollapse packages matching selected PL
+            displayPackages.forEach(pkg => {
+                if (pkg.parent && pkg.parent.ma_bsc) {
+                    ganttCollapsedPackages.delete(pkg.parent.ma_bsc);
+                }
+            });
         }
 
         // ABSOLUTE POKA-YOKE SAFEGUARD: Never render a blank empty screen!
