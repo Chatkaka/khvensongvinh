@@ -1491,5 +1491,20 @@ body {
     font-weight: 500;
 }
 
+/* Gantt dropdown combobox arrow styling */
+#gantt-select-bsc-wrapper::after {
+    display: none !important;
+}
+
+#gantt-select-bsc-search {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%2338bdf8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 18px center !important;
+    background-size: 14px 14px !important;
+    padding-right: 42px !important;
+    cursor: pointer !important;
+}
+
+
 
 
