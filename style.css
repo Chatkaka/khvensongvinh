@@ -1277,10 +1277,8 @@ body {
 .gantt-left-table td {
     padding: 8px 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    height: 38px;
+    white-space: normal;
+    word-break: break-word;
     box-sizing: border-box;
 }
 
