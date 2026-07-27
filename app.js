@@ -8647,7 +8647,17 @@ dropzone.addEventListener("click", () => fileInput.click());
         });
     }
 
-        function getPropagatedMilestoneDates(c) {
+        function formatDateToYYYYMMDD(d) {
+        if (!d) return "";
+        const date = (d instanceof Date) ? d : new Date(d);
+        if (isNaN(date.getTime())) return "";
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function calculateGanttMilestoneDates(c) {
         const p1 = c.kh_phat_hanh_hstktc ? new Date(c.kh_phat_hanh_hstktc) : null;
         const p2 = c.kh_lcnt ? new Date(c.kh_lcnt) : null;
         const p3 = c.kh_ky_hdcu ? new Date(c.kh_ky_hdcu) : null;
@@ -8658,45 +8668,45 @@ dropzone.addEventListener("click", () => fileInput.click());
         const a3 = c.ngay_ht_hdcu ? new Date(c.ngay_ht_hdcu) : null;
         const a4 = c.ngay_ht_khoi_cong ? new Date(c.ngay_ht_khoi_cong) : null;
 
-        let d1 = p1;
+        let act1 = a1;
         let shift1 = 0;
         if (a1 && p1) {
-            d1 = a1;
             shift1 = a1.getTime() - p1.getTime();
         }
 
-        let d2 = p2;
+        let act2 = a2;
         let shift2 = shift1;
-        if (p2) {
-            let p2_shifted = new Date(p2.getTime() + shift1);
-            d2 = p2_shifted;
-            if (a2) {
-                d2 = a2;
-                shift2 = a2.getTime() - p2.getTime();
-            }
+        if (!a2 && act1 && p2) {
+            act2 = new Date(p2.getTime() + shift1);
+        } else if (a2 && p2) {
+            shift2 = a2.getTime() - p2.getTime();
         }
 
-        let d3 = p3;
+        let act3 = a3;
         let shift3 = shift2;
-        if (p3) {
-            let p3_shifted = new Date(p3.getTime() + shift2);
-            d3 = p3_shifted;
-            if (a3) {
-                d3 = a3;
-                shift3 = a3.getTime() - p3.getTime();
-            }
+        if (!a3 && act2 && p3) {
+            act3 = new Date(p3.getTime() + shift2);
+        } else if (a3 && p3) {
+            shift3 = a3.getTime() - p3.getTime();
         }
 
-        let d4 = p4;
-        if (p4) {
-            let p4_shifted = new Date(p4.getTime() + shift3);
-            d4 = p4_shifted;
-            if (a4) {
-                d4 = a4;
-            }
+        let act4 = a4;
+        if (!a4 && act3 && p4) {
+            act4 = new Date(p4.getTime() + shift3);
         }
 
-        return { d1, d2, d3, d4 };
+        const d1 = act1 ? act1 : p1;
+        const d2 = act2 ? act2 : p2;
+        const d3 = act3 ? act3 : p3;
+        const d4 = act4 ? act4 : p4;
+
+        return {
+            d1, d2, d3, d4,
+            act1: act1 ? formatDateToYYYYMMDD(act1) : "",
+            act2: act2 ? formatDateToYYYYMMDD(act2) : "",
+            act3: act3 ? formatDateToYYYYMMDD(act3) : "",
+            act4: act4 ? formatDateToYYYYMMDD(act4) : ""
+        };
     }
 
     function renderFullGanttManagementView() {
@@ -8769,7 +8779,11 @@ dropzone.addEventListener("click", () => fileInput.click());
                     });
 
                     // Level 3 Milestones with forward propagation math
-                    const prop = getPropagatedMilestoneDates(c);
+                    const prop = calculateGanttMilestoneDates(c);
+                    const p1 = c.kh_phat_hanh_hstktc ? new Date(c.kh_phat_hanh_hstktc) : null;
+                    const p2 = c.kh_lcnt ? new Date(c.kh_lcnt) : null;
+                    const p3 = c.kh_ky_hdcu ? new Date(c.kh_ky_hdcu) : null;
+                    const p4 = c.ngay_bd_khoi_cong ? new Date(c.ngay_bd_khoi_cong) : null;
 
                     treeRows.push({
                         type: 'level3_milestone',
@@ -8778,9 +8792,10 @@ dropzone.addEventListener("click", () => fileInput.click());
                         mType: 1,
                         title: "1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
                         date: prop.d1,
+                        plannedEndDate: p1,
                         color: "#10b981",
                         status: c.tt_khtk || "Chưa duyệt",
-                        ngay_hoan_thanh: c.ngay_ht_hstktc || ""
+                        ngay_hoan_thanh: prop.act1
                     });
                     treeRows.push({
                         type: 'level3_milestone',
@@ -8789,9 +8804,10 @@ dropzone.addEventListener("click", () => fileInput.click());
                         mType: 2,
                         title: "2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
                         date: prop.d2,
+                        plannedEndDate: p2,
                         color: "#f59e0b",
                         status: c.tt_lcnt || "Chưa duyệt",
-                        ngay_hoan_thanh: c.ngay_ht_lcnt || ""
+                        ngay_hoan_thanh: prop.act2
                     });
                     treeRows.push({
                         type: 'level3_milestone',
@@ -8800,9 +8816,10 @@ dropzone.addEventListener("click", () => fileInput.click());
                         mType: 3,
                         title: "3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng/Xây lắp)",
                         date: prop.d3,
+                        plannedEndDate: p3,
                         color: "#8b5cf6",
                         status: c.tt_ky_hdcu || "Chưa duyệt",
-                        ngay_hoan_thanh: c.ngay_ht_hdcu || ""
+                        ngay_hoan_thanh: prop.act3
                     });
                     treeRows.push({
                         type: 'level3_milestone',
@@ -8811,9 +8828,10 @@ dropzone.addEventListener("click", () => fileInput.click());
                         mType: 4,
                         title: "4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
                         date: prop.d4,
+                        plannedEndDate: p4,
                         color: "#ef4444",
                         status: c.dieu_kien_du || "Chưa đạt",
-                        ngay_hoan_thanh: c.ngay_ht_khoi_cong || ""
+                        ngay_hoan_thanh: prop.act4
                     });
                 });
             }
@@ -8925,7 +8943,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                             <span style="margin-right:6px;">${indicator}</span>${escapeHtml(row.title)}
                         </td>
                         <td></td>
-                        <td>${formatGanttDateDMY(row.date)}</td>
+                        <td>${formatGanttDateDMY(row.plannedEndDate)}</td>
                         <td>
                             <input type="date" value="${row.ngay_hoan_thanh || ''}" class="gantt-completion-input" 
                                 data-tt="${row.childTt}" data-mtype="${row.mType}"
