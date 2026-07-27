@@ -8761,19 +8761,30 @@ dropzone.addEventListener("click", () => fileInput.click());
             }
         });
 
-        // Determine timeline boundaries
-        let minTime = new Date("2024-09-01").getTime();
+        // Crop timeline to start 1 month before current date, and end at the project max date (or current date + 6 months, whichever is later)
+        const nowTime = new Date();
+        const startLimit = new Date(nowTime.getFullYear(), nowTime.getMonth() - 1, 1); // Start of previous month
+        let minTime = startLimit.getTime();
+        
         let maxTime = new Date("2026-12-31").getTime();
-
         let validDates = [];
         treeRows.forEach(r => {
             if (r.startDate && !isNaN(r.startDate)) validDates.push(r.startDate.getTime());
             if (r.endDate && !isNaN(r.endDate)) validDates.push(r.endDate.getTime());
             if (r.date && !isNaN(r.date)) validDates.push(r.date.getTime());
         });
-
+        
         if (validDates.length > 0) {
-            const margin = 30 * 24 * 60 * 60 * 1000; // 30 days margin
+            const margin = 30 * 24 * 60 * 60 * 1000;
+            const projectMax = Math.max(...validDates) + margin;
+            if (projectMax > minTime) {
+                maxTime = projectMax;
+            }
+        }
+        
+        // Fallback: If all tasks are in the past, show the full range
+        if (maxTime <= minTime && validDates.length > 0) {
+            const margin = 30 * 24 * 60 * 60 * 1000;
             minTime = Math.min(...validDates) - margin;
             maxTime = Math.max(...validDates) + margin;
         }
@@ -8981,37 +8992,47 @@ dropzone.addEventListener("click", () => fileInput.click());
                 svg += `<rect x="0" y="${y}" width="${ganttWidth}" height="${rowHeight}" fill="rgba(245, 158, 11, 0.05)" />`;
             } else if (row.type === 'parent' || row.type === 'child_work') {
                 if (row.startDate && row.endDate) {
-                    const x1 = Math.max(0, ((row.startDate.getTime() - minTime) / totalSpanMs) * ganttWidth);
-                    const x2 = Math.min(ganttWidth, ((row.endDate.getTime() - minTime) / totalSpanMs) * ganttWidth);
-                    const width = Math.max(8, x2 - x1);
-                    const barFill = row.type === 'parent' ? "#10b981" : "#38bdf8";
-                    
-                    svg += `
-                        <rect x="${x1}" y="${y + 10}" width="${width}" height="18" fill="${barFill}" rx="4" ry="4" opacity="0.85"
-                              data-tip="<b>${escapeHtml(row.title)}</b><br>Bắt đầu: ${formatGanttDateDMY(row.startDate)} ➔ Kết thúc: ${formatGanttDateDMY(row.endDate)}" style="cursor: pointer;" />
-                    `;
+                    const tStart = row.startDate.getTime();
+                    const tEnd = row.endDate.getTime();
+                    if (tEnd > minTime && tStart < maxTime) {
+                        const x1 = Math.max(0, ((tStart - minTime) / totalSpanMs) * ganttWidth);
+                        const x2 = Math.min(ganttWidth, ((tEnd - minTime) / totalSpanMs) * ganttWidth);
+                        const width = Math.max(8, x2 - x1);
+                        const barFill = row.type === 'parent' ? "#10b981" : "#38bdf8";
+                        
+                        svg += `
+                            <rect x="${x1}" y="${y + 10}" width="${width}" height="18" fill="${barFill}" rx="4" ry="4" opacity="0.85"
+                                  data-tip="<b>${escapeHtml(row.title)}</b><br>Bắt đầu: ${formatGanttDateDMY(row.startDate)} ➔ Kết thúc: ${formatGanttDateDMY(row.endDate)}" style="cursor: pointer;" />
+                        `;
+                    }
                 }
             } else if (row.type === 'level3_milestone') {
                 if (row.date && !isNaN(row.date)) {
-                    const x = ((row.date.getTime() - minTime) / totalSpanMs) * ganttWidth;
+                    const tDate = row.date.getTime();
                     const key = `${row.parentBsc}_${row.childTt || 'pkg'}_m${row.mType}`;
-                    milestoneCoords[key] = { x: x, y: y + 19 };
+                    const x = ((tDate - minTime) / totalSpanMs) * ganttWidth;
+                    
+                    if (tDate >= minTime && tDate <= maxTime) {
+                        milestoneCoords[key] = { x: x, y: y + 19 };
 
-                    const barWidth = 45;
-                    if (row.mType === 4) {
-                        const dSize = 9;
-                        const points = `${x},${y+19-dSize} ${x+dSize},${y+19} ${x},${y+19+dSize} ${x-dSize},${y+19}`;
-                        svg += `
-                            <polygon points="${points}" fill="#ef4444" style="cursor: pointer;"
-                                     data-tip="<b>${escapeHtml(row.title)}</b><br>Mốc Khởi công: ${formatGanttDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
-                            <text x="${x + 14}" y="${y + 23}" fill="#ef4444" font-size="10" font-weight="700">${formatGanttDateDM(row.date)}</text>
-                        `;
+                        const barWidth = 45;
+                        if (row.mType === 4) {
+                            const dSize = 9;
+                            const points = `${x},${y+19-dSize} ${x+dSize},${y+19} ${x},${y+19+dSize} ${x-dSize},${y+19}`;
+                            svg += `
+                                <polygon points="${points}" fill="#ef4444" style="cursor: pointer;"
+                                         data-tip="<b>${escapeHtml(row.title)}</b><br>Mốc Khởi công: ${formatGanttDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
+                                <text x="${x + 14}" y="${y + 23}" fill="#ef4444" font-size="10" font-weight="700">${formatGanttDateDM(row.date)}</text>
+                            `;
+                        } else {
+                            svg += `
+                                <rect x="${x}" y="${y + 11}" width="${barWidth}" height="16" fill="${row.color}" rx="3" ry="3" opacity="0.85" style="cursor: pointer;"
+                                      data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn KH: ${formatGanttDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
+                                <text x="${x + barWidth + 6}" y="${y + 23}" fill="${row.color}" font-size="10" font-weight="600">${formatGanttDateDM(row.date)}</text>
+                            `;
+                        }
                     } else {
-                        svg += `
-                            <rect x="${x}" y="${y + 11}" width="${barWidth}" height="16" fill="${row.color}" rx="3" ry="3" opacity="0.85" style="cursor: pointer;"
-                                  data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn KH: ${formatGanttDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
-                            <text x="${x + barWidth + 6}" y="${y + 23}" fill="${row.color}" font-size="10" font-weight="600">${formatGanttDateDM(row.date)}</text>
-                        `;
+                        milestoneCoords[key] = null;
                     }
                 }
             }
