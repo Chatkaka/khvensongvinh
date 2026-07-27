@@ -8820,7 +8820,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                     <tr class="row-parent-gantt">
                         <td>${escapeHtml(row.tt)}</td>
                         <td>${escapeHtml(row.nhom_ct)}</td>
-                        <td style="color:#f59e0b; font-weight:700; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(row.ma_bsc)}</td>
+                        <td style="color:#f59e0b; font-weight:700; word-break: break-all; white-space: normal;">${escapeHtml(row.ma_bsc)}</td>
                         <td>
                             <button class="gantt-tree-toggle" onclick="toggleGanttCollapse('${row.ma_bsc}')" style="margin-right:8px; cursor:pointer;">
                                 <i class="fa-solid fa-${toggleIcon}"></i>
