@@ -8789,10 +8789,6 @@ dropzone.addEventListener("click", () => fileInput.click());
             maxTime = Math.max(...validDates) + margin;
         }
 
-        const rowHeight = 38;
-        const headerHeight = 48;
-        const ganttHeight = headerHeight + (treeRows.length * rowHeight);
-        
         let dayWidth = 4;
         if (ganttZoomMode === 'week') dayWidth = 12;
         const totalDays = (maxTime - minTime) / (24 * 60 * 60 * 1000);
@@ -8884,16 +8880,8 @@ dropzone.addEventListener("click", () => fileInput.click());
 
             <!-- Right Interactive SVG Gantt Chart (Hàng trên cùng: DÒNG THỜI GIAN) -->
             <div class="gantt-right-panel" id="gantt-right-scroll-pane">
-                <svg class="gantt-svg" width="${ganttWidth}" height="${ganttHeight}">
-                    <defs>
-                        <marker id="gantt-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-                            <polygon points="0 0, 8 4, 0 8" fill="#38bdf8" />
-                        </marker>
-                        <marker id="gantt-arrowhead-warn" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-                            <polygon points="0 0, 8 4, 0 8" fill="#ef4444" />
-                        </marker>
-                    </defs>
-                    ${buildGanttSvgContent(treeRows, minTime, maxTime, ganttWidth, ganttHeight, headerHeight, rowHeight, dayWidth)}
+                <svg class="gantt-svg" width="${ganttWidth}">
+                    <!-- Content will be injected dynamically -->
                 </svg>
             </div>
 
@@ -8902,7 +8890,36 @@ dropzone.addEventListener("click", () => fileInput.click());
 
         container.innerHTML = html;
 
+        // Measure row heights dynamically to support text wrapping and center-aligned SVG elements
         const leftPanel = container.querySelector('.gantt-left-panel');
+        const headerTr = leftPanel.querySelector("thead tr");
+        const measuredHeaderHeight = headerTr ? headerTr.getBoundingClientRect().height : 48;
+        
+        const trs = leftPanel.querySelectorAll("tbody tr");
+        const rowHeights = [];
+        trs.forEach(tr => {
+            rowHeights.push(tr.getBoundingClientRect().height);
+        });
+
+        const totalRowHeights = rowHeights.reduce((a, b) => a + b, 0);
+        const ganttHeight = measuredHeaderHeight + totalRowHeights;
+
+        const svgEl = container.querySelector(".gantt-svg");
+        if (svgEl) {
+            svgEl.setAttribute("height", ganttHeight);
+            svgEl.innerHTML = `
+                <defs>
+                    <marker id="gantt-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                        <polygon points="0 0, 8 4, 0 8" fill="#38bdf8" />
+                    </marker>
+                    <marker id="gantt-arrowhead-warn" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                        <polygon points="0 0, 8 4, 0 8" fill="#ef4444" />
+                    </marker>
+                </defs>
+                ${buildGanttSvgContent(treeRows, minTime, maxTime, ganttWidth, ganttHeight, dayWidth, rowHeights, measuredHeaderHeight)}
+            `;
+        }
+
         const rightPanel = container.querySelector('.gantt-right-panel');
         if (leftPanel && rightPanel) {
             rightPanel.addEventListener('scroll', () => { leftPanel.scrollTop = rightPanel.scrollTop; });
@@ -8931,9 +8948,9 @@ dropzone.addEventListener("click", () => fileInput.click());
         });
     }
 
-    function buildGanttSvgContent(treeRows, minTime, maxTime, ganttWidth, ganttHeight, headerHeight, rowHeight, dayWidth) {
+    function buildGanttSvgContent(treeRows, minTime, maxTime, ganttWidth, ganttHeight, dayWidth, rowHeights, measuredHeaderHeight) {
         let svg = '';
-        svg += `<rect x="0" y="0" width="${ganttWidth}" height="${headerHeight}" class="gantt-header-bg" />`;
+        svg += `<rect x="0" y="0" width="${ganttWidth}" height="${measuredHeaderHeight}" class="gantt-header-bg" />`;
         const totalSpanMs = maxTime - minTime;
 
         let currDate = new Date(minTime);
@@ -8985,11 +9002,16 @@ dropzone.addEventListener("click", () => fileInput.click());
         const milestoneCoords = {};
 
         treeRows.forEach((row, idx) => {
-            const y = headerHeight + (idx * rowHeight);
-            svg += `<line x1="0" y1="${y + rowHeight}" x2="${ganttWidth}" y2="${y + rowHeight}" class="gantt-row-line" />`;
+            let y = measuredHeaderHeight;
+            for (let i = 0; i < idx; i++) {
+                y += rowHeights[i];
+            }
+            const h = rowHeights[idx];
+
+            svg += `<line x1="0" y1="${y + h}" x2="${ganttWidth}" y2="${y + h}" class="gantt-row-line" />`;
 
             if (row.type === 'grand_parent') {
-                svg += `<rect x="0" y="${y}" width="${ganttWidth}" height="${rowHeight}" fill="rgba(245, 158, 11, 0.05)" />`;
+                svg += `<rect x="0" y="${y}" width="${ganttWidth}" height="${h}" fill="rgba(245, 158, 11, 0.05)" />`;
             } else if (row.type === 'parent' || row.type === 'child_work') {
                 if (row.startDate && row.endDate) {
                     const tStart = row.startDate.getTime();
@@ -9000,8 +9022,10 @@ dropzone.addEventListener("click", () => fileInput.click());
                         const width = Math.max(8, x2 - x1);
                         const barFill = row.type === 'parent' ? "#10b981" : "#38bdf8";
                         
+                        const barH = 18;
+                        const barY = y + (h - barH) / 2;
                         svg += `
-                            <rect x="${x1}" y="${y + 10}" width="${width}" height="18" fill="${barFill}" rx="4" ry="4" opacity="0.85"
+                            <rect x="${x1}" y="${barY}" width="${width}" height="${barH}" fill="${barFill}" rx="4" ry="4" opacity="0.85"
                                   data-tip="<b>${escapeHtml(row.title)}</b><br>Bắt đầu: ${formatGanttDateDMY(row.startDate)} ➔ Kết thúc: ${formatGanttDateDMY(row.endDate)}" style="cursor: pointer;" />
                         `;
                     }
@@ -9013,22 +9037,25 @@ dropzone.addEventListener("click", () => fileInput.click());
                     const x = ((tDate - minTime) / totalSpanMs) * ganttWidth;
                     
                     if (tDate >= minTime && tDate <= maxTime) {
-                        milestoneCoords[key] = { x: x, y: y + 19 };
+                        const midY = y + h / 2;
+                        milestoneCoords[key] = { x: x, y: midY };
 
                         const barWidth = 45;
                         if (row.mType === 4) {
                             const dSize = 9;
-                            const points = `${x},${y+19-dSize} ${x+dSize},${y+19} ${x},${y+19+dSize} ${x-dSize},${y+19}`;
+                            const points = `${x},${midY-dSize} ${x+dSize},${midY} ${x},${midY+dSize} ${x-dSize},${midY}`;
                             svg += `
                                 <polygon points="${points}" fill="#ef4444" style="cursor: pointer;"
                                          data-tip="<b>${escapeHtml(row.title)}</b><br>Mốc Khởi công: ${formatGanttDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
-                                <text x="${x + 14}" y="${y + 23}" fill="#ef4444" font-size="10" font-weight="700">${formatGanttDateDM(row.date)}</text>
+                                <text x="${x + 14}" y="${midY + 4}" fill="#ef4444" font-size="10" font-weight="700">${formatGanttDateDM(row.date)}</text>
                             `;
                         } else {
+                            const barH = 16;
+                            const barY = y + (h - barH) / 2;
                             svg += `
-                                <rect x="${x}" y="${y + 11}" width="${barWidth}" height="16" fill="${row.color}" rx="3" ry="3" opacity="0.85" style="cursor: pointer;"
+                                <rect x="${x}" y="${barY}" width="${barWidth}" height="${barH}" fill="${row.color}" rx="3" ry="3" opacity="0.85" style="cursor: pointer;"
                                       data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn KH: ${formatGanttDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
-                                <text x="${x + barWidth + 6}" y="${y + 23}" fill="${row.color}" font-size="10" font-weight="600">${formatGanttDateDM(row.date)}</text>
+                                <text x="${x + barWidth + 6}" y="${midY + 4}" fill="${row.color}" font-size="10" font-weight="600">${formatGanttDateDM(row.date)}</text>
                             `;
                         }
                     } else {
