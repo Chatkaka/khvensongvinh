@@ -9149,6 +9149,40 @@ dropzone.addEventListener("click", () => fileInput.click());
                         const midY = y + h / 2;
                         milestoneCoords[key] = { x: x, y: midY };
 
+                        // Draw Delay Gap if actual/projected date is later than planned target date
+                        if (row.plannedEndDate && row.date.getTime() > row.plannedEndDate.getTime()) {
+                            const plannedTime = row.plannedEndDate.getTime();
+                            const actualTime = row.date.getTime();
+                            const plannedX = ((plannedTime - minTime) / totalSpanMs) * ganttWidth;
+                            
+                            let dx = plannedX;
+                            let dw = x - plannedX;
+                            if (dx < 0) {
+                                dw += dx;
+                                dx = 0;
+                            }
+                            if (dx + dw > ganttWidth) {
+                                dw = ganttWidth - dx;
+                            }
+                            
+                            if (dw >= 1) {
+                                const delayDays = Math.round((actualTime - plannedTime) / (24 * 60 * 60 * 1000));
+                                if (row.mType === 4) {
+                                    svg += `
+                                        <rect x="${dx}" y="${midY - 4}" width="${dw}" height="8" fill="rgba(239, 68, 68, 0.15)" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="2,2" rx="2" style="cursor: help;"
+                                              data-tip="<b>Trễ tiến độ (Delay)</b><br>Kế hoạch: ${formatGanttDateDMY(row.plannedEndDate)}<br>Thực tế/Dự kiến: ${formatGanttDateDMY(row.date)}<br>Trễ: ${delayDays} ngày" />
+                                    `;
+                                } else {
+                                    const barH = 16;
+                                    const barY = y + (h - barH) / 2;
+                                    svg += `
+                                        <rect x="${dx}" y="${barY}" width="${dw}" height="${barH}" fill="rgba(239, 68, 68, 0.15)" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="2,2" rx="3" ry="3" style="cursor: help;"
+                                              data-tip="<b>Trễ tiến độ (Delay)</b><br>Kế hoạch: ${formatGanttDateDMY(row.plannedEndDate)}<br>Thực tế/Dự kiến: ${formatGanttDateDMY(row.date)}<br>Trễ: ${delayDays} ngày" />
+                                    `;
+                                }
+                            }
+                        }
+
                         const barWidth = 45;
                         if (row.mType === 4) {
                             const dSize = 9;
