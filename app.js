@@ -8874,8 +8874,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         <td style="padding-left:48px; color:var(--text-secondary);">
                             <span style="margin-right:6px;">${indicator}</span>${escapeHtml(row.title)}
                         </td>
-                        <td>${formatGanttDateDMY(row.date)}</td>
                         <td></td>
+                        <td>${formatGanttDateDMY(row.date)}</td>
                         <td>
                             <input type="date" value="${row.ngay_hoan_thanh || ''}" class="gantt-completion-input" 
                                 data-tt="${row.childTt}" data-mtype="${row.mType}"
