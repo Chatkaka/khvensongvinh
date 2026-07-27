@@ -368,7 +368,7 @@ document.addEventListener("DOMContentLoaded", () => {
             phu_trach: String(r.phu_trach || r["Phụ trách"] || r["Người phụ trách"] || "").trim(),
             ngay_bd_yc: r.ngay_bd_yc || r["Ngày BĐ YC"] || r["Ngày BĐ"] || r["NGÀY BẮT ĐẦU"] || r.kh_phat_hanh_hstktc || r.kh_pd_khtk || "",
             ngay_kt_yc: r.ngay_kt_yc || r["Ngày KT YC"] || r["Ngày KT"] || r["NGÀY KẾT THÚC"] || r.ngay_bd_khoi_cong || "",
-            kh_phat_hanh_hstktc: r.kh_phat_hanh_hstktc || r["KH phát hành HSTKTC"] || r.kh_pd_khtk || r["KH PD KHTK"] || "",
+            kh_phat_hanh_hstktc: r.kh_phat_hanh_hstktc || r.kh_phat_hang_hstktc || r["KH phát hành HSTKTC"] || r.kh_pd_khtk || r["KH PD KHTK"] || "",
             tt_khtk: r.tt_khtk || r["TT KHTK"] || r.tt_hstktc || r["TT HSTKTC"] || "",
             kh_lcnt: r.kh_lcnt || r["KH LCNT"] || "",
             tt_lcnt: r.tt_lcnt || r["TT LCNT"] || "",
@@ -378,6 +378,10 @@ document.addEventListener("DOMContentLoaded", () => {
             dieu_kien_du: r.dieu_kien_du || r["Điều kiện đủ"] || r["ĐK Khởi công"] || "",
             progress_status: r.progress_status || r["Trạng thái"] || "",
             ngay_hoan_thanh: r.ngay_hoan_thanh || r["Ngày hoàn thành"] || r["Hoàn thành"] || r.ngay_ht_tt || "",
+            ngay_ht_hstktc: r.ngay_ht_hstktc || r["Ngày HT HSTKTC"] || r.ngay_ht_khtk || "",
+            ngay_ht_lcnt: r.ngay_ht_lcnt || r["Ngày HT LCNT"] || "",
+            ngay_ht_hdcu: r.ngay_ht_hdcu || r["Ngày HT HĐCU"] || "",
+            ngay_ht_khoi_cong: r.ngay_ht_khoi_cong || r["Ngày HT Khởi công"] || "",
             _normalized: true
         };
 
@@ -8725,7 +8729,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         title: "1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
                         date: m1Date,
                         color: "#10b981",
-                        status: c.tt_khtk || "Chưa duyệt"
+                        status: c.tt_khtk || "Chưa duyệt",
+                        ngay_hoan_thanh: c.ngay_ht_hstktc || ""
                     });
                     treeRows.push({
                         type: 'level3_milestone',
@@ -8735,7 +8740,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         title: "2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
                         date: m2Date,
                         color: "#f59e0b",
-                        status: c.tt_lcnt || "Chưa duyệt"
+                        status: c.tt_lcnt || "Chưa duyệt",
+                        ngay_hoan_thanh: c.ngay_ht_lcnt || ""
                     });
                     treeRows.push({
                         type: 'level3_milestone',
@@ -8745,7 +8751,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         title: "3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng/Xây lắp)",
                         date: m3Date,
                         color: "#8b5cf6",
-                        status: c.tt_ky_hdcu || "Chưa duyệt"
+                        status: c.tt_ky_hdcu || "Chưa duyệt",
+                        ngay_hoan_thanh: c.ngay_ht_hdcu || ""
                     });
                     treeRows.push({
                         type: 'level3_milestone',
@@ -8755,7 +8762,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                         title: "4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
                         date: m4Date,
                         color: "#ef4444",
-                        status: c.dieu_kien_du || "Chưa đạt"
+                        status: c.dieu_kien_du || "Chưa đạt",
+                        ngay_hoan_thanh: c.ngay_ht_khoi_cong || ""
                     });
                 });
             }
@@ -8857,6 +8865,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                 `;
             } else if (row.type === 'level3_milestone') {
                 const indicator = row.mType === 4 ? '🔴' : '🔹';
+                const canEditGantt = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_sua);
                 html += `
                     <tr class="row-milestone-gantt" style="opacity:0.75; font-size:0.75rem;">
                         <td></td>
@@ -8867,7 +8876,12 @@ dropzone.addEventListener("click", () => fileInput.click());
                         </td>
                         <td>${formatGanttDateDMY(row.date)}</td>
                         <td></td>
-                        <td></td>
+                        <td>
+                            <input type="date" value="${row.ngay_hoan_thanh || ''}" class="gantt-completion-input" 
+                                data-tt="${row.childTt}" data-mtype="${row.mType}"
+                                style="background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-primary); border-radius: 4px; padding: 2px 4px; font-size: 0.8rem; width: 110px;"
+                                ${!canEditGantt ? 'disabled title="Bạn không có quyền sửa!"' : ''}>
+                        </td>
                     </tr>
                 `;
             }
@@ -8932,12 +8946,21 @@ dropzone.addEventListener("click", () => fileInput.click());
         container.querySelectorAll(".gantt-completion-input").forEach(input => {
             input.addEventListener("change", (e) => {
                 const tt = e.target.getAttribute("data-tt");
+                const mtype = e.target.getAttribute("data-mtype");
                 const newVal = e.target.value; // "YYYY-MM-DD" or ""
                 
                 // Find and update in db.master
                 const rawRow = db.master.find(r => r && String(r.tt || r.TT) === String(tt));
                 if (rawRow) {
-                    rawRow.ngay_hoan_thanh = newVal;
+                    if (mtype) {
+                        const mNum = parseInt(mtype);
+                        if (mNum === 1) rawRow.ngay_ht_hstktc = newVal;
+                        else if (mNum === 2) rawRow.ngay_ht_lcnt = newVal;
+                        else if (mNum === 3) rawRow.ngay_ht_hdcu = newVal;
+                        else if (mNum === 4) rawRow.ngay_ht_khoi_cong = newVal;
+                    } else {
+                        rawRow.ngay_hoan_thanh = newVal;
+                    }
                     saveDatabase();
                     showToast("Tiến độ", `Đã cập nhật ngày hoàn thành cho mục ${tt}`, "success");
                     
