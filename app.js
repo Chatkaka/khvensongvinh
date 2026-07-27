@@ -8630,8 +8630,15 @@ dropzone.addEventListener("click", () => fileInput.click());
     }
 
     function attachGanttInteractiveTooltips() {
-        const tooltip = document.getElementById("gantt-tooltip");
-        if (!tooltip) return;
+        let tooltip = document.getElementById("gantt-tooltip");
+        if (!tooltip) {
+            tooltip = document.createElement("div");
+            tooltip.id = "gantt-tooltip";
+            document.body.appendChild(tooltip);
+        } else if (tooltip.parentNode !== document.body) {
+            document.body.appendChild(tooltip);
+        }
+
         document.querySelectorAll("[data-tip]").forEach(el => {
             el.addEventListener("mouseenter", (e) => {
                 tooltip.innerHTML = el.getAttribute("data-tip");
