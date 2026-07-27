@@ -8647,6 +8647,58 @@ dropzone.addEventListener("click", () => fileInput.click());
         });
     }
 
+        function getPropagatedMilestoneDates(c) {
+        const p1 = c.kh_phat_hanh_hstktc ? new Date(c.kh_phat_hanh_hstktc) : null;
+        const p2 = c.kh_lcnt ? new Date(c.kh_lcnt) : null;
+        const p3 = c.kh_ky_hdcu ? new Date(c.kh_ky_hdcu) : null;
+        const p4 = c.ngay_bd_khoi_cong ? new Date(c.ngay_bd_khoi_cong) : null;
+
+        const a1 = c.ngay_ht_hstktc ? new Date(c.ngay_ht_hstktc) : null;
+        const a2 = c.ngay_ht_lcnt ? new Date(c.ngay_ht_lcnt) : null;
+        const a3 = c.ngay_ht_hdcu ? new Date(c.ngay_ht_hdcu) : null;
+        const a4 = c.ngay_ht_khoi_cong ? new Date(c.ngay_ht_khoi_cong) : null;
+
+        let d1 = p1;
+        let shift1 = 0;
+        if (a1 && p1) {
+            d1 = a1;
+            shift1 = a1.getTime() - p1.getTime();
+        }
+
+        let d2 = p2;
+        let shift2 = shift1;
+        if (p2) {
+            let p2_shifted = new Date(p2.getTime() + shift1);
+            d2 = p2_shifted;
+            if (a2) {
+                d2 = a2;
+                shift2 = a2.getTime() - p2.getTime();
+            }
+        }
+
+        let d3 = p3;
+        let shift3 = shift2;
+        if (p3) {
+            let p3_shifted = new Date(p3.getTime() + shift2);
+            d3 = p3_shifted;
+            if (a3) {
+                d3 = a3;
+                shift3 = a3.getTime() - p3.getTime();
+            }
+        }
+
+        let d4 = p4;
+        if (p4) {
+            let p4_shifted = new Date(p4.getTime() + shift3);
+            d4 = p4_shifted;
+            if (a4) {
+                d4 = a4;
+            }
+        }
+
+        return { d1, d2, d3, d4 };
+    }
+
     function renderFullGanttManagementView() {
         const container = document.getElementById("gantt-management-container");
         if (!container) return;
@@ -8688,7 +8740,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                 ma_bsc: bsc,
                 title: p.hang_muc_work,
                 startDate: p.ngay_bd_yc ? new Date(p.ngay_bd_yc) : null,
-                endDate: p.ngay_kt_yc ? new Date(p.ngay_kt_yc) : null,
+                endDate: p.ngay_hoan_thanh ? new Date(p.ngay_hoan_thanh) : (p.ngay_kt_yc ? new Date(p.ngay_kt_yc) : null),
                 progress: progress,
                 status: status,
                 collapsed: isCollapsed,
@@ -8699,6 +8751,7 @@ dropzone.addEventListener("click", () => fileInput.click());
             if (!isCollapsed && pkg.children.length > 0) {
                 pkg.children.forEach(c => {
                     const cTt = c.tt;
+                    const cEndDate = c.ngay_hoan_thanh ? new Date(c.ngay_hoan_thanh) : (c.ngay_kt_yc ? new Date(c.ngay_kt_yc) : null);
                     
                     treeRows.push({
                         type: 'child_work',
@@ -8709,17 +8762,14 @@ dropzone.addEventListener("click", () => fileInput.click());
                         ma_bsc: "",
                         title: c.hang_muc_work,
                         startDate: c.ngay_bd_yc ? new Date(c.ngay_bd_yc) : null,
-                        endDate: c.ngay_kt_yc ? new Date(c.ngay_kt_yc) : null,
+                        endDate: cEndDate,
                         progress: null,
                         status: "",
                         ngay_hoan_thanh: c.ngay_hoan_thanh || ""
                     });
 
-                    // Level 3 Milestones
-                    const m1Date = c.kh_phat_hanh_hstktc ? new Date(c.kh_phat_hanh_hstktc) : null;
-                    const m2Date = c.kh_lcnt ? new Date(c.kh_lcnt) : null;
-                    const m3Date = c.kh_ky_hdcu ? new Date(c.kh_ky_hdcu) : null;
-                    const m4Date = c.ngay_bd_khoi_cong ? new Date(c.ngay_bd_khoi_cong) : null;
+                    // Level 3 Milestones with forward propagation math
+                    const prop = getPropagatedMilestoneDates(c);
 
                     treeRows.push({
                         type: 'level3_milestone',
@@ -8727,7 +8777,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         childTt: cTt,
                         mType: 1,
                         title: "1. KH HSTKTC (Hồ sơ Thiết kế Thi công)",
-                        date: m1Date,
+                        date: prop.d1,
                         color: "#10b981",
                         status: c.tt_khtk || "Chưa duyệt",
                         ngay_hoan_thanh: c.ngay_ht_hstktc || ""
@@ -8738,7 +8788,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         childTt: cTt,
                         mType: 2,
                         title: "2. KH LCNT (Kế hoạch Lựa chọn Nhà thầu)",
-                        date: m2Date,
+                        date: prop.d2,
                         color: "#f59e0b",
                         status: c.tt_lcnt || "Chưa duyệt",
                         ngay_hoan_thanh: c.ngay_ht_lcnt || ""
@@ -8749,7 +8799,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         childTt: cTt,
                         mType: 3,
                         title: "3. KH ký HĐCU (Kế hoạch Ký hợp đồng Cung ứng/Xây lắp)",
-                        date: m3Date,
+                        date: prop.d3,
                         color: "#8b5cf6",
                         status: c.tt_ky_hdcu || "Chưa duyệt",
                         ngay_hoan_thanh: c.ngay_ht_hdcu || ""
@@ -8760,7 +8810,7 @@ dropzone.addEventListener("click", () => fileInput.click());
                         childTt: cTt,
                         mType: 4,
                         title: "4. Ngày BĐ khởi công (Mốc Bắt đầu Khởi công)",
-                        date: m4Date,
+                        date: prop.d4,
                         color: "#ef4444",
                         status: c.dieu_kien_du || "Chưa đạt",
                         ngay_hoan_thanh: c.ngay_ht_khoi_cong || ""
@@ -8949,6 +8999,9 @@ dropzone.addEventListener("click", () => fileInput.click());
                 const mtype = e.target.getAttribute("data-mtype");
                 const newVal = e.target.value; // "YYYY-MM-DD" or ""
                 
+                const year = newVal ? parseInt(newVal.split("-")[0]) : 0;
+                const isValidYear = year >= 2000;
+
                 // Find and update in db.master
                 const rawRow = db.master.find(r => r && String(r.tt || r.TT) === String(tt));
                 if (rawRow) {
@@ -8963,6 +9016,10 @@ dropzone.addEventListener("click", () => fileInput.click());
                     }
                     saveDatabase();
                     showToast("Tiến độ", `Đã cập nhật ngày hoàn thành cho mục ${tt}`, "success");
+
+                    if (isValidYear || !newVal) {
+                        renderFullGanttManagementView();
+                    }
                 }
             });
         });
