@@ -8963,9 +8963,6 @@ dropzone.addEventListener("click", () => fileInput.click());
                     }
                     saveDatabase();
                     showToast("Tiến độ", `Đã cập nhật ngày hoàn thành cho mục ${tt}`, "success");
-                    
-                    // Re-render Gantt to update view states
-                    renderFullGanttManagementView();
                 }
             });
         });
