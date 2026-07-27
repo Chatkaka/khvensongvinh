@@ -8994,15 +8994,21 @@ dropzone.addEventListener("click", () => fileInput.click());
         
         // Attach change listeners to completion inputs
         container.querySelectorAll(".gantt-completion-input").forEach(input => {
+            // Trigger calendar picker immediately on click
+            input.addEventListener("click", () => {
+                try {
+                    if (typeof input.showPicker === "function") {
+                        input.showPicker();
+                    }
+                } catch (e) {}
+            });
+
+            // Save to DB on change (save-only to avoid destroying active input focus)
             input.addEventListener("change", (e) => {
                 const tt = e.target.getAttribute("data-tt");
                 const mtype = e.target.getAttribute("data-mtype");
                 const newVal = e.target.value; // "YYYY-MM-DD" or ""
                 
-                const year = newVal ? parseInt(newVal.split("-")[0]) : 0;
-                const isValidYear = year >= 2000;
-
-                // Find and update in db.master
                 const rawRow = db.master.find(r => r && String(r.tt || r.TT) === String(tt));
                 if (rawRow) {
                     if (mtype) {
@@ -9015,11 +9021,19 @@ dropzone.addEventListener("click", () => fileInput.click());
                         rawRow.ngay_hoan_thanh = newVal;
                     }
                     saveDatabase();
-                    showToast("Tiến độ", `Đã cập nhật ngày hoàn thành cho mục ${tt}`, "success");
+                    showToast("Tiến độ", `Đã lưu ngày hoàn thành cho mục ${tt}`, "success");
+                }
+            });
 
-                    if (isValidYear || !newVal) {
-                        renderFullGanttManagementView();
-                    }
+            // Re-render when user finishes editing (leaves input)
+            input.addEventListener("blur", () => {
+                renderFullGanttManagementView();
+            });
+
+            // Re-render when user presses Enter
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    input.blur();
                 }
             });
         });
