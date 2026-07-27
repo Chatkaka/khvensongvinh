@@ -9200,12 +9200,12 @@ dropzone.addEventListener("click", () => fileInput.click());
                                 <text x="${x + 14}" y="${midY + 4}" fill="#ef4444" font-size="10" font-weight="700">${formatGanttDateDM(row.date)}</text>
                             `;
                         } else {
-                            const barH = 16;
-                            const barY = y + (h - barH) / 2;
+                            const dSize = 7;
+                            const points = `${x},${midY-dSize} ${x+dSize},${midY} ${x},${midY+dSize} ${x-dSize},${midY}`;
                             svg += `
-                                <rect x="${x}" y="${barY}" width="${barWidth}" height="${barH}" fill="${row.color}" rx="3" ry="3" opacity="0.85" style="cursor: pointer;"
-                                      data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn KH: ${formatGanttDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
-                                <text x="${x + barWidth + 6}" y="${midY + 4}" fill="${row.color}" font-size="10" font-weight="600">${formatGanttDateDM(row.date)}</text>
+                                <polygon points="${points}" fill="${row.color}" style="cursor: pointer;"
+                                         data-tip="<b>${escapeHtml(row.title)}</b><br>Thời hạn KH: ${formatGanttDateDMY(row.date)}<br>Trạng thái: ${escapeHtml(row.status)}" />
+                                <text x="${x + 12}" y="${midY + 4}" fill="${row.color}" font-size="10" font-weight="700">${formatGanttDateDM(row.date)}</text>
                             `;
                         }
                     } else {
@@ -9232,7 +9232,7 @@ dropzone.addEventListener("click", () => fileInput.click());
 
                 pairs.forEach(pair => {
                     if (pair.from && pair.to) {
-                        const x1 = pair.from.x + 35;
+                        const x1 = pair.from.x;
                         const y1 = pair.from.y;
                         const x2 = pair.to.x;
                         const y2 = pair.to.y;
