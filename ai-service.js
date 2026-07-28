@@ -102,10 +102,10 @@ class GeminiAIService {
                     ma_bsc: 'VSV_QLTC_TT.01',
                     hang_muc: 'CT-01 Nhà mẫu',
                     loai_tai_lieu: 'Biện pháp thi công',
-                    thang_tuan: 'Tuần 28 - Tháng 07/2026',
+                    ngay_thang: '2026-07-28',
                     noi_dung: 'Triển khai thi công hoàn thiện phần thô kết cấu sảnh chính nhà mẫu CT-01.',
-                    dat_yckt: 'Đạt',
                     link: 'KeHoach_T28.pdf',
+                    thoi_han_kq: '2026-08-15',
                     nguoi_lap: 'Trần Quốc Huy'
                 };
             case 's03': // Variation
@@ -298,10 +298,10 @@ Tôi đã nhận được câu hỏi của bạn về dự án. Dưới đây l�
                     ma_bsc: mockData.ma_bsc || 'VSV_QLTC_TT.01',
                     hang_muc: 'CT-01 Nhà mẫu',
                     loai_tai_lieu: 'Biện pháp thi công',
-                    thang_tuan: 'Tuần 28 - Tháng 07/2026',
+                    ngay_thang: '2026-07-28',
                     noi_dung: 'Triển khai thi công hoàn thiện phần thô kết cấu sảnh chính nhà mẫu CT-01.',
-                    dat_yckt: 'Đạt',
                     link: 'KeHoach_T28.pdf',
+                    thoi_han_kq: '2026-08-15',
                     nguoi_lap: 'Trần Quốc Huy'
                 };
             } else if (docType === 's03') {
@@ -488,10 +488,10 @@ ${JSON.stringify(targetSchema, null, 2)}
                     ma_bsc: mockData.ma_bsc || 'VSV_QLTC_TT.01',
                     hang_muc: 'CT-01 Nhà mẫu',
                     loai_tai_lieu: 'Biện pháp thi công',
-                    thang_tuan: 'Tuần 28 - Tháng 07/2026',
+                    ngay_thang: '2026-07-28',
                     noi_dung: 'Triển khai thi công hoàn thiện phần thô kết cấu sảnh chính nhà mẫu CT-01.',
-                    dat_yckt: 'Đạt',
                     link: 'KeHoach_T28.pdf',
+                    thoi_han_kq: '2026-08-15',
                     nguoi_lap: 'Trần Quốc Huy'
                 };
             } else if (docType === 's03') {
@@ -562,10 +562,10 @@ ${JSON.stringify(simulatedJson, null, 2)}
                 ma_bsc: "Mã BSC / Gói thầu liên kết (ví dụ: VSV_QLTC_TT.01)",
                 hang_muc: "Hạng mục công việc (ví dụ: Nhà mẫu CT-01)",
                 loai_tai_lieu: "Loại tài liệu (ví dụ: Biện pháp thi công, Kế hoạch cung ứng...)",
-                thang_tuan: "Tháng/Tuần kế hoạch (ví dụ: Tuần 28 - Tháng 07/2026)",
+                ngay_thang: "Ngày tháng tạo lập phiếu (định dạng YYYY-MM-DD, ví dụ: 2026-07-28)",
                 noi_dung: "Nội dung kế hoạch chính",
-                dat_yckt: "Đạt YCKT CĐT (chọn 'Đạt' hoặc 'Chưa đạt')",
                 link: "Đường dẫn tài liệu đính kèm (tên file hoặc URL)",
+                thoi_han_kq: "Thời hạn cần kết quả (định dạng YYYY-MM-DD, ví dụ: 2026-08-15)",
                 nguoi_lap: "Tên người lập kế hoạch"
             },
             s03: {
