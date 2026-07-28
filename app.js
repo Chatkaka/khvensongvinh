@@ -5153,13 +5153,7 @@ function openEditModalForm(rowIdx) {
                     <label>Nội dung chính</label>
                     <textarea id="form-noi-dung" class="form-control" style="height:80px;" placeholder="Tóm tắt nội dung chính kế hoạch..."></textarea>
                 </div>
-                <div class="form-group">
-                    <label>Đạt YCKT CĐT</label>
-                    <input type="text" id="form-dat-yckt" class="form-control" list="list-s02-dat-yckt" placeholder="Chọn hoặc nhập...">
-                    <datalist id="list-s02-dat-yckt">
-                        ${getDanhMucList('Đạt YCKT CĐT').map(opt => `<option value="${opt}"></option>`).join('')}
-                    </datalist>
-                </div>
+
                 <div class="form-group">
                     <label>Thời hạn cần KQ</label>
                     <input type="date" id="form-thoi-han-kq" class="form-control" required>
@@ -5576,7 +5570,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-ngay-thang").value = doc["Ngày tháng"] || doc["Tháng"] || getSystemDateGMT7();
                 document.getElementById("form-loai").value = doc["Loại tài liệu"] || "";
                 document.getElementById("form-noi-dung").value = doc["Nội dung chính"] || "";
-                document.getElementById("form-dat-yckt").value = doc["Đạt YCKT CĐT"] || "Có";
+
                 document.getElementById("form-thoi-han-kq").value = doc["TT lập"] || "";
                 setupFormLinkValue(doc["LINK tài liệu"] || "");
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
@@ -5671,7 +5665,7 @@ function openEditModalForm(rowIdx) {
                     if (currentStatus !== "Chờ duyệt" && currentStatus !== "Từ chối" && currentStatus !== "Chưa duyệt") {
                         const fieldsToLock = [
                             "form-bsc-search", "form-hang-muc", "form-ngay-thang", "form-loai", 
-                            "form-noi-dung", "form-dat-yckt", "form-thoi-han-kq", "form-maker", 
+                            "form-noi-dung", "form-thoi-han-kq", "form-maker", 
                             "form-yc-tvgs", "form-yc-banqlda", "form-yc-cdt"
                         ];
                         fieldsToLock.forEach(id => {
@@ -6172,7 +6166,7 @@ function openEditModalForm(rowIdx) {
                     doc["Tháng"] = document.getElementById("form-ngay-thang").value;
                     doc["Loại tài liệu"] = document.getElementById("form-loai").value;
                     doc["Nội dung chính"] = document.getElementById("form-noi-dung").value;
-                    doc["Đạt YCKT CĐT"] = document.getElementById("form-dat-yckt").value;
+                    doc["Đạt YCKT CĐT"] = doc["Đạt YCKT CĐT"] || "Có";
                     doc["LINK tài liệu"] = getFormLinkValue();
                     doc["Người lập"] = document.getElementById("form-maker").value;
                     
@@ -6208,7 +6202,7 @@ function openEditModalForm(rowIdx) {
                     "Tháng": document.getElementById("form-ngay-thang").value,
                     "Loại tài liệu": document.getElementById("form-loai").value,
                     "Nội dung chính": document.getElementById("form-noi-dung").value,
-                    "Đạt YCKT CĐT": document.getElementById("form-dat-yckt").value,
+                    "Đạt YCKT CĐT": "Có",
                     "LINK tài liệu": getFormLinkValue(),
                     "TT lập": document.getElementById("form-thoi-han-kq").value,
                     "TT duyệt": "Chờ duyệt",
