@@ -562,6 +562,20 @@ function restructureMasterData(masterArray) {
         }
 
         if (!db.s01) db.s01 = [];
+        if (!db.phieu_giao_viec) {
+            db.phieu_giao_viec = [
+                {
+                    id: "PGV-001",
+                    ma_bsc: "DA.KĐTVSV.HTKT.HT01.02",
+                    hang_muc_work: "Phần HT 01.02: Thi công hạ tầng quanh CV + nhà mẫu (Giao thông)",
+                    tieu_de: "Khảo sát và chuẩn bị mặt bằng thi công cọc",
+                    nguoi_giao: "Hồ Nghĩa Chất",
+                    nguoi_nhan: "An Dương",
+                    han_chot: "2026-08-05",
+                    noi_dung_chi_tiet: "Tiến hành đo đạc thực địa, xác định ranh giới thi công và lập rào chắn bảo vệ để chuẩn bị cho công tác đóng cọc thử nghiệm."
+                }
+            ];
+        }
         if (!db.s02) {
             db.s02 = [];
         } else {
@@ -7465,11 +7479,55 @@ function openEditModalForm(rowIdx) {
             const overlay = document.getElementById("ocr-loading-overlay");
             if (overlay) overlay.remove();
 
-            // Open the target form modal
-            openModalForm(docType);
-            
-            // Auto fill fields
-            setTimeout(() => {
+            if (docType === 'giao_viec') {
+                const newId = `PGV-${String((db.phieu_giao_viec || []).length + 1).padStart(3, '0')}`;
+                const newGiaoViec = {
+                    id: newId,
+                    ma_bsc: data.ma_bsc || "DA.KĐTVSV.HTKT.HT01.02",
+                    hang_muc_work: data.hang_muc_work || "Hạng mục chung",
+                    tieu_de: data.tieu_de || "Công việc mới từ AI",
+                    nguoi_giao: data.nguoi_giao || (currentUser && currentUser.ho_ten) || "Hồ Nghĩa Chất",
+                    nguoi_nhan: data.nguoi_nhan || "An Dương",
+                    han_chot: data.han_chot || "2026-08-15",
+                    noi_dung_chi_tiet: data.noi_dung_chi_tiet || "Nội dung giao việc chi tiết."
+                };
+                if (!db.phieu_giao_viec) db.phieu_giao_viec = [];
+                db.phieu_giao_viec.push(newGiaoViec);
+                saveDatabase();
+
+                // Append bot response bubble in chat history
+                const chatHistory = document.getElementById("ai-chat-history");
+                if (chatHistory) {
+                    const botBubble = document.createElement("div");
+                    botBubble.className = "ai-chat-bubble bot";
+                    botBubble.innerHTML = `
+                        <h4 style="color:var(--color-ai-primary); margin-bottom:8px;"><i class="fa-solid fa-file-signature"></i> Đã Tạo Phiếu Giao Việc AI Thành Công!</h4>
+                        <p style="margin-bottom:12px;">Hệ thống AI đã đọc nội dung tài liệu và tự động phân công công việc mới vào hệ thống:</p>
+                        <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px; font-size:0.8rem; display:flex; flex-direction:column; gap:6px;">
+                            <div><strong>Mã Phiếu:</strong> <span style="color:var(--color-ai-primary); font-weight:600;">${newId}</span></div>
+                            <div><strong>Gói thầu:</strong> ${escapeHtml(newGiaoViec.ma_bsc)}</div>
+                            <div><strong>Hạng mục:</strong> ${escapeHtml(newGiaoViec.hang_muc_work)}</div>
+                            <div><strong>Nhiệm vụ:</strong> <span style="color:#fff; font-weight:600;">${escapeHtml(newGiaoViec.tieu_de)}</span></div>
+                            <div><strong>Người giao:</strong> ${escapeHtml(newGiaoViec.nguoi_giao)}</div>
+                            <div><strong>Người thực hiện:</strong> <span style="color:var(--color-yellow); font-weight:600;">${escapeHtml(newGiaoViec.nguoi_nhan)}</span></div>
+                            <div><strong>Hạn chót:</strong> <span style="color:#ef4444; font-weight:600;">${formatDateDMY(newGiaoViec.han_chot)}</span></div>
+                            <div style="margin-top:6px; border-top:1px solid rgba(255,255,255,0.1); padding-top:6px; line-height:1.4; color:var(--text-secondary);">
+                                <strong>Chi tiết:</strong> ${escapeHtml(newGiaoViec.noi_dung_chi_tiet)}
+                            </div>
+                        </div>
+                        <p style="margin-top:12px; font-size:0.75rem; color:var(--text-muted);">Bạn có thể xem danh sách đầy đủ phiếu giao việc này tại tab <strong>Quản Lý Nhân Sự</strong>.</p>
+                    `;
+                    chatHistory.appendChild(botBubble);
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                }
+                showToast("AI Giao Việc", `Đã tự động tạo phiếu giao việc ${newId}`, "success");
+                renderGiaoViec();
+            } else {
+                // Open the target form modal
+                openModalForm(docType);
+                
+                // Auto fill fields
+                setTimeout(() => {
                 if (docType === 's01') {
                     if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
                     if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
@@ -7519,6 +7577,7 @@ function openEditModalForm(rowIdx) {
                 }
                 showToast("Form Filler", "Đã bóc tách và điền tự động dữ liệu vào form thành công!", "success");
             }, 400);
+        }
 
         } catch (e) {
             console.error(e);
@@ -7542,6 +7601,7 @@ dropzone.addEventListener("click", () => fileInput.click());
             else if (file.name.toLowerCase().includes('s03') || file.name.toLowerCase().includes('phát sinh') || file.name.toLowerCase().includes('phatsinh')) docType = 's03';
             else if (file.name.toLowerCase().includes('s04') || file.name.toLowerCase().includes('cung ứng') || file.name.toLowerCase().includes('cungung')) docType = 's04';
             else if (file.name.toLowerCase().includes('s05') || file.name.toLowerCase().includes('bù tiến độ') || file.name.toLowerCase().includes('butiendo')) docType = 's05';
+            else if (file.name.toLowerCase().includes('giao_viec') || file.name.toLowerCase().includes('giao việc') || file.name.toLowerCase().includes('giaoviec')) docType = 'giao_viec';
 
             const isTxt = file.name.endsWith('.txt');
             if (isTxt) {
@@ -7589,6 +7649,7 @@ dropzone.addEventListener("click", () => fileInput.click());
             else if (file.name.toLowerCase().includes('s03') || file.name.toLowerCase().includes('phát sinh') || file.name.toLowerCase().includes('phatsinh')) docType = 's03';
             else if (file.name.toLowerCase().includes('s04') || file.name.toLowerCase().includes('cung ứng') || file.name.toLowerCase().includes('cungung')) docType = 's04';
             else if (file.name.toLowerCase().includes('s05') || file.name.toLowerCase().includes('bù tiến độ') || file.name.toLowerCase().includes('butiendo')) docType = 's05';
+            else if (file.name.toLowerCase().includes('giao_viec') || file.name.toLowerCase().includes('giao việc') || file.name.toLowerCase().includes('giaoviec')) docType = 'giao_viec';
 
             const isTxt = file.name.endsWith('.txt');
             if (isTxt) {
@@ -7625,6 +7686,11 @@ dropzone.addEventListener("click", () => fileInput.click());
     
     document.getElementById("demo-doc-s05").addEventListener("click", () => {
         activeOcrDocType = 's05';
+        docPicker.click();
+    });
+    
+    document.getElementById("demo-doc-giao-viec").addEventListener("click", () => {
+        activeOcrDocType = 'giao_viec';
         docPicker.click();
     });
 
@@ -7895,6 +7961,30 @@ dropzone.addEventListener("click", () => fileInput.click());
     // 9.1 PERSONNEL MANAGEMENT (Danh sách nhân sự & Phân quyền)
     let editPersonnelIndex = -1;
 
+    function renderGiaoViec() {
+        const tbody = document.getElementById("giao-viec-tbody");
+        if (!tbody) return;
+        
+        const list = db.phieu_giao_viec || [];
+        if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-secondary); padding:20px;">Chưa có phiếu giao việc nào được tạo. Hãy dùng AI bóc tách tờ trình để tạo phiếu!</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = list.map(item => `
+            <tr>
+                <td style="font-weight:600; color:var(--color-ai-primary);">${escapeHtml(item.id)}</td>
+                <td><span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:4px 8px; border-radius:6px; font-weight:600; font-size:0.75rem;">${escapeHtml(item.ma_bsc)}</span></td>
+                <td style="font-weight:500;">${escapeHtml(item.hang_muc_work)}</td>
+                <td style="font-weight:600; color:var(--text-primary);">${escapeHtml(item.tieu_de)}</td>
+                <td>${escapeHtml(item.nguoi_giao)}</td>
+                <td style="font-weight:600; color:var(--color-yellow);">${escapeHtml(item.nguoi_nhan)}</td>
+                <td><span style="color:#ef4444; font-weight:600;">${formatDateDMY(item.han_chot)}</span></td>
+                <td style="white-space:normal; word-break:break-word; max-width:350px; font-size:0.8rem; color:var(--text-secondary); line-height:1.4;">${escapeHtml(item.noi_dung_chi_tiet)}</td>
+            </tr>
+        `).join("");
+    }
+
     function renderPersonnel() {
         const tbody = document.getElementById("personnel-tbody");
         const btnAdd = document.getElementById("btn-add-personnel");
@@ -7978,6 +8068,8 @@ dropzone.addEventListener("click", () => fileInput.click());
                 deletePersonnel(idx);
             });
         });
+        
+        renderGiaoViec();
     }
 
     // Add Personnel Button Trigger
