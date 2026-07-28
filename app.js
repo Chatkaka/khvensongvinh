@@ -4404,71 +4404,96 @@ function openEditModalForm(rowIdx) {
             );
             const canDelete = currentUser && (currentUser.quyen === 'Admin' || currentUser.quyen_xoa);
 
-            let deptStatusesHtml = "";
-            if (row.yc_tvgs || row.yc_banqlda || row.yc_cdt) {
-                const getStatusSymbol = (status) => {
-                    if (status === 'Đồng ý') return '<span style="color:var(--color-green); font-weight:bold;" title="Đồng ý">✔</span>';
-                    if (status === 'Không đồng ý') return '<span style="color:#ff5252; font-weight:bold;" title="Không đồng ý">✘</span>';
-                    if (status === 'Chờ ý kiến') return '<span style="color:#f59e0b;" title="Chờ ý kiến">⏳</span>';
-                    return '<span style="color:var(--text-muted);" title="N/A">-</span>';
-                };
-                const tvgsPart = row.yc_tvgs ? `<span title="TVGS: ${row.tvgs_status}${row.tvgs_user ? ` (Bởi: ${row.tvgs_user})` : ''}">TVGS:${getStatusSymbol(row.tvgs_status)}</span>` : "";
-                const qldaPart = row.yc_banqlda ? `<span title="QLDA: ${row.banqlda_status}${row.banqlda_user ? ` (Bởi: ${row.banqlda_user})` : ''}">QLDA:${getStatusSymbol(row.banqlda_status)}</span>` : "";
-                const cdtPart = row.yc_cdt ? `<span title="CĐT: ${row.cdt_status}${row.cdt_user ? ` (Bởi: ${row.cdt_user})` : ''}">CĐT:${getStatusSymbol(row.cdt_status)}</span>` : "";
-                deptStatusesHtml = `<div style="font-size:0.7rem; color:var(--text-secondary); margin-top:4px; display:flex; gap:6px; justify-content:center;">
-                    ${[tvgsPart, qldaPart, cdtPart].filter(Boolean).join(" | ")}
-                </div>`;
+            // TVGS Columns
+            let tvgsStatusHtml = "-";
+            let tvgsUserHtml = "-";
+            if (row.yc_tvgs) {
+                if (row.tvgs_status === 'Đồng ý') {
+                    tvgsStatusHtml = `<span style="color:var(--color-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Đồng ý</span>`;
+                } else if (row.tvgs_status === 'Không đồng ý') {
+                    tvgsStatusHtml = `<span style="color:#ff5252; font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> Từ chối</span>`;
+                } else {
+                    tvgsStatusHtml = `<span style="color:#f59e0b;"><i class="fa-solid fa-clock"></i> Chờ ý kiến</span>`;
+                }
+                if (row.tvgs_comment) {
+                    tvgsStatusHtml += `<br><small style="color:var(--text-secondary); font-style:italic; display:block; margin-top:2px;">"${escapeHtml(row.tvgs_comment)}"</small>`;
+                }
+                if (row.tvgs_user) {
+                    tvgsUserHtml = `<div style="font-weight:600; color:#fff;">${escapeHtml(row.tvgs_user)}</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">(${formatDateTimeDMY(row.tvgs_time)})</div>`;
+                } else {
+                    tvgsUserHtml = `<span style="color:var(--text-muted); font-style:italic;">(Chờ ý kiến)</span>`;
+                }
             }
 
-            let overallBadgeClass = "warning";
-            if (row['TT duyệt'] === 'Đã duyệt') overallBadgeClass = "success";
-            else if (row['TT duyệt'] === 'Từ chối') overallBadgeClass = "danger";
-
-            let commentsHtml = "";
-            const commentsList = [];
-            if (row.yc_tvgs && row.tvgs_comment) {
-                const timeSuffix = row.tvgs_time ? ` (${formatDateTimeDMY(row.tvgs_time)})` : '';
-                commentsList.push(`TVGS: ${row.tvgs_comment}${timeSuffix}`);
-            }
-            if (row.yc_banqlda && row.banqlda_comment) {
-                const timeSuffix = row.banqlda_time ? ` (${formatDateTimeDMY(row.banqlda_time)})` : '';
-                commentsList.push(`QLDA: ${row.banqlda_comment}${timeSuffix}`);
-            }
-            if (row.yc_cdt && row.cdt_comment) {
-                const timeSuffix = row.cdt_time ? ` (${formatDateTimeDMY(row.cdt_time)})` : '';
-                commentsList.push(`CĐT: ${row.cdt_comment}${timeSuffix}`);
-            }
-            if (commentsList.length > 0) {
-                commentsHtml = `<br><small style="color:#ff5252; font-style:italic; display:block; margin-top:4px; max-width:180px; word-wrap:break-word; text-align:left; line-height:1.2;">
-                    ${commentsList.map(c => `• ${c}`).join("<br>")}
-                </small>`;
+            // BQLDA Columns
+            let banqldaStatusHtml = "-";
+            let banqldaUserHtml = "-";
+            if (row.yc_banqlda) {
+                if (row.banqlda_status === 'Đồng ý') {
+                    banqldaStatusHtml = `<span style="color:var(--color-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Đồng ý</span>`;
+                } else if (row.banqlda_status === 'Không đồng ý') {
+                    banqldaStatusHtml = `<span style="color:#ff5252; font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> Từ chối</span>`;
+                } else {
+                    banqldaStatusHtml = `<span style="color:#f59e0b;"><i class="fa-solid fa-clock"></i> Chờ ý kiến</span>`;
+                }
+                if (row.banqlda_comment) {
+                    banqldaStatusHtml += `<br><small style="color:var(--text-secondary); font-style:italic; display:block; margin-top:2px;">"${escapeHtml(row.banqlda_comment)}"</small>`;
+                }
+                if (row.banqlda_user) {
+                    banqldaUserHtml = `<div style="font-weight:600; color:#fff;">${escapeHtml(row.banqlda_user)}</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">(${formatDateTimeDMY(row.banqlda_time)})</div>`;
+                } else {
+                    banqldaUserHtml = `<span style="color:var(--text-muted); font-style:italic;">(Chờ ý kiến)</span>`;
+                }
             }
 
-            const approversList = [];
-            if (row.tvgs_user) approversList.push(`${row.tvgs_user} (TVGS)`);
-            if (row.banqlda_user) approversList.push(`${row.banqlda_user} (QLDA)`);
-            if (row.cdt_user) approversList.push(`${row.cdt_user} (CĐT)`);
-            const approversStr = approversList.join(", ") || row['Người duyệt'] || "";
+            // CĐT Columns
+            let cdtStatusHtml = "-";
+            let cdtUserHtml = "-";
+            if (row.yc_cdt) {
+                if (row.cdt_status === 'Đồng ý') {
+                    cdtStatusHtml = `<span style="color:var(--color-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Đồng ý</span>`;
+                } else if (row.cdt_status === 'Không đồng ý') {
+                    cdtStatusHtml = `<span style="color:#ff5252; font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> Từ chối</span>`;
+                } else {
+                    cdtStatusHtml = `<span style="color:#f59e0b;"><i class="fa-solid fa-clock"></i> Chờ ý kiến</span>`;
+                }
+                if (row.cdt_comment) {
+                    cdtStatusHtml += `<br><small style="color:var(--text-secondary); font-style:italic; display:block; margin-top:2px;">"${escapeHtml(row.cdt_comment)}"</small>`;
+                }
+                if (row.cdt_user) {
+                    cdtUserHtml = `<div style="font-weight:600; color:#fff;">${escapeHtml(row.cdt_user)}</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">(${formatDateTimeDMY(row.cdt_time)})</div>`;
+                } else {
+                    cdtUserHtml = `<span style="color:var(--text-muted); font-style:italic;">(Chờ ý kiến)</span>`;
+                }
+            }
 
+            const dateVal = row['Ngày tháng'] || row['Tháng'] || "";
             tr.innerHTML = `
                 <td>${index + 1}</td>
                 <td style="font-weight:700;">${bsc}</td>
                 <td>${row['Hạng mục'] || ""}</td>
-                <td>${row['Tháng'] || ""}</td>
+                <td><span style="font-weight:600;">${formatDateDMY(dateVal) || dateVal}</span></td>
                 <td>${row['Loại tài liệu'] || ""}</td>
-                <td>${row['Nội dung chính'] || ""}</td>
-                <td>${row['Đạt YCKT CĐT'] === 'Có' ? '<span class="badge success">Đạt</span>' : '<span class="badge danger">Chưa đạt</span>'}</td>
+                <td style="white-space:normal; word-break:break-word; max-width:280px; font-size:0.8rem; line-height:1.4;">${row['Nội dung chính'] || ""}</td>
                 <td>${renderLinkHtml(row['LINK tài liệu'])}</td>
-                <td>${formatDateDMY(row['TT lập']) || ""}</td>
-                <td>
-                    <span class="badge ${overallBadgeClass}">
-                        ${row['TT duyệt'] || "Chờ duyệt"}
-                    </span>
-                    ${deptStatusesHtml}
-                    ${commentsHtml}
-                </td>
-                <td>${row['Người lập'] || ""}/${approversStr}</td>
-                <td>${formatDateTimeDMY(row['Ngày duyệt'])}</td>
+                <td><span style="color:#ef4444; font-weight:600;">${formatDateDMY(row['TT lập']) || ""}</span></td>
+                <td><div style="font-weight:600; color:#fff;">${row['Người lập'] || ""}</div></td>
+                
+                <!-- TVGS Columns -->
+                <td style="border-left: 2px solid var(--border-color);">${tvgsStatusHtml}</td>
+                <td style="border-right: 2px solid var(--border-color);">${tvgsUserHtml}</td>
+                
+                <!-- BQLDA Columns -->
+                <td>${banqldaStatusHtml}</td>
+                <td style="border-right: 2px solid var(--border-color);">${banqldaUserHtml}</td>
+                
+                <!-- CĐT Columns -->
+                <td>${cdtStatusHtml}</td>
+                <td style="border-right: 2px solid var(--border-color);">${cdtUserHtml}</td>
+                
                 <td>
                     <div style="display:flex; gap:4px; justify-content:center;">
                         ${userCanGiveOpinion ? `
@@ -5114,8 +5139,8 @@ function openEditModalForm(rowIdx) {
                     ${renderSearchableCombobox('form-hang-muc', 'Chọn hoặc tự nhập hạng mục...')}
                 </div>
                 <div class="form-group">
-                    <label>Tháng / Tuần</label>
-                    <input type="text" id="form-thang" class="form-control" placeholder="ví dụ: Tháng 07/2026, Tuần 28..." required>
+                    <label>Ngày tháng (Tạo lập phiếu)</label>
+                    <input type="date" id="form-ngay-thang" class="form-control" required>
                 </div>
                 <div class="form-group">
                     <label>Loại tài liệu</label>
@@ -5172,6 +5197,7 @@ function openEditModalForm(rowIdx) {
                     <input type="text" id="form-maker" class="form-control" value="Tổng thầu">
                 </div>
             `;
+            document.getElementById("form-ngay-thang").value = getSystemDateGMT7();
         } else if (target === 's03') {
             titleEl.textContent = "Ghi Nhận Phát Sinh & Sai Khác Hợp Đồng";
             bodyEl.innerHTML = `
@@ -5547,7 +5573,7 @@ function openEditModalForm(rowIdx) {
             } else if (target === 's02') {
                 const doc = db.s02[editRegistrationIndex];
                 document.getElementById("form-hang-muc").value = doc["Hạng mục"] || "";
-                document.getElementById("form-thang").value = doc["Tháng"] || "";
+                document.getElementById("form-ngay-thang").value = doc["Ngày tháng"] || doc["Tháng"] || getSystemDateGMT7();
                 document.getElementById("form-loai").value = doc["Loại tài liệu"] || "";
                 document.getElementById("form-noi-dung").value = doc["Nội dung chính"] || "";
                 document.getElementById("form-dat-yckt").value = doc["Đạt YCKT CĐT"] || "Có";
@@ -5644,7 +5670,7 @@ function openEditModalForm(rowIdx) {
                     const currentStatus = doc["TT duyệt"];
                     if (currentStatus !== "Chờ duyệt" && currentStatus !== "Từ chối" && currentStatus !== "Chưa duyệt") {
                         const fieldsToLock = [
-                            "form-bsc-search", "form-hang-muc", "form-thang", "form-loai", 
+                            "form-bsc-search", "form-hang-muc", "form-ngay-thang", "form-loai", 
                             "form-noi-dung", "form-dat-yckt", "form-thoi-han-kq", "form-maker", 
                             "form-yc-tvgs", "form-yc-banqlda", "form-yc-cdt"
                         ];
@@ -6117,7 +6143,7 @@ function openEditModalForm(rowIdx) {
         } else if (currentFormTarget === 's02') {
             const bsc = document.getElementById("form-bsc").value;
             const hangMuc = document.getElementById("form-hang-muc").value;
-            const thang = document.getElementById("form-thang").value.trim();
+            const ngayThang = document.getElementById("form-ngay-thang").value;
 
             if (!bsc) {
                 alert("Vui lòng chọn Công trình / Gói thầu liên kết!");
@@ -6127,8 +6153,8 @@ function openEditModalForm(rowIdx) {
                 alert("Vui lòng chọn Hạng mục!");
                 return;
             }
-            if (thang === "") {
-                alert("Vui lòng nhập Tháng / Tuần!");
+            if (!ngayThang) {
+                alert("Vui lòng chọn Ngày tháng tạo lập phiếu!");
                 return;
             }
 
@@ -6142,7 +6168,8 @@ function openEditModalForm(rowIdx) {
                 } else {
                     doc["Mã BSC"] = document.getElementById("form-bsc").value;
                     doc["Hạng mục"] = document.getElementById("form-hang-muc").value;
-                    doc["Tháng"] = document.getElementById("form-thang").value;
+                    doc["Ngày tháng"] = document.getElementById("form-ngay-thang").value;
+                    doc["Tháng"] = document.getElementById("form-ngay-thang").value;
                     doc["Loại tài liệu"] = document.getElementById("form-loai").value;
                     doc["Nội dung chính"] = document.getElementById("form-noi-dung").value;
                     doc["Đạt YCKT CĐT"] = document.getElementById("form-dat-yckt").value;
@@ -6177,7 +6204,8 @@ function openEditModalForm(rowIdx) {
                     "STT": db.s02.length + 1,
                     "Mã BSC": document.getElementById("form-bsc").value,
                     "Hạng mục": document.getElementById("form-hang-muc").value,
-                    "Tháng": document.getElementById("form-thang").value,
+                    "Ngày tháng": document.getElementById("form-ngay-thang").value,
+                    "Tháng": document.getElementById("form-ngay-thang").value,
                     "Loại tài liệu": document.getElementById("form-loai").value,
                     "Nội dung chính": document.getElementById("form-noi-dung").value,
                     "Đạt YCKT CĐT": document.getElementById("form-dat-yckt").value,
