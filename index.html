@@ -131,6 +131,9 @@
 
         <!-- ==================== TAB: DASHBOARD ==================== -->
         <div class="tab-pane active" id="tab-dashboard">
+            <!-- AI USER TASKS ALERT BANNER -->
+            <div id="dashboard-user-tasks-alert"></div>
+
             <!-- Dashboard Tổng quan Hệ thống -->
             <div class="dashboard-overview-header" style="margin-bottom: 24px; background-color: var(--bg-surface); padding: 18px 24px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-premium);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
@@ -733,12 +736,13 @@
                         <tr>
                             <th style="width: 80px;">Mã Phiếu</th>
                             <th style="width: 140px;">Mã BSC / Gói</th>
-                            <th style="width: 220px;">Hạng mục công việc</th>
-                            <th style="width: 200px;">Tiêu đề công việc</th>
-                            <th style="width: 120px;">Người giao</th>
-                            <th style="width: 120px;">Người nhận</th>
-                            <th style="width: 100px;">Hạn chót</th>
+                            <th style="width: 180px;">Hạng mục công việc</th>
+                            <th style="width: 180px;">Tiêu đề công việc</th>
+                            <th style="width: 110px;">Người giao</th>
+                            <th style="width: 110px;">Người nhận</th>
+                            <th style="width: 90px;">Hạn chót</th>
                             <th>Nội dung chi tiết nhiệm vụ</th>
+                            <th style="width: 90px; text-align: center;">Thao Tác</th>
                         </tr>
                     </thead>
                     <tbody id="giao-viec-tbody">
@@ -952,9 +956,32 @@
         </div>
     </div>
 
+    <!-- TASK TICKET MODAL (PRINTABLE) -->
+    <div id="task-ticket-modal" class="modal" style="display:none; justify-content:center; align-items:center; z-index:10000; background:rgba(0,0,0,0.6);">
+        <div class="modal-content" style="width:100%; max-width:650px; background:var(--bg-surface); border: 1px solid var(--border-color); border-radius:12px; box-shadow:var(--shadow-premium); display:flex; flex-direction:column; padding:0;">
+            <div class="modal-header no-print" style="padding:14px 20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="font-size:1rem; font-weight:700; color:#fff; margin:0;"><i class="fa-solid fa-file-invoice"></i> Chi Tiết Phiếu Giao Nhiệm Vụ</h3>
+                <button class="btn-close" id="close-task-ticket-modal-btn" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.1rem; padding:0;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="modal-body" style="padding:20px; overflow-y:auto; max-height:70vh; background:#fff; color:#000;" id="task-ticket-print-area">
+                <!-- Formal Vietnamese printable task slip will be injected here -->
+            </div>
+            
+            <div class="modal-footer no-print" style="padding:14px 20px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn-action approve" id="btn-print-task-ticket-modal" style="padding:8px 16px; background:var(--color-ai-glow); color:var(--color-ai-primary); border-color:rgba(59,130,246,0.3);">
+                    <i class="fa-solid fa-print"></i> In Phiếu (Bản cứng)
+                </button>
+                <button class="btn-action secondary" id="btn-close-task-ticket-modal-footer" style="padding:8px 16px; border-color:var(--border-color); color:var(--text-secondary);">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- SCRIPTS -->
-    <script src="database.js?v=20260728_v46"></script>
-    <script src="ai-service.js?v=1785208957"></script>
-    <script src="app.js?v=20260728_v46"></script>
+    <script src="database.js?v=20260728_v47"></script>
+    <script src="ai-service.js?v=1785215443"></script>
+    <script src="app.js?v=20260728_v47"></script>
 </body>
 </html>
