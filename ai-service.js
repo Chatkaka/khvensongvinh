@@ -311,6 +311,16 @@ Tôi đã nhận được câu hỏi của bạn về dự án. Dưới đây l�
                     moc_cam_ket: mockData.moc_cam_ket,
                     link_hs: mockData.link_hs
                 };
+            } else if (docType === 'giao_viec') {
+                simulatedJson = {
+                    ma_bsc: 'DA.KĐTVSV.HTKT.HT01.02',
+                    hang_muc_work: 'Phần HT 01.02: Thi công hạ tầng quanh CV + nhà mẫu (Giao thông)',
+                    tieu_de: 'Thi công cấp thoát nước sảnh chính nhà mẫu',
+                    nguoi_giao: 'Hồ Nghĩa Chất',
+                    nguoi_nhan: 'An Dương',
+                    han_chot: '2026-08-15',
+                    noi_dung_chi_tiet: 'Tiến hành khảo sát hiện trạng mặt bằng, phối hợp với đơn vị thiết kế để hoàn thiện bản vẽ thi công hệ thống cấp thoát nước sảnh chính, trình duyệt biện pháp thi công trước ngày 15/08/2026.'
+                };
             }
             return `\`\`\`json\n${JSON.stringify(simulatedJson, null, 2)}\n\`\`\``;
         }
@@ -399,6 +409,15 @@ Xử lý xung đột: Nếu trong file có hai dữ liệu mâu thuẫn cho cùn
                 chi_tiet: "Chi tiết hành động cụ thể",
                 moc_cam_ket: "Mốc cam kết hoàn thành (định dạng YYYY-MM-DD)",
                 link_hs: "Hồ sơ đính kèm (tên tệp hoặc link)"
+            },
+            giao_viec: {
+                ma_bsc: "Mã BSC / Gói thầu liên kết (ví dụ: DA.KĐTVSV.HTKT.HT01.02)",
+                hang_muc_work: "Hạng mục công việc (ví dụ: Phần HT 01.02: Thi công hạ tầng quanh CV + nhà mẫu (Giao thông))",
+                tieu_de: "Tiêu đề công việc được giao (ví dụ: Khảo sát địa hình tuyến đường chính)",
+                nguoi_giao: "Tên người giao việc (ví dụ: Hồ Nghĩa Chất)",
+                nguoi_nhan: "Tên người nhận việc (ví dụ: An Dương)",
+                han_chot: "Hạn chót hoàn thành (định dạng YYYY-MM-DD)",
+                noi_dung_chi_tiet: "Nội dung mô tả chi tiết nhiệm vụ giao việc"
             }
         };
 
@@ -482,6 +501,16 @@ ${JSON.stringify(targetSchema, null, 2)}
                     moc_cam_ket: mockData.moc_cam_ket,
                     link_hs: mockData.link_hs
                 };
+            } else if (docType === 'giao_viec') {
+                simulatedJson = {
+                    ma_bsc: 'DA.KĐTVSV.HTKT.HT01.02',
+                    hang_muc_work: 'Phần HT 01.02: Thi công hạ tầng quanh CV + nhà mẫu (Giao thông)',
+                    tieu_de: 'Thi công cấp thoát nước sảnh chính nhà mẫu',
+                    nguoi_giao: 'Hồ Nghĩa Chất',
+                    nguoi_nhan: 'An Dương',
+                    han_chot: '2026-08-15',
+                    noi_dung_chi_tiet: 'Tiến hành khảo sát hiện trạng mặt bằng, phối hợp với đơn vị thiết kế để hoàn thiện bản vẽ thi công hệ thống cấp thoát nước sảnh chính, trình duyệt biện pháp thi công trước ngày 15/08/2026.'
+                };
             }
             return `\`\`\`json
 ${JSON.stringify(simulatedJson, null, 2)}
@@ -542,6 +571,15 @@ ${JSON.stringify(simulatedJson, null, 2)}
                 chi_tiet: "Chi tiết hành động cụ thể",
                 moc_cam_ket: "Mốc cam kết hoàn thành (định dạng YYYY-MM-DD)",
                 link_hs: "Hồ sơ đính kèm (tên tệp hoặc link)"
+            },
+            giao_viec: {
+                ma_bsc: "Mã BSC / Gói thầu liên kết (ví dụ: DA.KĐTVSV.HTKT.HT01.02)",
+                hang_muc_work: "Hạng mục công việc (ví dụ: Phần HT 01.02: Thi công hạ tầng quanh CV + nhà mẫu (Giao thông))",
+                tieu_de: "Tiêu đề công việc được giao (ví dụ: Khảo sát địa hình tuyến đường chính)",
+                nguoi_giao: "Tên người giao việc (ví dụ: Hồ Nghĩa Chất)",
+                nguoi_nhan: "Tên người nhận việc (ví dụ: An Dương)",
+                han_chot: "Hạn chót hoàn thành (định dạng YYYY-MM-DD)",
+                noi_dung_chi_tiet: "Nội dung mô tả chi tiết nhiệm vụ giao việc"
             }
         };
 
