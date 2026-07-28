@@ -4392,9 +4392,9 @@ function openEditModalForm(rowIdx) {
             
             const userCanGiveOpinion = currentUser && (
                 currentUser.quyen === 'Admin' ||
-                (row.yc_tvgs && currentUser.quyen === 'Supervisor') ||
-                (row.yc_banqlda && ['BanQLDA', 'KTKH', 'QLTK', 'Supply'].includes(currentUser.quyen)) ||
-                (row.yc_cdt && ['CDT', 'CĐT', 'Investor'].includes(currentUser.quyen))
+                (row.yc_tvgs && (row.assigned_tvgs ? currentUser.ho_ten === row.assigned_tvgs : currentUser.quyen === 'Supervisor')) ||
+                (row.yc_banqlda && (row.assigned_banqlda ? currentUser.ho_ten === row.assigned_banqlda : ['BanQLDA', 'KTKH', 'QLTK', 'Supply'].includes(currentUser.quyen))) ||
+                (row.yc_cdt && (row.assigned_cdt ? currentUser.ho_ten === row.assigned_cdt : ['CDT', 'CĐT', 'Investor'].includes(currentUser.quyen)))
             ) && row['TT duyệt'] !== 'Đã duyệt';
 
             const canEdit = currentUser && (
@@ -4422,7 +4422,7 @@ function openEditModalForm(rowIdx) {
                     tvgsUserHtml = `<div style="font-weight:600; color:#fff;">${escapeHtml(row.tvgs_user)}</div>
                         <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">(${formatDateTimeDMY(row.tvgs_time)})</div>`;
                 } else {
-                    tvgsUserHtml = `<span style="color:var(--text-muted); font-style:italic;">(Chờ ý kiến)</span>`;
+                    tvgsUserHtml = `<span style="color:var(--text-muted); font-style:italic;">(Chờ: ${escapeHtml(row.assigned_tvgs || 'TVGS')})</span>`;
                 }
             }
 
@@ -4444,7 +4444,7 @@ function openEditModalForm(rowIdx) {
                     banqldaUserHtml = `<div style="font-weight:600; color:#fff;">${escapeHtml(row.banqlda_user)}</div>
                         <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">(${formatDateTimeDMY(row.banqlda_time)})</div>`;
                 } else {
-                    banqldaUserHtml = `<span style="color:var(--text-muted); font-style:italic;">(Chờ ý kiến)</span>`;
+                    banqldaUserHtml = `<span style="color:var(--text-muted); font-style:italic;">(Chờ: ${escapeHtml(row.assigned_banqlda || 'QLDA')})</span>`;
                 }
             }
 
@@ -4466,7 +4466,7 @@ function openEditModalForm(rowIdx) {
                     cdtUserHtml = `<div style="font-weight:600; color:#fff;">${escapeHtml(row.cdt_user)}</div>
                         <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">(${formatDateTimeDMY(row.cdt_time)})</div>`;
                 } else {
-                    cdtUserHtml = `<span style="color:var(--text-muted); font-style:italic;">(Chờ ý kiến)</span>`;
+                    cdtUserHtml = `<span style="color:var(--text-muted); font-style:italic;">(Chờ: ${escapeHtml(row.assigned_cdt || 'CĐT')})</span>`;
                 }
             }
 
@@ -4995,6 +4995,54 @@ function openEditModalForm(rowIdx) {
     let editRegistrationIndex = -1;
     let linkCheckInterval = null;
 
+        function renderOpinionChecklist(doc = null) {
+        const tvgsList = db.nhan_su.filter(ns => ns.quyen === 'Supervisor');
+        const banqldaList = db.nhan_su.filter(ns => ['BanQLDA', 'KTKH', 'QLTK', 'Supply'].includes(ns.quyen));
+        const cdtList = db.nhan_su.filter(ns => ['CDT', 'CĐT', 'Investor', 'Admin'].includes(ns.quyen));
+
+        const currentTvgs = doc ? doc.assigned_tvgs : "Trần Việt Cường";
+        const currentBanqlda = doc ? doc.assigned_banqlda : "Đinh Quốc Hùng";
+        const currentCdt = doc ? doc.assigned_cdt : "Hồ Nghĩa Chất";
+
+        const ycTvgs = doc ? doc.yc_tvgs !== false : true;
+        const ycBanqlda = doc ? doc.yc_banqlda !== false : true;
+        const ycCdt = doc ? doc.yc_cdt !== false : true;
+
+        const renderGroup = (title, list, groupName, activeVal, activeYc) => {
+            const noneChecked = !activeYc ? 'checked' : '';
+            const optionsHtml = list.map(ns => {
+                const isChecked = (activeYc && ns.ho_ten === activeVal) ? 'checked' : '';
+                return `
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.82rem; color:#fff; padding:4px 0;">
+                        <input type="radio" name="opinion-radio-${groupName}" value="${ns.ho_ten}" ${isChecked}>
+                        <span>${ns.ho_ten} (${ns.vai_tro})</span>
+                    </label>
+                `;
+            }).join('');
+            
+            return `
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.8rem; font-weight:700; color:var(--color-ai-primary); margin-bottom:4px; text-transform:uppercase;">${title}</div>
+                    <div style="padding-left:10px; display:flex; flex-direction:column; gap:2px;">
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.82rem; color:var(--text-muted); padding:4px 0;">
+                            <input type="radio" name="opinion-radio-${groupName}" value="NONE" ${noneChecked}>
+                             <span>Không lấy ý kiến bộ phận này</span>
+                        </label>
+                        ${optionsHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        return `
+            <div id="opinion-checklist-container" style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:8px; padding:12px; max-height:220px; overflow-y:auto; margin-top:6px;">
+                ${renderGroup('Tư vấn giám sát (TVGS)', tvgsList, 'tvgs', currentTvgs, ycTvgs)}
+                ${renderGroup('Ban Quản lý Dự án (BQLDA)', banqldaList, 'banqlda', currentBanqlda, ycBanqlda)}
+                ${renderGroup('Chủ đầu tư (CĐT)', cdtList, 'cdt', currentCdt, ycCdt)}
+            </div>
+        `;
+    }
+
     function openModalForm(target) {
         // Enforce Create permission - Allow if they have quyen_them OR if they are resubmitting/editing an existing rejected document
         const canAdd = currentUser ? (currentUser.quyen === 'Admin' || currentUser.quyen_them || editRegistrationIndex !== -1) : false;
@@ -5109,18 +5157,8 @@ function openEditModalForm(rowIdx) {
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Các bộ phận cần lấy ý kiến (OE Workflow)</label>
-                    <div style="display: flex; gap: 16px; align-items: center; margin-top: 6px;">
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-tvgs" checked> TVGS
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-banqlda" checked> Ban QLDA
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-cdt" checked> CĐT
-                        </label>
-                    </div>
+                    <label>Các bộ phận cần lấy ý kiến (Chọn cụ thể nhân sự phê duyệt)</label>
+                    ${renderOpinionChecklist(editRegistrationIndex !== -1 ? db.s02[editRegistrationIndex] : null)}
                 </div>
                 <div class="form-group">
                     <label>Người lập</label>
@@ -5173,18 +5211,8 @@ function openEditModalForm(rowIdx) {
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Các bộ phận cần lấy ý kiến (OE Workflow)</label>
-                    <div style="display: flex; gap: 16px; align-items: center; margin-top: 6px;">
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-tvgs" checked> TVGS
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-banqlda" checked> Ban QLDA
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-cdt" checked> CĐT
-                        </label>
-                    </div>
+                    <label>Các bộ phận cần lấy ý kiến (Chọn cụ thể nhân sự phê duyệt)</label>
+                    ${renderOpinionChecklist(editRegistrationIndex !== -1 ? db.s02[editRegistrationIndex] : null)}
                 </div>
                 <div class="form-group">
                     <label>Người lập</label>
@@ -5249,18 +5277,8 @@ function openEditModalForm(rowIdx) {
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Các bộ phận cần lấy ý kiến (OE Workflow)</label>
-                    <div style="display: flex; gap: 16px; align-items: center; margin-top: 6px;">
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-tvgs" checked> TVGS
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-banqlda" checked> Ban QLDA
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-cdt" checked> CĐT
-                        </label>
-                    </div>
+                    <label>Các bộ phận cần lấy ý kiến (Chọn cụ thể nhân sự phê duyệt)</label>
+                    ${renderOpinionChecklist(editRegistrationIndex !== -1 ? db.s02[editRegistrationIndex] : null)}
                 </div>
                 <div class="form-group">
                     <label>Người lập</label>
@@ -5328,18 +5346,8 @@ function openEditModalForm(rowIdx) {
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Các bộ phận cần lấy ý kiến (OE Workflow)</label>
-                    <div style="display: flex; gap: 16px; align-items: center; margin-top: 6px;">
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-tvgs" checked> TVGS
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-banqlda" checked> Ban QLDA
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-cdt" checked> CĐT
-                        </label>
-                    </div>
+                    <label>Các bộ phận cần lấy ý kiến (Chọn cụ thể nhân sự phê duyệt)</label>
+                    ${renderOpinionChecklist(editRegistrationIndex !== -1 ? db.s02[editRegistrationIndex] : null)}
                 </div>
                 <div class="form-group">
                     <label>Người lập</label>
@@ -5395,18 +5403,8 @@ function openEditModalForm(rowIdx) {
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Các bộ phận cần lấy ý kiến (OE Workflow)</label>
-                    <div style="display: flex; gap: 16px; align-items: center; margin-top: 6px;">
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-tvgs" checked> TVGS
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-banqlda" checked> Ban QLDA
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-primary); font-size: 0.85rem;">
-                            <input type="checkbox" id="form-yc-cdt" checked> CĐT
-                        </label>
-                    </div>
+                    <label>Các bộ phận cần lấy ý kiến (Chọn cụ thể nhân sự phê duyệt)</label>
+                    ${renderOpinionChecklist(editRegistrationIndex !== -1 ? db.s02[editRegistrationIndex] : null)}
                 </div>
                 <div class="form-group">
                     <label>Người lập</label>
@@ -5574,9 +5572,7 @@ function openEditModalForm(rowIdx) {
                 document.getElementById("form-thoi-han-kq").value = doc["TT lập"] || "";
                 setupFormLinkValue(doc["LINK tài liệu"] || "");
                 document.getElementById("form-maker").value = doc["Người lập"] || "";
-                document.getElementById("form-yc-tvgs").checked = doc["yc_tvgs"] !== false;
-                document.getElementById("form-yc-banqlda").checked = doc["yc_banqlda"] !== false;
-                document.getElementById("form-yc-cdt").checked = doc["yc_cdt"] !== false;
+
             } else if (target === 's03') {
                 const doc = db.s03[editRegistrationIndex];
                 document.getElementById("form-hang-muc").value = doc["Hạng mục"] || "";
@@ -5666,7 +5662,7 @@ function openEditModalForm(rowIdx) {
                         const fieldsToLock = [
                             "form-bsc-search", "form-hang-muc", "form-ngay-thang", "form-loai", 
                             "form-noi-dung", "form-thoi-han-kq", "form-maker", 
-                            "form-yc-tvgs", "form-yc-banqlda", "form-yc-cdt"
+                            
                         ];
                         fieldsToLock.forEach(id => {
                             const el = document.getElementById(id);
@@ -5678,6 +5674,13 @@ function openEditModalForm(rowIdx) {
                                 }
                             }
                         });
+                        
+                        // Disable opinion radio buttons if locked
+                        const radios = document.querySelectorAll('#opinion-checklist-container input[type="radio"]');
+                        radios.forEach(r => {
+                            r.disabled = true;
+                            r.style.cursor = 'not-allowed';
+                        });;
                         const hintHtml = `<div style="background-color: rgba(255,165,0,0.1); color: #ffa500; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9rem; border: 1px solid rgba(255,165,0,0.3);">
                             <i class="fa-solid fa-circle-info"></i> Hồ sơ đang lấy ý kiến hoặc đã duyệt. Bạn chỉ được phép cập nhật Link/File kết quả.
                         </div>`;
@@ -6170,9 +6173,16 @@ function openEditModalForm(rowIdx) {
                     doc["LINK tài liệu"] = getFormLinkValue();
                     doc["Người lập"] = document.getElementById("form-maker").value;
                     
-                    doc["yc_tvgs"] = document.getElementById("form-yc-tvgs").checked;
-                    doc["yc_banqlda"] = document.getElementById("form-yc-banqlda").checked;
-                    doc["yc_cdt"] = document.getElementById("form-yc-cdt").checked;
+                    const tvgsVal = document.querySelector('input[name="opinion-radio-tvgs"]:checked').value;
+                    const banqldaVal = document.querySelector('input[name="opinion-radio-banqlda"]:checked').value;
+                    const cdtVal = document.querySelector('input[name="opinion-radio-cdt"]:checked').value;
+
+                    doc["yc_tvgs"] = tvgsVal !== "NONE";
+                    doc["yc_banqlda"] = banqldaVal !== "NONE";
+                    doc["yc_cdt"] = cdtVal !== "NONE";
+                    doc["assigned_tvgs"] = doc["yc_tvgs"] ? tvgsVal : "";
+                    doc["assigned_banqlda"] = doc["yc_banqlda"] ? banqldaVal : "";
+                    doc["assigned_cdt"] = doc["yc_cdt"] ? cdtVal : "";
                     
                     doc["tvgs_status"] = doc["yc_tvgs"] ? "Chờ ý kiến" : "N/A";
                     doc["banqlda_status"] = doc["yc_banqlda"] ? "Chờ ý kiến" : "N/A";
@@ -6210,13 +6220,16 @@ function openEditModalForm(rowIdx) {
                     "Người duyệt": "",
                     "Ngày duyệt": "",
                     
-                    "yc_tvgs": document.getElementById("form-yc-tvgs").checked,
-                    "yc_banqlda": document.getElementById("form-yc-banqlda").checked,
-                    "yc_cdt": document.getElementById("form-yc-cdt").checked,
+                    "yc_tvgs": document.querySelector('input[name="opinion-radio-tvgs"]:checked').value !== "NONE",
+                    "yc_banqlda": document.querySelector('input[name="opinion-radio-banqlda"]:checked').value !== "NONE",
+                    "yc_cdt": document.querySelector('input[name="opinion-radio-cdt"]:checked').value !== "NONE",
+                    "assigned_tvgs": document.querySelector('input[name="opinion-radio-tvgs"]:checked').value !== "NONE" ? document.querySelector('input[name="opinion-radio-tvgs"]:checked').value : "",
+                    "assigned_banqlda": document.querySelector('input[name="opinion-radio-banqlda"]:checked').value !== "NONE" ? document.querySelector('input[name="opinion-radio-banqlda"]:checked').value : "",
+                    "assigned_cdt": document.querySelector('input[name="opinion-radio-cdt"]:checked').value !== "NONE" ? document.querySelector('input[name="opinion-radio-cdt"]:checked').value : "",
                     
-                    "tvgs_status": document.getElementById("form-yc-tvgs").checked ? "Chờ ý kiến" : "N/A",
-                    "banqlda_status": document.getElementById("form-yc-banqlda").checked ? "Chờ ý kiến" : "N/A",
-                    "cdt_status": document.getElementById("form-yc-cdt").checked ? "Chờ ý kiến" : "N/A",
+                    "tvgs_status": document.querySelector('input[name="opinion-radio-tvgs"]:checked').value !== "NONE" ? "Chờ ý kiến" : "N/A",
+                    "banqlda_status": document.querySelector('input[name="opinion-radio-banqlda"]:checked').value !== "NONE" ? "Chờ ý kiến" : "N/A",
+                    "cdt_status": document.querySelector('input[name="opinion-radio-cdt"]:checked').value !== "NONE" ? "Chờ ý kiến" : "N/A",
                     
                     "tvgs_comment": "",
                     "banqlda_comment": "",
@@ -7596,6 +7609,15 @@ function openEditModalForm(rowIdx) {
                     link: `Phiếu #${newGiaoViec.id}`,
                     nguoi_lap: newGiaoViec.nguoi_giao,
                     progress_status: "Chờ duyệt",
+                    yc_tvgs: true,
+                    yc_banqlda: true,
+                    yc_cdt: true,
+                    assigned_tvgs: "Trần Việt Cường",
+                    assigned_banqlda: "Đinh Quốc Hùng",
+                    assigned_cdt: "Hồ Nghĩa Chất",
+                    tvgs_status: "Chờ ý kiến",
+                    banqlda_status: "Chờ ý kiến",
+                    cdt_status: "Chờ ý kiến",
                     weekly_reports: []
                 };
                 if (!db.s02) db.s02 = [];
