@@ -88,6 +88,26 @@ class GeminiAIService {
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         switch(docType) {
+            case 's01':
+                return {
+                    ma_bsc: 'VSV_QLTC_TT.01',
+                    hang_muc: 'CT-01 Nhà mẫu',
+                    loai_ho_so: 'Biện pháp thi công',
+                    ten_san_pham: 'Bản vẽ biện pháp thi công sảnh chính',
+                    link_luu_tru: 'AP-BPTC-01.pdf',
+                    nguoi_lap: 'Nguyễn Đình Hùng'
+                };
+            case 's02':
+                return {
+                    ma_bsc: 'VSV_QLTC_TT.01',
+                    hang_muc: 'CT-01 Nhà mẫu',
+                    loai_tai_lieu: 'Biện pháp thi công',
+                    thang_tuan: 'Tuần 28 - Tháng 07/2026',
+                    noi_dung: 'Triển khai thi công hoàn thiện phần thô kết cấu sảnh chính nhà mẫu CT-01.',
+                    dat_yckt: 'Đạt',
+                    link: 'KeHoach_T28.pdf',
+                    nguoi_lap: 'Trần Quốc Huy'
+                };
             case 's03': // Variation
                 return {
                     ma_bsc: 'VSV_QLTC_TT.01',
@@ -123,6 +143,16 @@ class GeminiAIService {
                     chi_tiet: 'Bố trí thêm 2 máy bơm công suất lớn hút nước liên tục 24/24h, tăng ca đêm 3 giờ/ngày (từ 19:00 đến 22:00) cho tổ cốt thép cốp pha.',
                     moc_cam_ket: '2026-07-05',
                     link_hs: 'PA_BuTienDo_T6_CT01.pdf'
+                };
+            case 'giao_viec':
+                return {
+                    ma_bsc: 'DA.KĐTVSV.HTKT.HT01.02',
+                    hang_muc_work: 'Phần HT 01.02: Thi công hạ tầng quanh CV + nhà mẫu (Giao thông)',
+                    tieu_de: 'Thi công cấp thoát nước sảnh chính nhà mẫu',
+                    nguoi_giao: 'Hồ Nghĩa Chất',
+                    nguoi_nhan: 'An Dương',
+                    han_chot: '2026-08-15',
+                    noi_dung_chi_tiet: 'Tiến hành khảo sát hiện trạng mặt bằng, phối hợp với đơn vị thiết kế để hoàn thiện bản vẽ thi công hệ thống cấp thoát nước sảnh chính, trình duyệt biện pháp thi công trước ngày 15/08/2026.'
                 };
             default:
                 throw new Error("Không hỗ trợ loại văn bản này");
@@ -605,19 +635,32 @@ Giới hạn và Quy chuẩn đầu ra (Constraints):
 - Định dạng đầu ra: Toàn bộ kết quả điền form phải được đặt trong một khối mã (Code Block) định dạng JSON để API của Antigravity có thể đọc trực tiếp.
 `;
 
+        let parts = [];
+        if (mimeType === "text/plain") {
+            let textDoc = "";
+            try {
+                textDoc = decodeURIComponent(escape(atob(base64Data)));
+            } catch (e) {
+                textDoc = atob(base64Data);
+            }
+            parts.push({
+                text: `NỘI DUNG TÀI LIỆU KHẢO SÁT:\n---\n${textDoc}\n---\n`
+            });
+        } else {
+            parts.push({
+                inlineData: {
+                    mimeType: mimeType,
+                    data: base64Data
+                }
+            });
+        }
+        parts.push({
+            text: `Hãy trích xuất và trả về dữ liệu tương ứng với cấu trúc JSON sau:\n${JSON.stringify(targetSchema, null, 2)}`
+        });
+
         const requestBody = {
             contents: [{
-                parts: [
-                    {
-                        inlineData: {
-                            mimeType: mimeType,
-                            data: base64Data
-                        }
-                    },
-                    {
-                        text: `Hãy trích xuất và trả về dữ liệu tương ứng với cấu trúc JSON sau:\n${JSON.stringify(targetSchema, null, 2)}`
-                    }
-                ]
+                parts: parts
             }]
         };
 
