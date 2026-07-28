@@ -1153,7 +1153,14 @@ function restructureMasterData(masterArray) {
         const roleEl = document.getElementById("user-display-role");
         const avatarEl = document.getElementById("user-avatar-initial");
         
-        if (nameEl) nameEl.textContent = currentUser.ho_ten;
+        if (nameEl) {
+            const myTasks = (db.phieu_giao_viec || []).filter(t => t && String(t.nguoi_nhan).trim().toLowerCase() === String(currentUser.ho_ten).trim().toLowerCase());
+            if (myTasks.length > 0) {
+                nameEl.innerHTML = `${escapeHtml(currentUser.ho_ten)} <span class="badge danger animate-pulse" style="margin-left: 6px; padding: 2px 6px; font-size: 0.7rem; border-radius: 10px; background: #ef4444; color: #fff; box-shadow: 0 0 5px #ef4444;">${myTasks.length}</span>`;
+            } else {
+                nameEl.textContent = currentUser.ho_ten;
+            }
+        }
         if (roleEl) roleEl.textContent = `${currentUser.vai_tro} (${currentUser.phong_ban})`;
         
         if (avatarEl) {
@@ -1606,6 +1613,64 @@ function restructureMasterData(masterArray) {
                     newBtn.innerHTML = `<i class="fa-brands fa-telegram"></i> Gửi Báo Cáo Cảnh Báo Telegram`;
                 });
             });
+        }
+
+        // Render AI task alert banner for current user
+        renderUserTasksAlertBanner();
+    }
+
+    function renderUserTasksAlertBanner() {
+        const dashboardAlertContainer = document.getElementById("dashboard-user-tasks-alert");
+        if (!dashboardAlertContainer) return;
+        dashboardAlertContainer.innerHTML = "";
+        
+        if (currentUser) {
+            const myTasks = (db.phieu_giao_viec || []).filter(t => t && String(t.nguoi_nhan).trim().toLowerCase() === String(currentUser.ho_ten).trim().toLowerCase());
+            if (myTasks.length > 0) {
+                const tasksHtml = myTasks.map(t => `
+                    <div class="user-task-item" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 8px; color: #fff;">
+                        <div>
+                            <span style="font-weight:700; color:var(--color-yellow); margin-right:8px;">[${t.id}]</span>
+                            <span style="font-weight:600; color:#fff;">${escapeHtml(t.tieu_de)}</span>
+                            <span style="font-size:0.8rem; color:var(--text-secondary); margin-left:12px;">Hạn chót: <span style="color:#ef4444; font-weight:600;">${formatDateDMY(t.han_chot)}</span></span>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn-action btn-print-task-ticket" data-id="${t.id}" style="padding:4px 10px; font-size:0.75rem; border-color: rgba(56,189,248,0.3); color:#38bdf8; background:transparent;"><i class="fa-solid fa-print"></i> In Phiếu</button>
+                            <button class="btn-action btn-view-task-details" data-id="${t.id}" style="padding:4px 10px; font-size:0.75rem; border-color: rgba(16,185,129,0.3); color:#10b981; background:transparent;"><i class="fa-solid fa-circle-info"></i> Chi tiết</button>
+                        </div>
+                    </div>
+                `).join("");
+                
+                dashboardAlertContainer.innerHTML = `
+                    <div class="user-tasks-banner" style="background: rgba(59,130,246,0.05); border: 1px solid var(--color-ai-primary); border-radius: 12px; padding: 16px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(59,130,246,0.15); animation: pulse-glow 2s infinite alternate;">
+                        <h4 style="font-size: 0.95rem; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--color-ai-primary); margin-top: 0;">
+                            <i class="fa-solid fa-bell" style="animation: ring 1.5s ease-in-out infinite;"></i> 
+                            BẠN CÓ ${myTasks.length} NHIỆM VỤ ĐƯỢC AI PHÂN CÔNG CẦN XỬ LÝ
+                        </h4>
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            ${tasksHtml}
+                        </div>
+                    </div>
+                    <style>
+                        @keyframes pulse-glow { 0% { box-shadow: 0 0 10px rgba(59,130,246,0.1); } 100% { box-shadow: 0 0 20px rgba(59,130,246,0.25); } }
+                        @keyframes ring { 0% { transform: rotate(0); } 10% { transform: rotate(15deg); } 20% { transform: rotate(-10deg); } 30% { transform: rotate(5deg); } 40% { transform: rotate(-5deg); } 50% { transform: rotate(0); } 100% { transform: rotate(0); } }
+                    </style>
+                `;
+                
+                dashboardAlertContainer.querySelectorAll(".btn-print-task-ticket").forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        const taskId = btn.getAttribute("data-id");
+                        openPrintTaskTicketModal(taskId);
+                    });
+                });
+                
+                dashboardAlertContainer.querySelectorAll(".btn-view-task-details").forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        const taskId = btn.getAttribute("data-id");
+                        openViewTaskDetailsModal(taskId);
+                    });
+                });
+            }
         }
     }
 
@@ -7493,7 +7558,29 @@ function openEditModalForm(rowIdx) {
                 };
                 if (!db.phieu_giao_viec) db.phieu_giao_viec = [];
                 db.phieu_giao_viec.push(newGiaoViec);
+
+                // Also automatically add to Sổ 02 (KH tháng/tuần)
+                const dateObj = new Date(newGiaoViec.han_chot);
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const year = dateObj.getFullYear();
+                const newS02 = {
+                    stt: (db.s02 || []).length + 1,
+                    ma_bsc: newGiaoViec.ma_bsc,
+                    hang_muc: newGiaoViec.hang_muc_work,
+                    loai_tai_lieu: "Phiếu giao việc",
+                    thang_tuan: `Tháng ${month}/${year}`,
+                    noi_dung: `[Giao việc - ${newGiaoViec.nguoi_nhan}] ${newGiaoViec.tieu_de}`,
+                    dat_yckt: "Đạt",
+                    link: `Phiếu #${newGiaoViec.id}`,
+                    nguoi_lap: newGiaoViec.nguoi_giao,
+                    progress_status: "Chờ duyệt",
+                    weekly_reports: []
+                };
+                if (!db.s02) db.s02 = [];
+                db.s02.push(newS02);
+
                 saveDatabase();
+                if (typeof renderS02 === 'function') renderS02();
 
                 // Append bot response bubble in chat history
                 const chatHistory = document.getElementById("ai-chat-history");
@@ -7981,8 +8068,18 @@ dropzone.addEventListener("click", () => fileInput.click());
                 <td style="font-weight:600; color:var(--color-yellow);">${escapeHtml(item.nguoi_nhan)}</td>
                 <td><span style="color:#ef4444; font-weight:600;">${formatDateDMY(item.han_chot)}</span></td>
                 <td style="white-space:normal; word-break:break-word; max-width:350px; font-size:0.8rem; color:var(--text-secondary); line-height:1.4;">${escapeHtml(item.noi_dung_chi_tiet)}</td>
+                <td style="text-align:center;">
+                    <button class="btn-action btn-print-giao-viec" data-id="${item.id}" style="padding:4px 8px; border-color: rgba(56,189,248,0.3); color:#38bdf8; background:transparent;" title="In phiếu giao việc"><i class="fa-solid fa-print"></i> In</button>
+                </td>
             </tr>
         `).join("");
+
+        tbody.querySelectorAll(".btn-print-giao-viec").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const taskId = btn.getAttribute("data-id");
+                openPrintTaskTicketModal(taskId);
+            });
+        });
     }
 
     function renderPersonnel() {
@@ -9343,6 +9440,122 @@ dropzone.addEventListener("click", () => fileInput.click());
         });
 
         return svg;
+    }
+
+    function openPrintTaskTicketModal(taskId) {
+        const task = (db.phieu_giao_viec || []).find(t => t && t.id === taskId);
+        if (!task) return;
+        
+        const printArea = document.getElementById("task-ticket-print-area");
+        if (!printArea) return;
+        
+        // Format dates
+        const dateObj = new Date(task.han_chot);
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
+        
+        const today = new Date();
+        const tDay = String(today.getDate()).padStart(2, '0');
+        const tMonth = String(today.getMonth() + 1).padStart(2, '0');
+        const tYear = today.getFullYear();
+
+        printArea.innerHTML = `
+            <div class="print-ticket-container" style="font-family:'Times New Roman', Times, serif; color:#000; padding:20px; background:#fff; line-height:1.5;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px; border-bottom:2px solid #000; padding-bottom:10px;">
+                    <div style="text-align:center; width:50%;">
+                        <div style="font-weight:bold; font-size:0.95rem; text-transform:uppercase;">TẬP ĐOÀN TDG GROUP</div>
+                        <div style="font-weight:bold; font-size:0.85rem; text-transform:uppercase;">BAN QLDA KĐT VEN SÔNG VINH</div>
+                    </div>
+                    <div style="text-align:center; width:50%;">
+                        <div style="font-weight:bold; font-size:0.95rem; text-transform:uppercase;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                        <div style="font-weight:bold; font-size:0.9rem; text-decoration:underline;">Độc lập - Tự do - Hạnh phúc</div>
+                    </div>
+                </div>
+                
+                <div style="text-align:center; margin-top:25px; margin-bottom:25px;">
+                    <h2 style="font-weight:bold; font-size:1.5rem; text-transform:uppercase; margin:0 0 5px 0; color:#000;">PHIẾU GIAO NHIỆM VỤ</h2>
+                    <div style="font-style:italic; font-size:0.95rem;">Số: ${task.id} / PGV-BQLDA</div>
+                </div>
+                
+                <table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:1.05rem;">
+                    <tr>
+                        <td style="width:30%; font-weight:bold; padding:8px 0; border-bottom:1px dotted #888;">Mã BSC / Gói thầu:</td>
+                        <td style="padding:8px 0; border-bottom:1px dotted #888; color:#000;">${escapeHtml(task.ma_bsc)}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:bold; padding:8px 0; border-bottom:1px dotted #888;">Hạng mục công việc:</td>
+                        <td style="padding:8px 0; border-bottom:1px dotted #888; color:#000;">${escapeHtml(task.hang_muc_work)}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:bold; padding:8px 0; border-bottom:1px dotted #888;">Tên nhiệm vụ:</td>
+                        <td style="padding:8px 0; border-bottom:1px dotted #888; font-weight:bold; color:#000;">${escapeHtml(task.tieu_de)}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:bold; padding:8px 0; border-bottom:1px dotted #888;">Người giao việc:</td>
+                        <td style="padding:8px 0; border-bottom:1px dotted #888; color:#000;">${escapeHtml(task.nguoi_giao)}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:bold; padding:8px 0; border-bottom:1px dotted #888;">Người thực hiện:</td>
+                        <td style="padding:8px 0; border-bottom:1px dotted #888; font-weight:bold; color:#000;">${escapeHtml(task.nguoi_nhan)}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:bold; padding:8px 0; border-bottom:1px dotted #888;">Hạn hoàn thành:</td>
+                        <td style="padding:8px 0; border-bottom:1px dotted #888; font-weight:bold; color:#ef4444;">${day}/${month}/${year}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:bold; padding:15px 0 5px 0; vertical-align:top;" colspan="2">Nội dung chi tiết yêu cầu nhiệm vụ:</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="padding:15px; border:1px solid #000; line-height:1.5; font-style:italic; background:#f9f9f9; color:#111; min-height:100px;">
+                            ${escapeHtml(task.noi_dung_chi_tiet)}
+                        </td>
+                    </tr>
+                </table>
+                
+                <div style="display:flex; justify-content:space-between; margin-top:50px; font-size:1.05rem;">
+                    <div style="text-align:center; width:45%;">
+                        <div style="font-weight:bold; text-transform:uppercase;">NGƯỜI THỰC HIỆN</div>
+                        <div style="font-style:italic; font-size:0.85rem; margin-bottom:65px;">(Ký và ghi rõ họ tên)</div>
+                        <div style="font-weight:bold;">${escapeHtml(task.nguoi_nhan)}</div>
+                    </div>
+                    <div style="text-align:center; width:45%;">
+                        <div style="font-style:italic; font-size:0.9rem; margin-bottom:4px;">Nghệ An, ngày ${tDay} tháng ${tMonth} năm ${tYear}</div>
+                        <div style="font-weight:bold; text-transform:uppercase;">NGƯỜI GIAO NHIỆM VỤ</div>
+                        <div style="font-style:italic; font-size:0.85rem; margin-bottom:65px;">(Ký và ghi rõ họ tên)</div>
+                        <div style="font-weight:bold;">${escapeHtml(task.nguoi_giao)}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const modal = document.getElementById("task-ticket-modal");
+        if (modal) modal.style.display = "flex";
+    }
+
+    function openViewTaskDetailsModal(taskId) {
+        openPrintTaskTicketModal(taskId);
+    }
+
+    // Bind task ticket modal close & print events
+    const closeTaskTicketBtn1 = document.getElementById("close-task-ticket-modal-btn");
+    const closeTaskTicketBtn2 = document.getElementById("btn-close-task-ticket-modal-footer");
+    const printTaskTicketBtn = document.getElementById("btn-print-task-ticket-modal");
+
+    if (closeTaskTicketBtn1) {
+        closeTaskTicketBtn1.addEventListener("click", () => {
+            document.getElementById("task-ticket-modal").style.display = "none";
+        });
+    }
+    if (closeTaskTicketBtn2) {
+        closeTaskTicketBtn2.addEventListener("click", () => {
+            document.getElementById("task-ticket-modal").style.display = "none";
+        });
+    }
+    if (printTaskTicketBtn) {
+        printTaskTicketBtn.addEventListener("click", () => {
+            window.print();
+        });
     }
 
 });
