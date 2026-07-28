@@ -661,6 +661,12 @@
                             </div>
                             <i class="fa-solid fa-bolt" style="color: var(--color-yellow);"></i>
                         </div>
+                        <div class="demo-doc-card" id="demo-doc-giao-viec">
+                            <div>
+                                <div class="demo-doc-name" style="font-size:0.82rem; font-weight:600;">Tải file PDF, ảnh nội dung giao việc (AI phân công)</div>
+                            </div>
+                            <i class="fa-solid fa-bolt" style="color: var(--color-yellow);"></i>
+                        </div>
                     </div>
 
                     <div class="ai-panel-section">
@@ -709,6 +715,34 @@
                     </thead>
                     <tbody id="personnel-tbody">
                         <!-- Personnel lists dynamically loaded -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- AI TASK ASSIGNMENT TABLE -->
+            <div style="background-color: var(--bg-surface); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 24px;">
+                <div>
+                    <h3 style="font-size: 1.15rem; font-weight: 700;"><i class="fa-solid fa-file-signature" style="color: var(--color-ai-primary); margin-right: 8px;"></i> Danh Sách Phiếu Giao Việc Dự Án (AI Cấp)</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 4px;">Phiếu phân công nhiệm vụ chi tiết được tự động trích xuất bằng Trí tuệ Nhân tạo AI</p>
+                </div>
+            </div>
+
+            <div class="table-container" style="max-height: 400px; overflow: auto; margin-top: 14px;">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Mã Phiếu</th>
+                            <th style="width: 140px;">Mã BSC / Gói</th>
+                            <th style="width: 220px;">Hạng mục công việc</th>
+                            <th style="width: 200px;">Tiêu đề công việc</th>
+                            <th style="width: 120px;">Người giao</th>
+                            <th style="width: 120px;">Người nhận</th>
+                            <th style="width: 100px;">Hạn chót</th>
+                            <th>Nội dung chi tiết nhiệm vụ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="giao-viec-tbody">
+                        <!-- AI task assignments dynamically loaded -->
                     </tbody>
                 </table>
             </div>
@@ -919,8 +953,8 @@
     </div>
 
     <!-- SCRIPTS -->
-    <script src="database.js?v=20260727_v45"></script>
-    <script src="ai-service.js?v=1785142102"></script>
-    <script src="app.js?v=20260727_v45"></script>
+    <script src="database.js?v=20260728_v46"></script>
+    <script src="ai-service.js?v=1785208957"></script>
+    <script src="app.js?v=20260728_v46"></script>
 </body>
 </html>
