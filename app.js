@@ -7647,12 +7647,12 @@ function openEditModalForm(rowIdx) {
                 } else if (docType === 's02') {
                     if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
                     if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
-                    if (document.getElementById("form-s02-loai")) document.getElementById("form-s02-loai").value = data.loai_tai_lieu || "";
-                    if (document.getElementById("form-s02-tuan-thang")) document.getElementById("form-s02-tuan-thang").value = data.thang_tuan || "";
-                    if (document.getElementById("form-s02-noi-dung")) document.getElementById("form-s02-noi-dung").value = data.noi_dung || "";
-                    if (document.getElementById("form-s02-dat-yckt")) document.getElementById("form-s02-dat-yckt").value = data.dat_yckt || "Đạt";
-                    if (document.getElementById("form-s02-link")) document.getElementById("form-s02-link").value = data.link || "";
-                    if (document.getElementById("form-s02-nguoi-lap")) document.getElementById("form-s02-nguoi-lap").value = data.nguoi_lap || "";
+                    if (document.getElementById("form-loai")) document.getElementById("form-loai").value = data.loai_tai_lieu || "";
+                    if (document.getElementById("form-ngay-thang")) document.getElementById("form-ngay-thang").value = data.ngay_thang || getSystemDateGMT7();
+                    if (document.getElementById("form-noi-dung")) document.getElementById("form-noi-dung").value = data.noi_dung || "";
+                    if (document.getElementById("form-link")) document.getElementById("form-link").value = data.link || "";
+                    if (document.getElementById("form-thoi-han-kq")) document.getElementById("form-thoi-han-kq").value = data.thoi_han_kq || "";
+                    if (document.getElementById("form-maker")) document.getElementById("form-maker").value = data.nguoi_lap || "";
                 } else if (docType === 's03') {
                     if (document.getElementById("form-bsc")) document.getElementById("form-bsc").value = data.ma_bsc || "";
                     if (document.getElementById("form-hang-muc")) document.getElementById("form-hang-muc").value = data.hang_muc || "";
