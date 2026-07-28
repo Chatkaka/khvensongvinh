@@ -7614,7 +7614,7 @@ function openEditModalForm(rowIdx) {
                         <p style="margin-bottom:12px;">Hệ thống AI đã đọc nội dung tài liệu và tự động phân công công việc mới vào hệ thống:</p>
                         <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px; font-size:0.8rem; display:flex; flex-direction:column; gap:6px;">
                             <div><strong>Mã Phiếu:</strong> <span style="color:var(--color-ai-primary); font-weight:600;">${newId}</span></div>
-                            <div><strong>Gói thầu:</strong> ${escapeHtml(newGiaoViec.ma_bsc)}</div>
+                            <div><strong>Mã BSC:</strong> ${escapeHtml(newGiaoViec.ma_bsc)}</div>
                             <div><strong>Hạng mục:</strong> ${escapeHtml(newGiaoViec.hang_muc_work)}</div>
                             <div><strong>Nhiệm vụ:</strong> <span style="color:#fff; font-weight:600;">${escapeHtml(newGiaoViec.tieu_de)}</span></div>
                             <div><strong>Người giao:</strong> ${escapeHtml(newGiaoViec.nguoi_giao)}</div>
